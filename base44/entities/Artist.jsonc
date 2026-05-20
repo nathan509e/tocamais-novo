@@ -1,0 +1,99 @@
+{
+  "name": "Artist",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "artistic_name": {
+      "type": "string"
+    },
+    "genre": {
+      "type": "string",
+      "enum": [
+        "Sertanejo",
+        "Forr\u00f3",
+        "Pagode",
+        "Rock",
+        "Pop",
+        "MPB",
+        "Eletr\u00f4nico",
+        "Jazz",
+        "Blues",
+        "Reggae",
+        "Funk",
+        "Ax\u00e9",
+        "Samba",
+        "Gospel"
+      ]
+    },
+    "bio": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "cover_url": {
+      "type": "string"
+    },
+    "base_fee": {
+      "type": "number"
+    },
+    "rating": {
+      "type": "number"
+    },
+    "total_reviews": {
+      "type": "integer"
+    },
+    "followers": {
+      "type": "integer"
+    },
+    "total_shows": {
+      "type": "integer"
+    },
+    "verified": {
+      "type": "boolean"
+    },
+    "featured": {
+      "type": "boolean"
+    },
+    "live_now": {
+      "type": "boolean"
+    },
+    "available": {
+      "type": "boolean"
+    },
+    "instagram": {
+      "type": "string"
+    },
+    "spotify_url": {
+      "type": "string"
+    },
+    "youtube_url": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "monthly_earnings": {
+      "type": "number"
+    },
+    "upcoming_shows": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "name",
+    "artistic_name",
+    "genre"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "Venue",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Bar",
+        "Restaurante",
+        "Casa de Show",
+        "Clube",
+        "Hotel",
+        "Boate",
+        "Espa\u00e7o de Eventos"
+      ]
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "cover_url": {
+      "type": "string"
+    },
+    "capacity": {
+      "type": "integer"
+    },
+    "monthly_music_budget": {
+      "type": "number"
+    },
+    "preferred_genres": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "peak_hours": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "instagram": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "city"
+  ]
+}

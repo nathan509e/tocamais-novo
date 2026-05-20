@@ -1,0 +1,76 @@
+{
+  "name": "Event",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "artist_id": {
+      "type": "string"
+    },
+    "venue_id": {
+      "type": "string"
+    },
+    "contractor_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "Show",
+        "Casamento",
+        "Anivers\u00e1rio",
+        "Corporativo",
+        "Churrasco",
+        "Festival",
+        "Privado"
+      ]
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled"
+      ]
+    },
+    "fee": {
+      "type": "number"
+    },
+    "tip": {
+      "type": "number"
+    },
+    "audience": {
+      "type": "integer"
+    },
+    "city": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "title",
+    "event_type",
+    "date",
+    "status"
+  ]
+}
