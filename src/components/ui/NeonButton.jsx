@@ -2,10 +2,10 @@ import { motion } from 'framer-motion';
 
 export default function NeonButton({ children, variant = 'purple', size = 'md', onClick, className = '', disabled = false, type = 'button' }) {
   const variants = {
-    purple: 'bg-neon-purple hover:bg-purple-600 text-white shadow-[0_0_20px_rgba(123,46,255,0.5)] hover:shadow-[0_0_30px_rgba(123,46,255,0.8)]',
-    green: 'bg-neon-green hover:bg-green-400 text-black shadow-[0_0_20px_rgba(57,255,106,0.5)] hover:shadow-[0_0_30px_rgba(57,255,106,0.8)]',
-    outline: 'bg-transparent border border-neon-purple text-neon-purple hover:bg-neon-purple/10 hover:shadow-[0_0_20px_rgba(123,46,255,0.3)]',
-    ghost: 'bg-white/5 hover:bg-white/10 text-white border border-white/10',
+    purple: 'bg-neon-purple hover:bg-purple-600 text-white shadow-[0_4px_14px_rgba(123,46,255,0.39)] hover:shadow-[0_6px_20px_rgba(123,46,255,0.23)]',
+    green: 'bg-neon-green hover:bg-green-400 text-black shadow-[0_4px_14px_rgba(57,255,106,0.39)] hover:shadow-[0_6px_20px_rgba(57,255,106,0.23)]',
+    outline: 'bg-transparent border border-neon-purple text-neon-purple hover:bg-neon-purple/5',
+    ghost: 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200',
     gradient: 'text-white border-0',
   };
 
@@ -34,4 +34,8 @@ export default function NeonButton({ children, variant = 'purple', size = 'md', 
       {children}
     </motion.button>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047

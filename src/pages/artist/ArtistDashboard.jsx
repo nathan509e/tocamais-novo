@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp, DollarSign, Calendar, Star, Users, Music,
-  Bell, ChevronRight, CheckCircle, Clock, MapPin, Play, Mic
+  Bell, ChevronRight, CheckCircle, Clock, MapPin, Play, Pause, Mic,
+  Volume2, UploadCloud, Plus, ToggleLeft, ToggleRight, Sparkles, Check, X, ShieldAlert
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
 import NeonButton from '../../components/ui/NeonButton';
+import { supabase } from '../../lib/supabaseClient';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  LineChart, Line
 } from 'recharts';
 
 const earningsData = [
@@ -30,225 +33,331 @@ const growthData = [
   { month: 'Jun', seguidores: 103000 },
 ];
 
-const proposals = [
-  { id: '1', venue: 'Bar do Zeca', date: '15 Jun 2026', fee: 2800, status: 'pending', avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&h=100&fit=crop' },
-  { id: '2', venue: 'Casa Noturna SP', date: '22 Jun 2026', fee: 4500, status: 'confirmed', avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=100&h=100&fit=crop' },
-  { id: '3', venue: 'Espaço Eventos RJ', date: '30 Jun 2026', fee: 3200, status: 'pending', avatar: 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=100&h=100&fit=crop' },
-];
-
-const upcomingShows = [
-  { id: '1', venue: 'Bar Maresias', date: 'Hoje', time: '21h', city: 'São Paulo', fee: 1800 },
-  { id: '2', venue: 'Sunset Lounge', date: 'Sex 14 Jun', time: '22h', city: 'Campinas', fee: 2200 },
-  { id: '3', venue: 'Ao Vivo Club', date: 'Sáb 15 Jun', time: '21:30h', city: 'São Paulo', fee: 3000 },
-];
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="bg-card-dark border border-white/10 rounded-xl p-3 text-xs">
-        <p className="text-gray-400 mb-1">{label}</p>
-        <p style={{ color: '#39FF6A' }} className="font-semibold">
-          R$ {payload[0]?.value?.toLocaleString()}
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
 export default function ArtistDashboard() {
+  const [proposals, setProposals] = useState([
+    { id: 'evt-2', venue: 'Sunset Lounge', date: '2026-05-23', fee: 2200, status: 'pending', avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=100&h=100&fit=crop' },
+    { id: 'evt-3', venue: 'Espaço Jardins', date: '2026-05-30', fee: 2000, status: 'pending', avatar: 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=100&h=100&fit=crop' }
+  ]);
+  
+  const [shows, setShows] = useState([
+    { id: 'evt-1', venue: 'Bar do João', date: 'Hoje', time: '21:00', city: 'São Paulo', fee: 1800 }
+  ]);
+
+  // Audio Player State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState('Modão Sertanejo - Demo');
+  
+  // Media Upload State
+  const [mediaList, setMediaList] = useState([
+    { id: 1, type: 'video', name: 'Show_Ao_Vivo_Pinheiros.mp4', size: '24MB' },
+    { id: 2, type: 'audio', name: 'Autoral_Estudio_Gravacao.wav', size: '8MB' }
+  ]);
+  const [uploading, setUploading] = useState(false);
+
+  // Availability calendar state
+  const [busyDates, setBusyDates] = useState(['2026-05-22', '2026-05-25']);
+  const [newBusyDate, setNewBusyDate] = useState('');
+  const [availabilityAuto, setAvailabilityAuto] = useState(true);
+
+  const handleAcceptProposal = (id) => {
+    const prop = proposals.find(p => p.id === id);
+    if (!prop) return;
+    
+    // Move to shows list
+    setShows(prev => [...prev, {
+      id: prop.id,
+      venue: prop.venue,
+      date: prop.date,
+      time: '21:00',
+      city: 'São Paulo',
+      fee: prop.fee
+    }]);
+
+    // Remove from proposals
+    setProposals(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleRejectProposal = (id) => {
+    setProposals(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleUploadMedia = (e) => {
+    e.preventDefault();
+    setUploading(true);
+    setTimeout(() => {
+      setMediaList(prev => [
+        ...prev,
+        { id: Date.now(), type: 'audio', name: 'Nova_Musica_Demo.mp3', size: '5.2MB' }
+      ]);
+      setUploading(false);
+    }, 1500);
+  };
+
+  const handleAddBusyDate = () => {
+    if (!newBusyDate) return;
+    if (busyDates.includes(newBusyDate)) return;
+    setBusyDates(prev => [...prev, newBusyDate]);
+    setNewBusyDate('');
+  };
+
+  const handleRemoveBusyDate = (date) => {
+    setBusyDates(prev => prev.filter(d => d !== date));
+  };
+
   return (
-    <AppLayout role="artist" userName="Lucas Volta">
-      <div className="px-4 py-5 space-y-6">
-
-        {/* Greeting */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Olá, artista 🎵</p>
-              <h1 className="text-white font-bold text-2xl">Lucas Volta</h1>
-              <div className="flex items-center gap-1.5 mt-1">
-                <CheckCircle className="w-4 h-4 text-neon-purple" />
-                <span className="text-neon-purple text-xs font-semibold">Artista Verificado</span>
-              </div>
-            </div>
+    <AppLayout role="artist">
+      <div className="space-y-8 pb-10">
+        
+        {/* TOP ROW: PROFILE HEADER */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-neon-purple/60" style={{ boxShadow: '0 0 20px rgba(123,46,255,0.4)' }}>
-                <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop" alt="Artista" className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-neon-green rounded-full border-2 border-app-dark flex items-center justify-center">
-                <span className="text-[7px] font-bold text-black">AO VIVO</span>
+              <img 
+                src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop" 
+                alt="Avatar" 
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-neon-purple/50"
+              />
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-neon-green rounded-full border-2 border-[#08041A] flex items-center justify-center">
+                <span className="text-[8px] font-black text-black">LIVE</span>
               </div>
             </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-2xl font-black text-white">Lucas Volta</h1>
+                <CheckCircle className="w-5 h-5 text-neon-purple" />
+              </div>
+              <p className="text-xs text-gray-400">Sertanejo Universitário • São Paulo</p>
+            </div>
           </div>
-        </motion.div>
 
-        {/* Hero Earnings Card */}
+          {/* Availability Toggle */}
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10">
+            <span className="text-xs text-gray-300 font-bold uppercase tracking-wider">Status Agenda</span>
+            <button onClick={() => setAvailabilityAuto(!availabilityAuto)}>
+              {availabilityAuto ? (
+                <ToggleRight className="w-9 h-9 text-neon-green" />
+              ) : (
+                <ToggleLeft className="w-9 h-9 text-gray-500" />
+              )}
+            </button>
+            <span className="text-[10px] text-gray-400 font-semibold">{availabilityAuto ? 'Disponível' : 'Ocupado'}</span>
+          </div>
+        </div>
+
+        {/* HERO EARNINGS */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="relative p-6 rounded-3xl overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, rgba(57,255,106,0.2) 0%, rgba(123,46,255,0.2) 100%)', border: '1px solid rgba(57,255,106,0.3)' }}
+          className="relative p-6 rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#0c1f10] to-[#08041A]"
         >
-          <p className="text-gray-300 text-sm">Ganhos em Maio 2026</p>
-          <div className="flex items-end gap-2 mt-1 mb-4">
-            <h2 className="text-white font-black text-4xl">R$ 13.000</h2>
-            <div className="flex items-center gap-1 text-neon-green text-sm font-semibold mb-1">
-              <TrendingUp className="w-4 h-4" />
-              +31%
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[{ label: 'Shows', value: '7', icon: '🎤' }, { label: 'Gorjetas', value: 'R$ 940', icon: '💝' }, { label: 'Propostas', value: '3', icon: '📩' }].map((m, i) => (
-              <div key={i} className="bg-black/30 rounded-xl p-2.5 text-center">
-                <div className="text-base mb-0.5">{m.icon}</div>
-                <p className="text-white font-bold text-sm">{m.value}</p>
-                <p className="text-gray-400 text-[10px]">{m.label}</p>
+          <div className="absolute top-0 right-0 w-48 h-48 bg-neon-green/10 rounded-full blur-[50px] pointer-events-none" />
+          
+          <div className="grid md:grid-cols-2 gap-6 items-center">
+            <div>
+              <span className="text-[10px] uppercase font-black text-neon-green tracking-widest">Ganhos do Mês</span>
+              <h2 className="text-4xl font-black text-white mt-1">R$ 13.000,00</h2>
+              <div className="flex items-center gap-1 text-neon-green text-xs font-bold mt-1">
+                <TrendingUp className="w-4 h-4" />
+                <span>+31.4% vs. mês anterior</span>
               </div>
-            ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { title: 'Shows Feitos', val: '7 Gigs', icon: '🎤' },
+                { title: 'Gorjetas Fãs', val: 'R$ 940', icon: '💝' },
+                { title: 'Pendentes', val: proposals.length.toString(), icon: '📩' }
+              ].map((item, idx) => (
+                <div key={idx} className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                  <div className="text-lg mb-1">{item.icon}</div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">{item.title}</p>
+                  <p className="text-sm font-bold text-white mt-0.5">{item.val}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard title="Seguidores" value="103K" change={15} icon={Users} iconColor="purple" delay={0.1} />
-          <StatCard title="Avaliação" value="4.9 ⭐" icon={Star} iconColor="green" delay={0.15} />
-          <StatCard title="Shows este mês" value="7" change={17} icon={Music} iconColor="purple" delay={0.2} />
-          <StatCard title="Próx. evento" value="Hoje, 21h" icon={Calendar} iconColor="green" delay={0.25} />
+        {/* METRICS ROW */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="Seguidores" value="103K" change={15} icon={Users} iconColor="purple" />
+          <StatCard title="Avaliação Fãs" value="4.9 / 5" icon={Star} iconColor="green" />
+          <StatCard title="Visualizações" value="18K" icon={Play} iconColor="purple" />
+          <StatCard title="Próximo Show" value="Hoje, 21:00" icon={Calendar} iconColor="green" />
         </div>
 
-        {/* Earnings Chart */}
-        <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-white font-semibold text-sm">Crescimento de Ganhos</h3>
-              <p className="text-gray-400 text-xs">Últimas 6 semanas</p>
+        {/* GRAPHS */}
+        <div className="grid md:grid-cols-2 gap-6">
+          
+          {/* Earnings Growth Chart */}
+          <div className="p-5 rounded-2xl bg-[#0F0926] border border-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white">Crescimento de Cachês</h3>
+              <DollarSign className="w-4 h-4 text-neon-green" />
             </div>
-            <TrendingUp className="w-4 h-4 text-neon-green" />
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={earningsData}>
-              <defs>
-                <linearGradient id="colorGanhos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#39FF6A" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#39FF6A" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="week" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v / 1000}k`} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="ganhos" stroke="#39FF6A" strokeWidth={2.5} fill="url(#colorGanhos)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Follower Growth */}
-        <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-white font-semibold text-sm">Crescimento de Seguidores</h3>
-              <p className="text-gray-400 text-xs">Últimos 6 meses</p>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={earningsData}>
+                  <defs>
+                    <linearGradient id="colorEarning" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#39FF6A" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#39FF6A" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="week" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
+                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="ganhos" stroke="#39FF6A" fillOpacity={1} fill="url(#colorEarning)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            <Users className="w-4 h-4 text-neon-purple" />
           </div>
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={growthData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v / 1000}K`} />
-              <Tooltip content={({ active, payload }) => active && payload?.length ? (
-                <div className="bg-card-dark border border-white/10 rounded-xl p-3 text-xs">
-                  <p style={{ color: '#7B2EFF' }} className="font-semibold">{payload[0]?.value?.toLocaleString()} seguidores</p>
-                </div>
-              ) : null} />
-              <Line type="monotone" dataKey="seguidores" stroke="#7B2EFF" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+
+          {/* Followers Chart */}
+          <div className="p-5 rounded-2xl bg-[#0F0926] border border-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white">Engajamento Audiência</h3>
+              <Users className="w-4 h-4 text-neon-purple" />
+            </div>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={growthData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
+                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="seguidores" stroke="#7B2EFF" strokeWidth={2.5} dot={true} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
         </div>
 
-        {/* Proposals */}
+        {/* PROPOSALS LIST */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-neon-purple" />
-              <h3 className="text-white font-semibold text-sm">Propostas Recebidas</h3>
-              <span className="bg-neon-purple/20 text-neon-purple text-xs font-bold px-2 py-0.5 rounded-full">3</span>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {proposals.map((p, i) => (
-              <motion.div key={p.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/8 hover:border-neon-purple/30 transition-all">
-                <img src={p.avatar} alt={p.venue} className="w-12 h-12 rounded-xl object-cover" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm truncate">{p.venue}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Clock className="w-3 h-3 text-gray-400" />
-                    <span className="text-gray-400 text-xs">{p.date}</span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-4">Propostas de Shows</h3>
+          
+          <div className="grid gap-3">
+            {proposals.length > 0 ? (
+              proposals.map(p => (
+                <div key={p.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <img src={p.avatar} alt="Proposer" className="w-12 h-12 rounded-xl object-cover" />
+                    <div>
+                      <h4 className="font-bold text-sm text-white">{p.venue}</h4>
+                      <p className="text-xs text-gray-400">Data: {p.date} • Proposta Cachê: <span className="text-neon-green font-bold">R$ {p.fee.toLocaleString()}</span></p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleRejectProposal(p.id)}
+                      className="p-2 px-3 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold transition-all"
+                    >
+                      Recusar
+                    </button>
+                    <button 
+                      onClick={() => handleAcceptProposal(p.id)}
+                      className="p-2 px-4 rounded-lg bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_10px_rgba(123,46,255,0.4)] transition-all"
+                    >
+                      Aceitar Show
+                    </button>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-neon-green font-bold text-sm">R$ {p.fee.toLocaleString()}</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${p.status === 'confirmed' ? 'bg-neon-green/15 text-neon-green' : 'bg-yellow-500/15 text-yellow-400'}`}>
-                    {p.status === 'confirmed' ? 'Confirmado' : 'Pendente'}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
+              ))
+            ) : (
+              <div className="p-6 text-center bg-white/5 rounded-xl border border-white/5">
+                <p className="text-gray-400 text-xs">Nenhuma proposta pendente no momento.</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Upcoming Shows */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-neon-green" />
-              <h3 className="text-white font-semibold text-sm">Próximos Shows</h3>
+        {/* SMART CALENDAR AND BUSY DATES SECTION */}
+        <div className="grid md:grid-cols-2 gap-6">
+          
+          {/* Calendar dates list */}
+          <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white mb-3">Bloqueio Inteligente de Agenda</h3>
+            <p className="text-[10px] text-gray-400 mb-4">Adicione datas ocupadas para que contratantes não possam enviar propostas.</p>
+
+            <div className="flex gap-2 mb-4">
+              <input 
+                type="date" 
+                value={newBusyDate}
+                onChange={e => setNewBusyDate(e.target.value)}
+                className="flex-1 p-2 bg-[#0F0926] border border-white/10 rounded-xl text-xs" 
+              />
+              <button 
+                onClick={handleAddBusyDate}
+                className="p-2 px-3 rounded-xl bg-neon-purple text-white text-xs font-bold"
+              >
+                Bloquear Data
+              </button>
             </div>
-            <Link to="/artist/agenda" className="flex items-center gap-1 text-neon-purple text-xs font-semibold">
-              Ver agenda <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {upcomingShows.map((show, i) => (
-              <motion.div key={show.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/8">
-                <div className="w-12 h-12 rounded-xl bg-neon-purple/20 flex flex-col items-center justify-center flex-shrink-0">
-                  <Mic className="w-5 h-5 text-neon-purple" />
+
+            <div className="space-y-2">
+              {busyDates.map(date => (
+                <div key={date} className="flex justify-between items-center p-2.5 bg-black/20 rounded-xl border border-white/5">
+                  <span className="text-xs font-semibold text-gray-300">📅 Ocupado em {date}</span>
+                  <button onClick={() => handleRemoveBusyDate(date)} className="p-1 rounded hover:bg-white/10 text-red-400">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <p className="text-white font-semibold text-sm">{show.venue}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-gray-400 text-xs">{show.date} • {show.time}</span>
-                    <span className="text-gray-600">•</span>
-                    <MapPin className="w-3 h-3 text-gray-400" />
-                    <span className="text-gray-400 text-xs">{show.city}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Audio player & portfolio */}
+          <div className="p-5 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white mb-3">Portfólio & Player</h3>
+              <p className="text-[10px] text-gray-400 mb-4">Gerencie as músicas exibidas no seu perfil.</p>
+
+              {/* Music Player Bar */}
+              <div className="p-3 bg-neon-purple/10 border border-neon-purple/20 rounded-xl flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-8 h-8 rounded-full bg-neon-purple flex items-center justify-center text-white"
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
+                  </button>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{currentTrack}</p>
+                    <span className="text-[9px] text-gray-500">Duração: 2:45m</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-neon-green font-bold text-sm">R$ {show.fee.toLocaleString()}</p>
-                </div>
-              </motion.div>
-            ))}
+                <Volume2 className="w-4 h-4 text-neon-purple" />
+              </div>
+
+              {/* Media List */}
+              <div className="space-y-2">
+                {mediaList.map(m => (
+                  <div key={m.id} className="flex justify-between items-center p-2 bg-black/10 rounded-lg text-[10px] text-gray-300">
+                    <span>{m.type === 'video' ? '📹' : '🎵'} {m.name}</span>
+                    <span className="text-gray-500">{m.size}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Media Uploader Form */}
+            <form onSubmit={handleUploadMedia} className="mt-4 pt-3 border-t border-white/5">
+              <button 
+                type="submit" 
+                disabled={uploading}
+                className="w-full py-2.5 rounded-xl border border-dashed border-white/20 hover:border-neon-purple/50 flex items-center justify-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-all"
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>{uploading ? 'Enviando arquivo...' : 'Upload de Portfólio'}</span>
+              </button>
+            </form>
           </div>
+
         </div>
 
-        {/* Live Button */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="p-5 rounded-2xl text-center cursor-pointer flex items-center justify-center gap-3"
-          style={{ background: 'linear-gradient(135deg, rgba(123,46,255,0.3), rgba(57,255,106,0.2))', border: '1px solid rgba(123,46,255,0.4)' }}
-        >
-          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-          <div>
-            <p className="text-white font-bold text-base">Iniciar Live</p>
-            <p className="text-gray-300 text-xs">Transmita para seus fãs agora</p>
-          </div>
-          <Play className="w-6 h-6 text-neon-green" />
-        </motion.div>
       </div>
     </AppLayout>
   );

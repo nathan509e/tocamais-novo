@@ -1,0 +1,8 @@
+{
+  "name": "TocaMais",
+  "short_name": "TocaMais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8A05FF"
+}

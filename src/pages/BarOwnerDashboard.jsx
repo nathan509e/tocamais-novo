@@ -7,10 +7,10 @@ import {
   SlidersHorizontal, CheckCircle, Shield, Play, MessageSquare,
   Sparkles, FileText, Send, Landmark, X, Filter, Check, Award
 } from 'lucide-react';
-import AppLayout from '../../components/shared/AppLayout';
-import StatCard from '../../components/ui/StatCard';
-import NeonButton from '../../components/ui/NeonButton';
-import { supabase } from '../../lib/supabaseClient';
+import AppLayout from '@/components/layout/AppLayout';
+import StatCard from '@/components/ui/StatCard';
+import NeonButton from '@/components/ui/NeonButton';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, LineChart, Line
@@ -26,10 +26,10 @@ const chartData = [
   { month: 'Jun', faturamento: 31000, gastos: 7900, ocupacao: 88 },
 ];
 
-import { useTheme } from '../../lib/ThemeContext';
+
 
 export default function VenueDashboard() {
-  const { theme } = useTheme();
+  const theme = 'dark';
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('Maio 2026');

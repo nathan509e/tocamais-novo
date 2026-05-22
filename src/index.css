@@ -46,6 +46,27 @@
     font-family: 'Poppins', sans-serif;
   }
 
+  /* Responsive container */
+  .container {
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  @media (min-width: 640px) {
+    .container { max-width: 640px; }
+  }
+  @media (min-width: 768px) {
+    .container { max-width: 768px; }
+  }
+  @media (min-width: 1024px) {
+    .container { max-width: 1024px; }
+  }
+  @media (min-width: 1280px) {
+    .container { max-width: 1280px; }
+  }
+
   .glass {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(20px);
@@ -103,3 +124,179 @@
     scrollbar-width: none;
   }
 }
+
+/* LIGHT MODE STYLES & OVERRIDES */
+.light {
+  background-color: #F4F5FA !important;
+  color: #1F2937 !important;
+}
+
+.light body {
+  background-color: #F4F5FA !important;
+  color: #1F2937 !important;
+}
+
+/* Background overrides for app container and inner cards */
+.light .bg-\[\#08041A\] {
+  background-color: #F4F5FA !important;
+}
+
+.light .bg-\[\#0F0926\] {
+  background-color: #FFFFFF !important;
+}
+
+.light .bg-white\/5 {
+  background-color: #FFFFFF !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .bg-white\/10 {
+  background-color: #F3F4F6 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.light .bg-black\/20 {
+  background-color: #F3F4F6 !important;
+}
+
+.light .bg-black\/10 {
+  background-color: #E5E7EB !important;
+}
+
+.light .bg-\[\#120836\] {
+  background: linear-gradient(135deg, #EBE8FC 0%, #F4F5FA 100%) !important;
+}
+
+.light .bg-gradient-to-br.from-\[\#120836\].to-\[\#08041A\] {
+  background: linear-gradient(135deg, #EBE8FC 0%, #FFFFFF 100%) !important;
+  border-color: rgba(123, 46, 255, 0.15) !important;
+}
+
+.light .bg-gradient-to-br.from-\[\#0c1f10\].to-\[\#08041A\] {
+  background: linear-gradient(135deg, #EBFDF2 0%, #FFFFFF 100%) !important;
+  border-color: rgba(57, 255, 106, 0.15) !important;
+}
+
+/* Border overrides */
+.light .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.light .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .border-white\/8 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Text overrides */
+.light .text-white {
+  color: #111827 !important;
+}
+
+.light .text-gray-400 {
+  color: #6B7280 !important;
+}
+
+.light .text-gray-300 {
+  color: #4B5563 !important;
+}
+
+.light .text-gray-200 {
+  color: #374151 !important;
+}
+
+.light .text-gray-500 {
+  color: #6B7280 !important;
+}
+
+.light .text-purple-300 {
+  color: #7B2EFF !important;
+}
+
+.light .text-green-300 {
+  color: #059669 !important;
+}
+
+.light .text-blue-300 {
+  color: #2563EB !important;
+}
+
+.light .bg-neon-purple\/10 {
+  background-color: rgba(123, 46, 255, 0.08) !important;
+}
+
+.light .bg-neon-purple\/20 {
+  background-color: rgba(123, 46, 255, 0.12) !important;
+}
+
+.light .bg-neon-green\/10 {
+  background-color: rgba(57, 255, 106, 0.1) !important;
+}
+
+.light .bg-neon-green\/20 {
+  background-color: rgba(57, 255, 106, 0.16) !important;
+}
+
+.light .text-neon-purple {
+  color: #7B2EFF !important;
+}
+
+.light .text-neon-green {
+  color: #059669 !important;
+}
+
+/* Recharts grid & text tweaks in light mode */
+.light .recharts-cartesian-grid-horizontal line,
+.light .recharts-cartesian-grid-vertical line {
+  stroke: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .recharts-text {
+  fill: #4B5563 !important;
+}
+
+.light .recharts-legend-item-text {
+  color: #374151 !important;
+}
+
+/* Gradient text overrides */
+.light .from-white.to-gray-400 {
+  background-image: linear-gradient(to right, #111827, #4B5563) !important;
+}
+
+.light .from-white.via-white.to-gray-400 {
+  background-image: linear-gradient(to right, #111827, #1F2937, #4B5563) !important;
+}
+
+/* Option element overrides inside dropdown selectors */
+.light select option {
+  background-color: #FFFFFF !important;
+  color: #1F2937 !important;
+}
+
+.light select {
+  color: #1F2937 !important;
+}
+
+.light input {
+  color: #111827 !important;
+}
+
+.light textarea {
+  color: #111827 !important;
+}
+
+/* Cover page gradient in profile */
+.light .bg-gradient-to-t.from-app-dark {
+  background-image: linear-gradient(to top, #F4F5FA, rgba(244, 245, 250, 0.4), transparent) !important;
+}
+
+.light .border-app-dark {
+  border-color: #F4F5FA !important;
+}

@@ -4,9 +4,9 @@ import {
   Search, Heart, Star, MapPin, Music, CheckCircle, Calendar, Sparkles,
   X, SlidersHorizontal, Plus, Trash2, ListMusic, Volume2, ShieldAlert
 } from 'lucide-react';
-import AppLayout from '../../components/shared/AppLayout';
-import NeonButton from '../../components/ui/NeonButton';
-import { supabase } from '../../lib/supabaseClient';
+import AppLayout from '@/components/layout/AppLayout';
+import NeonButton from '@/components/ui/NeonButton';
+import { supabase } from '@/integrations/supabase/client';
 
 const eventTypes = [
   { id: 'wedding', icon: '💍', label: 'Casamento', desc: 'Eventos luxuosos e românticos' },

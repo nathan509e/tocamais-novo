@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Star, CheckCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import ArtistCard from '../../components/shared/ArtistCard';
+import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 
 const favs = [
   { id: '1', artistic_name: 'Lucas Volta', genre: 'Sertanejo', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 48, followers: 125000, base_fee: 2800, verified: true, featured: true, live_now: false, total_shows: 24 },
@@ -11,6 +12,7 @@ const favs = [
 
 export default function ContractorFavorites() {
   const [favorites, setFavorites] = useState(favs);
+  const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
 
   const remove = (id) => setFavorites(prev => prev.filter(f => f.id !== id));
 
@@ -36,7 +38,7 @@ export default function ContractorFavorites() {
             <div className="space-y-4">
               {favorites.map((artist, i) => (
                 <motion.div key={artist.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ delay: i * 0.07 }} className="relative">
-                  <ArtistCard artist={artist} />
+                  <ArtistCard artist={artist} onView={() => setSelectedArtistProfile(artist)} />
                   <button onClick={() => remove(artist.id)}
                     className="absolute top-3 right-3 p-2 rounded-xl bg-black/60 backdrop-blur-sm">
                     <Heart className="w-4 h-4 text-red-400 fill-red-400" />
@@ -46,6 +48,15 @@ export default function ContractorFavorites() {
             </div>
           )}
         </AnimatePresence>
+
+        <ArtistProfileModal 
+          artist={selectedArtistProfile} 
+          onClose={() => setSelectedArtistProfile(null)} 
+          onHire={(artist) => {
+            setSelectedArtistProfile(null);
+            console.log('Hire flow from favorites', artist);
+          }} 
+        />
       </div>
     </AppLayout>
   );

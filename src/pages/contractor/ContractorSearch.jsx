@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import ArtistCard from '../../components/shared/ArtistCard';
+import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 
 const allArtists = [
   { id: '1', artistic_name: 'Lucas Volta', genre: 'Sertanejo', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 48, followers: 125000, base_fee: 2800, verified: true, featured: true, live_now: false, total_shows: 24 },
@@ -19,6 +20,7 @@ export default function ContractorSearch() {
   const [search, setSearch] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('Todos');
   const [maxFee, setMaxFee] = useState(10000);
+  const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
 
   const filtered = allArtists.filter(a => {
     const matchSearch = a.artistic_name.toLowerCase().includes(search.toLowerCase()) || a.genre.toLowerCase().includes(search.toLowerCase()) || a.city.toLowerCase().includes(search.toLowerCase());
@@ -67,10 +69,19 @@ export default function ContractorSearch() {
         <div className="grid grid-cols-1 gap-4 pb-4">
           {filtered.map((artist, i) => (
             <motion.div key={artist.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <ArtistCard artist={artist} />
+              <ArtistCard artist={artist} onView={() => setSelectedArtistProfile(artist)} onHire={() => console.log('Hire', artist)} />
             </motion.div>
           ))}
         </div>
+        
+        <ArtistProfileModal 
+          artist={selectedArtistProfile} 
+          onClose={() => setSelectedArtistProfile(null)} 
+          onHire={(artist) => {
+            setSelectedArtistProfile(null);
+            console.log('Hire flow from search', artist);
+          }} 
+        />
       </div>
     </AppLayout>
   );

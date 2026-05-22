@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, Star, MapPin, Music, CheckCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import ArtistCard from '../../components/shared/ArtistCard';
+import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 import NeonButton from '../../components/ui/NeonButton';
 
 const allArtists = [
@@ -25,6 +26,7 @@ export default function VenueArtists() {
   const [minRating, setMinRating] = useState(0);
   const [maxFee, setMaxFee] = useState(10000);
   const [selectedArtist, setSelectedArtist] = useState(null);
+  const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
 
   const filtered = allArtists.filter(a => {
     const matchSearch = a.artistic_name.toLowerCase().includes(search.toLowerCase()) || a.genre.toLowerCase().includes(search.toLowerCase());
@@ -110,10 +112,20 @@ export default function VenueArtists() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
             >
-              <ArtistCard artist={artist} onHire={() => setSelectedArtist(artist)} onView={() => setSelectedArtist(artist)} />
+              <ArtistCard artist={artist} onHire={() => setSelectedArtist(artist)} onView={() => setSelectedArtistProfile(artist)} />
             </motion.div>
           ))}
         </div>
+
+        {/* Profile Modal */}
+        <ArtistProfileModal 
+          artist={selectedArtistProfile} 
+          onClose={() => setSelectedArtistProfile(null)} 
+          onHire={(artist) => {
+            setSelectedArtistProfile(null);
+            setSelectedArtist(artist);
+          }} 
+        />
 
         {/* Hire Modal */}
         <AnimatePresence>

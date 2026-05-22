@@ -1,20 +1,42 @@
-import base44 from "@base44/vite-plugin"
+import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+const port = Number(process.env.PORT || 5173)
+
+// Configuração de domínios (Registros A e CNAME)
+const A_RECORDS = ['tocamais.app'] // Aponta para o IP da VPS
+const CNAME_RECORDS = ['www.tocamais.app'] // Aponta para o domínio principal
+
+const DOMAINS = [
+  ...A_RECORDS,
+  ...CNAME_RECORDS,
+  '187.127.251.137',
+  'localhost',
+  '0.0.0.0'
+]
+
 // https://vite.dev/config/
 export default defineConfig({
-  logLevel: 'error', // Suppress warnings, only show errors
+  logLevel: 'error',
+  server: {
+    host: '0.0.0.0',
+    port,
+    strictPort: true,
+    allowedHosts: true,
+  },
+  preview: {
+    host: '0.0.0.0',
+    port,
+    strictPort: true,
+    allowedHosts: true,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   plugins: [
-    base44({
-      // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
-      // can be removed if the code has been updated to use the new SDK imports from @base44/sdk
-      legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
-      hmrNotifier: true,
-      navigationNotifier: true,
-      analyticsTracker: true,
-      visualEditAgent: true
-    }),
     react(),
   ]
 });
