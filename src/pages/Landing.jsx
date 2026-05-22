@@ -270,7 +270,7 @@ const Landing = () => {
                 </ul>
                 <button
                   onClick={() => setSelectedPlan(plan.name)}
-                  className={`w-full h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${isSelected ? "bg-emerald-500 text-[#FFFFFF]" : "bg-white/5 border border-white/10 text-black/80 hover:bg-white/10"}`}
+                  className={`w-full h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${isSelected ? "bg-emerald-500 text-[#FFFFFF]" : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"}`}
                 >
                   Selecionar Plano
                 </button>
