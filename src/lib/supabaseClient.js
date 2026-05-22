@@ -291,6 +291,7 @@ const mockSupabase = {
 };
 
 // Check if credentials are set to choose either real Supabase or Local Simulator
-export const supabase = (supabaseUrl && supabaseAnonKey) 
+// Use VITE_USE_MOCK=true env var to force mock mode (for demo accounts)
+export const supabase = (supabaseUrl && supabaseAnonKey && !import.meta.env.VITE_USE_MOCK) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : mockSupabase;
