@@ -337,7 +337,7 @@ const Landing = () => {
             >
               <h2 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter mb-8 leading-[0.9]">
                 Onde o Digital <br />
-                <span className="text-secondary">Encontra o Palco</span>
+                <span className="text-[#15ef82]">Encontra o Palco</span>
               </h2>
               <p className="text-xl text-slate-600 mb-8 leading-relaxed">
                 Transforme cada mesa em um ponto de interação. Com nossos displays físicos, seus clientes acessam o repertório e fazem pedidos em segundos, sem baixar nada.
