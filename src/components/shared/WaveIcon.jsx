@@ -15,8 +15,4 @@ export default function WaveIcon({ size = 32, animated = true }) {
       ))}
     </div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047

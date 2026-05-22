@@ -34,8 +34,4 @@ export default function NeonButton({ children, variant = 'purple', size = 'md', 
       {children}
     </motion.button>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047

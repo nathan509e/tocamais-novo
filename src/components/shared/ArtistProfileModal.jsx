@@ -1,10 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Star, X } from 'lucide-react';
-<<<<<<< HEAD
-import { useTheme } from '../../lib/ThemeContext';
-=======
 import { useTheme } from '@/lib/ThemeContext';
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
 
 export default function ArtistProfileModal({ artist, onClose, onHire }) {
   const { theme } = useTheme();

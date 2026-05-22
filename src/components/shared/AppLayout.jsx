@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-<<<<<<< HEAD
-import { useAuth } from '../../lib/AuthContext';
-import { useTheme } from '../../lib/ThemeContext';
-=======
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
 import { 
   Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Settings, Sun, Moon
 } from 'lucide-react';
@@ -45,11 +40,7 @@ export default function AppLayout({ children, role = 'artist' }) {
   const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
 
   const nav = navItems[role] || navItems.artist;
-<<<<<<< HEAD
-  const username = user?.name || 'Usuário';
-=======
   const username = user?.full_name || user?.name || 'Usuário';
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
 
   const notifications = [
     { id: 1, title: 'Nova Proposta', text: 'Você recebeu uma nova proposta de show.', time: '5m atrás' },
@@ -63,11 +54,7 @@ export default function AppLayout({ children, role = 'artist' }) {
       isDark ? 'bg-[#08041A] text-white' : 'bg-[#F4F5FA] text-gray-800'
     }`}>
       
-<<<<<<< HEAD
-      {/* Background Glows (Subtle on dark, hidden or very soft on light) */}
-=======
       {/* Background Glows */}
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
       {isDark ? (
         <>
           <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#7B2EFF]/5 blur-[120px] pointer-events-none z-0" />
@@ -289,11 +276,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               className="flex flex-col items-center gap-1 py-1"
             >
               <motion.div whileTap={{ scale: 0.9 }}>
-<<<<<<< HEAD
-                <Icon className={`w-5.5 h-5.5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-=======
                 <Icon className={`w-5 h-5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
               </motion.div>
               <span className={`text-[9px] uppercase tracking-wider ${active ? 'font-semibold text-neon-purple' : isDark ? 'font-medium text-gray-400' : 'font-medium text-gray-500'}`}>
                 {item.label}
@@ -303,11 +286,7 @@ export default function AppLayout({ children, role = 'artist' }) {
         })}
       </nav>
 
-<<<<<<< HEAD
-      {/* MOBILE SIDEBAR DRAWSER */}
-=======
       {/* MOBILE SIDEBAR DRAWER */}
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
       <AnimatePresence>
         {showMobileSidebar && (
           <>
@@ -399,8 +378,4 @@ export default function AppLayout({ children, role = 'artist' }) {
 
     </div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047

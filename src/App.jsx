@@ -68,8 +68,7 @@ const AuthenticatedApp = () => {
       <Route path="/landing" element={<Landing />} />
       <Route path="/login" element={<Navigate to={defaultDashboard} replace />} />
 
-<<<<<<< HEAD
-      {/* Artist Routes */}
+{/* Artist Routes */}
       <Route path="/artist" element={<ArtistDashboard />} />
       <Route path="/artist/agenda" element={<ArtistAgenda />} />
       <Route path="/artist/metrics" element={<ArtistMetrics />} />
@@ -94,30 +93,6 @@ const AuthenticatedApp = () => {
       <Route path="/live" element={<Live />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/messages" element={<Messages />} />
-      
-      {/* 404 Route */}
-=======
-        {/* Private Routes requiring authentication */}
-        <Route path="/" element={<Navigate to="/landing" replace />} />
-        <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/landing" />} />
-        <Route path="/contratar/:artistaId" element={user ? <Contratacao user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/proposals" element={user ? <Proposals user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/events" element={user ? <Events user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/tips" element={user ? <Tips user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/favorites" element={user ? <Favorites user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/artist-profile" element={user ? <ArtistProfileEdit user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/venue" element={user ? <VenueEdit user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/chat" element={user ? <Chat user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/marketplace" element={user ? <Hire user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/contratar-show/:artistId" element={user ? <HireProfile user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/my-reviews" element={user ? <MyReviews user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/notifications" element={user ? <Notifications user={user} /> : <Navigate to="/onboarding" />} />
-        <Route path="/settings" element={user ? <Settings user={user} /> : <Navigate to="/onboarding" />} />
-        
-        {/* Dynamic Artist Slug - Must be last to not conflict with fixed routes */}
-        <Route path="/:idOrSlug" element={<ArtistPublicProfile user={user} />} />
-      </Route>
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

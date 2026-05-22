@@ -1,10 +1,6 @@
 import { motion } from 'framer-motion';
 import { Star, CheckCircle, MapPin, Music, Zap } from 'lucide-react';
-<<<<<<< HEAD
-import NeonButton from '../ui/NeonButton';
-=======
 import NeonButton from '@/components/ui/NeonButton';
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
 
 export default function ArtistCard({ artist, onHire, onView, compact = false }) {
   const { artistic_name, genre, city, photo_url, rating, followers, base_fee, verified, live_now, featured } = artist;
@@ -114,8 +110,4 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
       </div>
     </motion.div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047

@@ -11,11 +11,7 @@ export default function StatCard({ title, value, change, changeLabel, icon: Icon
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-<<<<<<< HEAD
-      className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:border-neon-purple/30 hover:shadow-md transition-all duration-300"
-=======
       className="bg-white/5 border border-white/5 rounded-2xl p-4 shadow-sm hover:border-neon-purple/30 hover:shadow-md transition-all duration-300"
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
     >
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2.5 rounded-xl ${iconBg}`}>
@@ -28,18 +24,9 @@ export default function StatCard({ title, value, change, changeLabel, icon: Icon
           </div>
         )}
       </div>
-<<<<<<< HEAD
-      <p className="text-gray-500 text-xs mb-1">{title}</p>
-      <p className="text-gray-900 font-bold text-xl font-poppins">{value}</p>
-      {changeLabel && <p className="text-gray-400 text-xs mt-1">{changeLabel}</p>}
-    </motion.div>
-  );
-}
-=======
       <p className="text-gray-400 text-xs mb-1">{title}</p>
       <p className="text-white font-bold text-xl font-poppins">{value}</p>
       {changeLabel && <p className="text-gray-400 text-xs mt-1">{changeLabel}</p>}
     </motion.div>
   );
 }
->>>>>>> cfaa0e1da1fafe997fd82dd3f64f0f9179b0d047
