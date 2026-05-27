@@ -7,10 +7,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 // Define mock initial database records
 const initialDb = {
   users: [
-    { id: 'usr-lucas', email: 'lucas@gmail.com', name: 'Lucas Volta', role: 'artist', avatar_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop' },
-    { id: 'usr-joao', email: 'joao@gmail.com', name: 'João Silva', role: 'venue', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop' },
-    { id: 'usr-maria', email: 'maria@gmail.com', name: 'Maria Santos', role: 'contractor', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop' }
+    { id: 'usr-lucas', email: 'lucas@gmail.com', password: '123456', name: 'Lucas Volta', role: 'artist', avatar_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop' },
+    { id: 'usr-joao', email: 'joao@gmail.com', password: '123456', name: 'João Silva', role: 'venue', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop' },
+    { id: 'usr-maria', email: 'maria@gmail.com', password: '123456', name: 'Maria Santos', role: 'contractor', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop' }
   ],
+  artist_profiles: [],
   artists: [
     { 
       id: 'art-1', 
@@ -22,19 +23,21 @@ const initialDb = {
       base_fee: 2800, 
       rating: 4.9, 
       followers: 103000, 
+      cover_url: 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=800&h=400&fit=crop',
       photo_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', 
       verified: true, 
       live_now: false, 
       featured: true, 
       video_portfolio_urls: ['https://www.youtube.com/watch?v=mock1', 'https://www.youtube.com/watch?v=mock2'],
       music_playlist_urls: ['https://open.spotify.com/playlist/mock'],
-      presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-singer-singing-into-a-microphone-in-a-studio-41712-large.mp4'
+      presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-singer-singing-into-a-microphone-in-a-studio-41712-large.mp4',
+      selected_musicas_ids: []
     },
-    { id: 'art-2', user_id: 'usr-laxy', artistic_name: 'Laxy Music', genre: 'Pop', city: 'Rio de Janeiro', bio: 'Show pop acústico e eletrizante para animar noites de estabelecimentos e festas.', base_fee: 2200, rating: 4.7, followers: 89000, photo_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop', verified: true, live_now: true, featured: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-musician-playing-acoustic-guitar-41584-large.mp4' },
-    { id: 'art-3', user_id: 'usr-novaera', artistic_name: 'Banda Nova Era', genre: 'Rock', city: 'Belo Horizonte', bio: 'Banda cover de clássicos do rock nacional e internacional.', base_fee: 4500, rating: 4.8, followers: 67000, photo_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop', verified: true, featured: true, live_now: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-guitarist-performing-on-stage-at-a-concert-41589-large.mp4' },
-    { id: 'art-4', user_id: 'usr-sofia', artistic_name: 'Sofia Neon', genre: 'Pop', city: 'São Paulo', bio: 'Cantora e compositora pop, ideal para bares refinados e eventos intimistas.', base_fee: 1800, rating: 4.6, followers: 54000, photo_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', verified: true, featured: false, live_now: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-singer-singing-into-a-microphone-in-a-studio-41712-large.mp4' },
-    { id: 'art-5', user_id: 'usr-matteus', artistic_name: 'Dj Matteus', genre: 'Eletrônico', city: 'São Paulo', bio: 'Set moderno de house music, deep house e hits remixados.', base_fee: 3200, rating: 4.8, followers: 112000, photo_url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop', verified: true, featured: true, live_now: true, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-electronic-music-producer-working-in-his-studio-41724-large.mp4' },
-    { id: 'art-6', user_id: 'usr-samba', artistic_name: 'Trio Samba Amor', genre: 'Samba', city: 'Rio de Janeiro', bio: 'A essência do samba carioca e pagode noventista para animar seu final de semana.', base_fee: 2500, rating: 4.9, followers: 78000, photo_url: 'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop', verified: true, featured: false, live_now: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-musician-playing-acoustic-guitar-41584-large.mp4' }
+    { id: 'art-2', user_id: 'usr-laxy', artistic_name: 'Laxy Music', genre: 'Pop', city: 'Rio de Janeiro', bio: 'Show pop acústico e eletrizante para animar noites de estabelecimentos e festas.', base_fee: 2200, rating: 4.7, followers: 89000, photo_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop', cover_url: '', verified: true, live_now: true, featured: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-musician-playing-acoustic-guitar-41584-large.mp4', selected_musicas_ids: [] },
+    { id: 'art-3', user_id: 'usr-novaera', artistic_name: 'Banda Nova Era', genre: 'Rock', city: 'Belo Horizonte', bio: 'Banda cover de clássicos do rock nacional e internacional.', base_fee: 4500, rating: 4.8, followers: 67000, photo_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop', cover_url: '', verified: true, featured: true, live_now: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-guitarist-performing-on-stage-at-a-concert-41589-large.mp4', selected_musicas_ids: [] },
+    { id: 'art-4', user_id: 'usr-sofia', artistic_name: 'Sofia Neon', genre: 'Pop', city: 'São Paulo', bio: 'Cantora e compositora pop, ideal para bares refinados e eventos intimistas.', base_fee: 1800, rating: 4.6, followers: 54000, photo_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', cover_url: '', verified: true, featured: false, live_now: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-singer-singing-into-a-microphone-in-a-studio-41712-large.mp4', selected_musicas_ids: [] },
+    { id: 'art-5', user_id: 'usr-matteus', artistic_name: 'Dj Matteus', genre: 'Eletrônico', city: 'São Paulo', bio: 'Set moderno de house music, deep house e hits remixados.', base_fee: 3200, rating: 4.8, followers: 112000, photo_url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop', cover_url: '', verified: true, featured: true, live_now: true, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-electronic-music-producer-working-in-his-studio-41724-large.mp4', selected_musicas_ids: [] },
+    { id: 'art-6', user_id: 'usr-samba', artistic_name: 'Trio Samba Amor', genre: 'Samba', city: 'Rio de Janeiro', bio: 'A essência do samba carioca e pagode noventista para animar seu final de semana.', base_fee: 2500, rating: 4.9, followers: 78000, photo_url: 'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop', cover_url: '', verified: true, featured: false, live_now: false, presentation_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-musician-playing-acoustic-guitar-41584-large.mp4', selected_musicas_ids: [] }
   ],
   venues: [
     { id: 'ven-1', user_id: 'usr-joao', venue_name: 'Bar do João', city: 'São Paulo', address: 'Rua das Flores, 123 - Pinheiros', capacity: 250, bio: 'O melhor bar com música ao vivo da região de Pinheiros.', average_budget: 8000.00, logo_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&h=100&fit=crop' }
@@ -68,6 +71,28 @@ const initialDb = {
   favorites: [
     { id: 'fav-1', user_id: 'usr-maria', artist_id: 'art-1' },
     { id: 'fav-2', user_id: 'usr-maria', artist_id: 'art-3' }
+  ],
+  musicas_repertorio: [
+    { id: 'mus-1', artista_id: 'art-1', titulo: 'Erro Planejado', artista_nome: 'Luan Santana', genero: 'Sertanejo', duracao_seg: 210 },
+    { id: 'mus-2', artista_id: 'art-1', titulo: 'Namorando Ou Não', artista_nome: 'Luan Santana', genero: 'Sertanejo', duracao_seg: 195 },
+    { id: 'mus-3', artista_id: 'art-1', titulo: 'Zona de Perigo', artista_nome: 'Luan Santana', genero: 'Sertanejo', duracao_seg: 200 },
+    { id: 'mus-4', artista_id: 'art-1', titulo: 'Aquela Pessoa', artista_nome: 'Henrique & Juliano', genero: 'Sertanejo', duracao_seg: 185 },
+    { id: 'mus-5', artista_id: 'art-1', titulo: 'Rancorosa', artista_nome: 'Henrique & Juliano', genero: 'Sertanejo', duracao_seg: 190 },
+    { id: 'mus-6', artista_id: 'art-1', titulo: 'A Maior Saudade', artista_nome: 'Henrique & Juliano', genero: 'Sertanejo', duracao_seg: 205 },
+    { id: 'mus-7', artista_id: 'art-1', titulo: 'Vai Dar PT', artista_nome: 'Guilherme & Benuto', genero: 'Sertanejo', duracao_seg: 215 },
+    { id: 'mus-8', artista_id: 'art-1', titulo: 'Coração Na Cama', artista_nome: 'Hugo & Guilherme', genero: 'Sertanejo', duracao_seg: 198 },
+    { id: 'mus-9', artista_id: 'art-1', titulo: 'Leão', artista_nome: 'Marília Mendonça', genero: 'Sertanejo', duracao_seg: 175 },
+    { id: 'mus-10', artista_id: 'art-1', titulo: 'Amava Nada', artista_nome: 'Marília Mendonça', genero: 'Sertanejo', duracao_seg: 188 },
+    { id: 'mus-11', artista_id: 'art-1', titulo: 'Folgado', artista_nome: 'Marília Mendonça', genero: 'Sertanejo', duracao_seg: 192 },
+    { id: 'mus-12', artista_id: 'art-1', titulo: 'Não Me Envergonha', artista_nome: 'Gusttavo Lima', genero: 'Sertanejo', duracao_seg: 202 },
+    { id: 'mus-13', artista_id: 'art-1', titulo: 'Bloqueado', artista_nome: 'Gusttavo Lima', genero: 'Sertanejo', duracao_seg: 195 },
+    { id: 'mus-14', artista_id: 'art-1', titulo: 'Ficha Limpa', artista_nome: 'Zé Neto & Cristiano', genero: 'Sertanejo', duracao_seg: 210 },
+    { id: 'mus-15', artista_id: 'art-1', titulo: 'Notificação Preferida', artista_nome: 'Zé Neto & Cristiano', genero: 'Sertanejo', duracao_seg: 185 },
+    { id: 'mus-16', artista_id: 'art-1', titulo: 'Meu Bem', artista_nome: 'Jorge & Mateus', genero: 'Sertanejo', duracao_seg: 178 },
+    { id: 'mus-17', artista_id: 'art-1', titulo: 'Cheirosa', artista_nome: 'Jorge & Mateus', genero: 'Sertanejo', duracao_seg: 195 },
+    { id: 'mus-18', artista_id: 'art-1', titulo: 'Hackearam-Me', artista_nome: 'Jorge & Mateus', genero: 'Sertanejo', duracao_seg: 200 },
+    { id: 'mus-19', artista_id: 'art-1', titulo: 'Canudinho', artista_nome: 'Simone Mendes', genero: 'Sertanejo', duracao_seg: 188 },
+    { id: 'mus-20', artista_id: 'art-1', titulo: 'Erro Gostoso', artista_nome: 'Simone Mendes', genero: 'Sertanejo', duracao_seg: 192 }
   ]
 };
 
@@ -106,10 +131,10 @@ class MockSupabaseQueryBuilder {
     this.filters = [];
     this.orderByVal = null;
     this.isSingle = false;
+    this.pendingOp = null;
   }
 
   select(cols) {
-    // Fluent chaining
     return this;
   }
 
@@ -133,6 +158,16 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
+  update(data) {
+    this.pendingOp = { type: 'update', data };
+    return this;
+  }
+
+  delete() {
+    this.pendingOp = { type: 'delete' };
+    return this;
+  }
+
   async insert(data) {
     const tableData = db[this.tableName] || [];
     const rows = Array.isArray(data) ? data : [data];
@@ -148,59 +183,50 @@ class MockSupabaseQueryBuilder {
     return { data: Array.isArray(data) ? newRows : newRows[0], error: null };
   }
 
-  async update(data) {
-    const tableData = db[this.tableName] || [];
-    let updatedRows = [];
-
-    db[this.tableName] = tableData.map(row => {
-      // Check filters match
-      const matches = this.filters.every(f => row[f.column] === f.value);
-      if (matches) {
-        const updated = { ...row, ...data };
-        updatedRows.push(updated);
-        return updated;
-      }
-      return row;
-    });
-
-    saveStorage(this.tableName, db[this.tableName]);
-    return { data: this.isSingle ? updatedRows[0] : updatedRows, error: null };
-  }
-
-  async delete() {
-    const tableData = db[this.tableName] || [];
-    const remaining = tableData.filter(row => {
-      return !this.filters.every(f => row[f.column] === f.value);
-    });
-    db[this.tableName] = remaining;
-    saveStorage(this.tableName, remaining);
-    return { error: null };
-  }
-
-  // To support thenable/async await
   async then(onfulfilled) {
-    let result = [...(db[this.tableName] || [])];
+    let filtered = [...(db[this.tableName] || [])];
 
-    // Apply filters
     this.filters.forEach(f => {
       if (f.type === 'eq') {
-        result = result.filter(row => row[f.column] === f.value);
+        filtered = filtered.filter(row => row[f.column] === f.value);
       } else if (f.type === 'neq') {
-        result = result.filter(row => row[f.column] !== f.value);
+        filtered = filtered.filter(row => row[f.column] !== f.value);
       }
     });
 
-    // Apply sorting
+    if (this.pendingOp?.type === 'update') {
+      const updatedRows = [];
+      const ids = new Set(filtered.map(r => r.id));
+      db[this.tableName] = db[this.tableName].map(row => {
+        if (ids.has(row.id)) {
+          const updated = { ...row, ...this.pendingOp.data };
+          updatedRows.push(updated);
+          return updated;
+        }
+        return row;
+      });
+      saveStorage(this.tableName, db[this.tableName]);
+      const output = this.isSingle ? (updatedRows[0] || null) : updatedRows;
+      return onfulfilled({ data: output, error: null });
+    }
+
+    if (this.pendingOp?.type === 'delete') {
+      const ids = new Set(filtered.map(r => r.id));
+      db[this.tableName] = db[this.tableName].filter(row => !ids.has(row.id));
+      saveStorage(this.tableName, db[this.tableName]);
+      return onfulfilled({ error: null });
+    }
+
     if (this.orderByVal) {
       const { column, ascending } = this.orderByVal;
-      result.sort((a, b) => {
+      filtered.sort((a, b) => {
         if (a[column] < b[column]) return ascending ? -1 : 1;
         if (a[column] > b[column]) return ascending ? 1 : -1;
         return 0;
       });
     }
 
-    const output = this.isSingle ? (result[0] || null) : result;
+    const output = this.isSingle ? (filtered[0] || null) : filtered;
     return onfulfilled({ data: output, error: null });
   }
 }
@@ -217,7 +243,7 @@ const mockSupabase = {
       const current = loadStorage('auth_session', null);
       return { data: { session: current ? { user: current } : null }, error: null };
     },
-    signInWithPassword: async ({ email, password }) => {
+    signInWithPassword: async ({ email }) => {
       const users = db.users;
       const user = users.find(u => u.email === email);
       if (user) {
@@ -234,9 +260,10 @@ const mockSupabase = {
       const newUser = {
         id: `usr-${Math.random().toString(36).substr(2, 9)}`,
         email,
+        password,
         name: options?.data?.name || 'Novo Usuário',
         role: options?.data?.role || 'contractor',
-        avatar_url: options?.data?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'
+        avatar_url: options?.data?.avatar_url || ''
       };
       
       // Save user to lists
@@ -245,29 +272,52 @@ const mockSupabase = {
 
       // Create profile table entry based on role
       if (newUser.role === 'artist') {
-        db.artists.push({
-          id: `art-${Math.random().toString(36).substr(2, 9)}`,
+        const newArtistId = `art-${Math.random().toString(36).substr(2, 9)}`;
+        db.artist_profiles.push({
+          id: newArtistId,
           user_id: newUser.id,
           artistic_name: newUser.name,
-          genre: 'Pop',
-          city: 'São Paulo',
-          bio: 'Perfil de artista recém criado. Edite a biografia para atrair contratantes.',
-          base_fee: 1000,
-          rating: 5.0,
+          genre: '',
+          city: '',
+          bio: '',
+          base_fee: 0,
+          rating: 0,
           followers: 0,
-          photo_url: newUser.avatar_url,
-          verified: false
+          photo_url: '',
+          verified: false,
+          selected_musicas_ids: []
+        });
+        saveStorage('artist_profiles', db.artist_profiles);
+        db.artists.push({
+          id: newArtistId,
+          user_id: newUser.id,
+          artistic_name: newUser.name,
+          genre: '',
+          city: '',
+          bio: '',
+          base_fee: 0,
+          rating: 0,
+          followers: 0,
+          photo_url: '',
+          cover_url: '',
+          verified: false,
+          live_now: false,
+          featured: false,
+          video_portfolio_urls: [],
+          music_playlist_urls: [],
+          presentation_video_url: '',
+          selected_musicas_ids: []
         });
         saveStorage('artists', db.artists);
       } else if (newUser.role === 'venue') {
         db.venues.push({
           id: `ven-${Math.random().toString(36).substr(2, 9)}`,
           user_id: newUser.id,
-          venue_name: `${newUser.name} Showhouse`,
-          city: 'São Paulo',
-          address: 'Av. Paulista, 1000',
-          capacity: 100,
-          average_budget: 2000
+          venue_name: '',
+          city: '',
+          address: '',
+          capacity: 0,
+          average_budget: 0
         });
         saveStorage('venues', db.venues);
       } else {
@@ -287,6 +337,49 @@ const mockSupabase = {
       saveStorage('auth_session', null);
       return { error: null };
     }
+  },
+  storage: {
+    from: (bucketName) => ({
+      upload: async (path, file) => {
+        try {
+          const reader = new FileReader();
+          const base64Promise = new Promise((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsDataURL(file);
+          });
+          const base64Data = await base64Promise;
+          
+          let mockStorage = {};
+          try {
+            mockStorage = JSON.parse(localStorage.getItem('tocamais_mock_storage') || '{}');
+          } catch(e) {
+            mockStorage = window.mockStorageData || {};
+          }
+          mockStorage[path] = base64Data;
+          window.mockStorageData = mockStorage;
+          try {
+            localStorage.setItem('tocamais_mock_storage', JSON.stringify(mockStorage));
+          } catch(e) {
+            console.warn('Storage limit reached, keeping mock file in memory only');
+          }
+          
+          return { data: { path }, error: null };
+        } catch (e) {
+          return { data: null, error: e };
+        }
+      },
+      getPublicUrl: (path) => {
+        let mockStorage = {};
+        try {
+          mockStorage = JSON.parse(localStorage.getItem('tocamais_mock_storage') || '{}');
+        } catch(e) {
+          mockStorage = window.mockStorageData || {};
+        }
+        const url = mockStorage[path] || 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=800&h=400&fit=crop';
+        return { data: { publicUrl: url } };
+      }
+    })
   }
 };
 

@@ -1,36 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
+import { useAuth } from '../../lib/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 import ArtistCard from '../../components/shared/ArtistCard';
 import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
-
-const allArtists = [
-  { id: '1', artistic_name: 'Lucas Volta', genre: 'Sertanejo', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 48, followers: 125000, base_fee: 2800, verified: true, featured: true, live_now: false, total_shows: 24 },
-  { id: '2', artistic_name: 'Duo Harmonia', genre: 'MPB', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop', rating: 4.8, total_reviews: 36, followers: 45000, base_fee: 1800, verified: true, featured: false, live_now: false, total_shows: 55 },
-  { id: '3', artistic_name: 'Quarteto Jazz', genre: 'Jazz', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=400&h=400&fit=crop', rating: 4.7, total_reviews: 29, followers: 28000, base_fee: 4200, verified: true, featured: true, live_now: false, total_shows: 31 },
-  { id: '4', artistic_name: 'Sofia Neon', genre: 'Pop', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', rating: 4.6, total_reviews: 28, followers: 54000, base_fee: 1800, verified: true, featured: false, live_now: false, total_shows: 14 },
-  { id: '5', artistic_name: 'Banda Alegria', genre: 'Sertanejo', city: 'Campinas', photo_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop', rating: 4.8, total_reviews: 41, followers: 67000, base_fee: 4500, verified: true, featured: true, live_now: false, total_shows: 31 },
-  { id: '6', artistic_name: 'Trio Samba Amor', genre: 'Samba', city: 'Rio de Janeiro', photo_url: 'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 55, followers: 78000, base_fee: 2500, verified: true, featured: false, live_now: false, total_shows: 60 },
-];
 
 const genres = ['Todos', 'Sertanejo', 'MPB', 'Jazz', 'Pop', 'Samba', 'Rock', 'Forró'];
 
 export default function ContractorSearch() {
+  const { user } = useAuth();
+
+  const [allArtists, setAllArtists] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('Todos');
   const [maxFee, setMaxFee] = useState(10000);
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
 
+  useEffect(() => {
+    async function loadArtists() {
+      try {
+        const { data } = await supabase.from('artists').select('*');
+        if (data) setAllArtists(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadArtists();
+  }, []);
+
   const filtered = allArtists.filter(a => {
-    const matchSearch = a.artistic_name.toLowerCase().includes(search.toLowerCase()) || a.genre.toLowerCase().includes(search.toLowerCase()) || a.city.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || a.artistic_name.toLowerCase().includes(search.toLowerCase()) || a.genre.toLowerCase().includes(search.toLowerCase()) || a.city.toLowerCase().includes(search.toLowerCase());
     const matchGenre = selectedGenre === 'Todos' || a.genre === selectedGenre;
     const matchFee = a.base_fee <= maxFee;
     return matchSearch && matchGenre && matchFee;
   });
 
   return (
-    <AppLayout role="contractor" userName="Maria Santos">
+    <AppLayout role="contractor" userName={user?.name || ''}>
       <div className="px-4 py-5 space-y-4">
         <div>
           <h1 className="text-white font-bold text-xl">Buscar Artistas</h1>

@@ -513,23 +513,23 @@ export default function VenueDashboard() {
         {/* STEP-BY-STEP HIRING FLOW MODAL */}
         <AnimatePresence>
           {hiringArtist && (
-            <>
-              {/* Backdrop */}
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setHiringArtist(null)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
-              />
-
-              {/* Modal Container */}
-              <motion.div
-                initial={{ opacity: 0, y: '50%' }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: '50%' }}
-                className="fixed bottom-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 left-0 right-0 sm:max-w-xl sm:mx-auto z-50 bg-[#0F0926] rounded-t-3xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
-              >
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto"
+              onClick={() => setHiringArtist(null)}
+            >
+              <div className="min-h-full flex items-center justify-center p-4">
+                <motion.div
+                  key="card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-full sm:max-w-xl bg-[#0F0926] rounded-2xl border border-white/10 p-6 shadow-2xl"
+                >
                 
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
@@ -747,8 +747,9 @@ export default function VenueDashboard() {
                   </div>
                 )}
 
-              </motion.div>
-            </>
+                </motion.div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 

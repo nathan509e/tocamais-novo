@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Star, CheckCircle, MapPin, Music, Users, Instagram, Share2,
-  Play, Heart, Camera, Edit3, Mic, Sun, Moon, Video
+  Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
@@ -11,41 +11,105 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
-const portfolioData = [
-  { id: '1', title: 'Show ao Vivo - Bar Maresias', thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=200&fit=crop', views: '12.4K', duration: '3:45' },
-  { id: '2', title: 'Ensaio - Backstage', thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&h=200&fit=crop', views: '8.1K', duration: '2:12' },
-  { id: '3', title: 'Acústico - Café Cultura', thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=200&fit=crop', views: '5.7K', duration: '4:20' },
-  { id: '4', title: 'Festival de Verão 2025', thumbnail: 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=300&h=200&fit=crop', views: '21.2K', duration: '5:01' },
-];
+const portfolioData = [];
 
-const reviews = [
-  { id: '1', author: 'Bar do Zeca', rating: 5, text: 'Show incrível! A energia foi incrível e o público adorou. Com certeza chamaremos de novo.', date: '12 Mai 2026', avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=60&h=60&fit=crop' },
-  { id: '2', author: 'Maria Clara', rating: 5, text: 'Contratei para meu casamento e foi perfeito! Muito profissional e talentoso.', date: '02 Abr 2026', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=60&h=60&fit=crop' },
-  { id: '3', author: 'Espaço Eventos', rating: 4, text: 'Excelente artista! Muito comprometido com horários e qualidade.', date: '18 Mar 2026', avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=60&h=60&fit=crop' },
-];
+const reviews = [];
 
 export default function ArtistProfile() {
   const [activeTab, setActiveTab] = useState('portfolio');
   const { theme, setTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   
   const [artistProfile, setArtistProfile] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [isEditingVideo, setIsEditingVideo] = useState(false);
+  const [selectedMusicas, setSelectedMusicas] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ photo_url: '', cover_url: '', artistic_name: '', bio: '', genre: '', city: '', base_fee: 0 });
+  const [saveStatus, setSaveStatus] = useState('');
+
+  const handleImageUpload = async (file, type) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${type}_${user.id}_${Date.now()}.${fileExt}`;
+    try {
+      const { data, error: uploadErr } = await supabase.storage.from('media').upload(`avatars/${fileName}`, file);
+      if (uploadErr) throw uploadErr;
+      return supabase.storage.from('media').getPublicUrl(`avatars/${fileName}`).data.publicUrl;
+    } catch (err) {
+      console.warn('Storage upload error, falling back to Base64:', err);
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const saveProfileField = async (field, value) => {
+    if (!user) return;
+    setSaveStatus('Saving...');
+    try {
+      const { error } = await supabase.from('artists').update({ [field]: value }).eq('user_id', user.id);
+      if (error) throw error;
+      setArtistProfile(prev => prev ? { ...prev, [field]: value } : prev);
+      setSaveStatus('');
+      if (refreshProfile) refreshProfile();
+    } catch (err) {
+      console.error(`Erro ao salvar ${field}:`, err);
+      setSaveStatus(`Erro: ${err.message || 'desconhecido'}`);
+    }
+  };
 
   useEffect(() => {
     async function loadProfile() {
       if (user) {
-        // Query the artist record using user's email/id
-        const { data } = await supabase.from('artists').select('*').eq('user_id', user.id).single();
-        if (data) {
-          setArtistProfile(data);
-          setVideoUrl(data.presentation_video_url || '');
+        let artistData = null;
+        try {
+          const { data } = await supabase.from('artists').select('*').eq('user_id', user.id).single();
+          artistData = data;
+        } catch (e) {
+          console.warn('Error loading profile in page, will attempt insert:', e);
+        }
+
+        if (!artistData) {
+          try {
+            const { data: newArtist } = await supabase.from('artists').insert({
+              user_id: user.id,
+              artistic_name: user.user_metadata?.name || user.email?.split('@')[0] || 'Artista',
+              genre: 'Sertanejo',
+              city: 'São Paulo',
+              bio: 'Adicione sua biografia aqui.',
+              base_fee: 0,
+              cover_url: '',
+              photo_url: user.user_metadata?.avatar_url || ''
+            }).select().single();
+            if (newArtist) artistData = newArtist;
+          } catch (err) {
+            console.error('Failed to auto-create artist profile in page:', err);
+          }
+        }
+
+        if (artistData) {
+          setArtistProfile(artistData);
+          setVideoUrl(artistData.presentation_video_url || '');
+          setEditForm({ photo_url: artistData.photo_url || '', cover_url: artistData.cover_url || '', artistic_name: artistData.artistic_name || '', bio: artistData.bio || '', genre: artistData.genre || '', city: artistData.city || '', base_fee: artistData.base_fee || 0 });
         }
       }
     }
     loadProfile();
   }, [user]);
+
+  useEffect(() => {
+    if (!artistProfile?.selected_musicas_ids?.length) return;
+    async function loadRepertorio() {
+      const { data: allMusicas } = await supabase.from('musicas_repertorio').select('*');
+      if (allMusicas) {
+        setSelectedMusicas(allMusicas.filter(m => artistProfile.selected_musicas_ids.includes(m.id)));
+      }
+    }
+    loadRepertorio();
+  }, [artistProfile]);
 
   const handleSaveVideo = async () => {
     if (!user) return;
@@ -67,13 +131,13 @@ export default function ArtistProfile() {
   const isDark = theme === 'dark';
 
   return (
-    <AppLayout role="artist" userName={artistProfile?.artistic_name || 'Lucas Volta'}>
+    <AppLayout role="artist" userName={artistProfile?.artistic_name || user?.name || ''}>
       <div className="space-y-6">
         
         {/* Cover */}
         <div className="relative h-56 overflow-hidden rounded-2xl">
           <img
-            src="https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=800&h=400&fit=crop"
+            src={artistProfile?.cover_url || 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=800&h=400&fit=crop'}
             alt="Cover"
             className="w-full h-full object-cover"
           />
@@ -81,12 +145,25 @@ export default function ArtistProfile() {
             isDark ? 'from-[#08041A]' : 'from-[#F4F5FA]'
           }`} />
           <div className="absolute top-4 right-4 flex gap-2">
-            <button className="p-2 rounded-xl bg-black/50 backdrop-blur-sm">
-              <Camera className="w-4 h-4 text-white" />
-            </button>
-            <button className="p-2 rounded-xl bg-black/50 backdrop-blur-sm">
+            <button onClick={() => document.getElementById('cover-input')?.click()} className="p-2 rounded-xl bg-black/50 backdrop-blur-sm">
               <Edit3 className="w-4 h-4 text-white" />
             </button>
+            <input id="cover-input" type="file" accept="image/*" className="hidden"
+              onChange={async e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setSaveStatus('Salvando capa...');
+                try {
+                  const url = await handleImageUpload(file, 'cover');
+                  setEditForm(f => ({ ...f, cover_url: url }));
+                  setArtistProfile(prev => ({ ...prev, cover_url: url }));
+                  await saveProfileField('cover_url', url);
+                } catch (err) {
+                  console.error(err);
+                  setSaveStatus('Erro ao enviar capa');
+                }
+              }}
+            />
           </div>
         </div>
 
@@ -97,7 +174,7 @@ export default function ArtistProfile() {
               <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 ${
                 isDark ? 'border-[#08041A]' : 'border-[#F4F5FA]'
               }`} style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
-                <img src={artistProfile?.photo_url || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop"} alt="Lucas Volta" className="w-full h-full object-cover" />
+                <img src={artistProfile?.photo_url || user?.avatar_url || ''} alt="Avatar" className="w-full h-full object-cover" />
               </div>
               <div className={`absolute -bottom-1 -right-1 bg-neon-green rounded-full w-5 h-5 flex items-center justify-center border-2 ${
                 isDark ? 'border-[#08041A]' : 'border-[#F4F5FA]'
@@ -107,7 +184,7 @@ export default function ArtistProfile() {
             </div>
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-2">
-                <h2 className={`font-black text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>{artistProfile?.artistic_name || 'Lucas Volta'}</h2>
+                <h2 className={`font-black text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>{artistProfile?.artistic_name || user?.name || 'Artista'}</h2>
                 <CheckCircle className="w-5 h-5 text-neon-purple" />
               </div>
               <div className="flex items-center gap-2 mt-0.5">
@@ -119,6 +196,114 @@ export default function ArtistProfile() {
               </div>
             </div>
           </div>
+
+          {/* Edit Profile Button */}
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="w-full py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2"
+            style={{
+              borderColor: isEditing ? '#39FF6A' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'),
+              color: isEditing ? '#39FF6A' : (isDark ? '#fff' : '#374151')
+            }}
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>{isEditing ? 'Fechar Edição' : 'Editar Perfil'}</span>
+          </button>
+
+          {/* Edit Profile Form */}
+          {isEditing && (
+            <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+              isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+            }`}>
+              <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>Editar Perfil</h3>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold block mb-1">Foto do Perfil</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={async e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setSaveStatus('Enviando imagem...');
+                    try {
+                      const url = await handleImageUpload(file, 'avatar');
+                      setEditForm(f => ({ ...f, photo_url: url }));
+                      setArtistProfile(prev => ({ ...prev, photo_url: url }));
+                      setSaveStatus('Salvando...');
+                      const updResp = await supabase.from('artists').update({ photo_url: url }).eq('user_id', user.id);
+                      if (updResp.error) { console.error('DB save error:', updResp.error); setSaveStatus('Erro ao salvar: ' + updResp.error.message); return; }
+                      if (refreshProfile) refreshProfile();
+                      setSaveStatus('');
+                    } catch (err) {
+                      console.error('Erro completo:', err);
+                      setSaveStatus('Erro no upload: ' + (err.message || err));
+                    }
+                  }}
+                  className="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-neon-purple file:text-white hover:file:opacity-90 cursor-pointer"
+                />
+                <img src={artistProfile?.photo_url || ''} alt="Preview" className="w-16 h-16 rounded-xl object-cover mt-2 border border-white/10"
+                  onError={e => e.target.style.display = 'none'}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold block mb-1">Nome Artístico</label>
+                <input type="text" value={editForm.artistic_name}
+                  onChange={e => setEditForm(f => ({ ...f, artistic_name: e.target.value }))}
+                  onBlur={e => saveProfileField('artistic_name', e.target.value)}
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                    isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold block mb-1">Bio</label>
+                <textarea value={editForm.bio}
+                  onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))}
+                  onBlur={e => saveProfileField('bio', e.target.value)}
+                  rows={3}
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none resize-none ${
+                    isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">Gênero Musical</label>
+                  <input type="text" value={editForm.genre}
+                    onChange={e => setEditForm(f => ({ ...f, genre: e.target.value }))}
+                    onBlur={e => saveProfileField('genre', e.target.value)}
+                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                      isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">Cidade</label>
+                  <input type="text" value={editForm.city}
+                    onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                    onBlur={e => saveProfileField('city', e.target.value)}
+                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                      isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                    }`}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold block mb-1">Cachê Base (R$)</label>
+                <input type="number" value={editForm.base_fee}
+                  onChange={e => setEditForm(f => ({ ...f, base_fee: Number(e.target.value) }))}
+                  onBlur={e => saveProfileField('base_fee', Number(e.target.value))}
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                    isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                />
+              </div>
+              {saveStatus && (
+                <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
+              )}
+            </div>
+          )}
 
           {/* Theme Switcher Card */}
           <div className={`p-4 rounded-2xl border transition-all ${
@@ -218,12 +403,36 @@ export default function ArtistProfile() {
             )}
           </div>
 
+          {/* Repertório */}
+          {selectedMusicas.length > 0 && (
+            <div className={`p-5 rounded-2xl border transition-all ${
+              isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+            } space-y-3`}>
+              <div className="flex items-center gap-2">
+                <Music className="w-4 h-4 text-neon-green" />
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>Repertório</h3>
+                <Sparkles className="w-3.5 h-3.5 text-neon-green" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {selectedMusicas.map(m => (
+                  <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
+                    <span className="text-neon-green text-sm">♪</span>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{m.titulo}</p>
+                      <p className="text-[10px] text-gray-400">{m.artista_nome}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-4 gap-2">
             {[
               { value: artistProfile?.followers ? `${(artistProfile.followers / 1000).toFixed(0)}K` : '0', label: 'Seguidores' },
-              { value: artistProfile?.rating ? `${artistProfile.rating}⭐` : '5.0⭐', label: 'Avaliação' },
-              { value: '240', label: 'Shows' },
+              { value: artistProfile?.rating ? `${artistProfile.rating}⭐` : '0⭐', label: 'Avaliação' },
+              { value: '0', label: 'Shows' },
               { value: artistProfile?.base_fee ? `R$ ${artistProfile.base_fee.toLocaleString()}` : 'R$ 0', label: 'Cachê' },
             ].map((s, i) => (
               <div key={i} className={`text-center p-2.5 rounded-xl border ${
@@ -258,7 +467,7 @@ export default function ArtistProfile() {
             </div>
             <div className="flex-1 min-w-0">
               <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>Amor da Roça</p>
-              <p className="text-gray-400 text-xs">Lucas Volta • Sertanejo</p>
+              <p className="text-gray-400 text-xs">{artistProfile?.artistic_name || user?.name || 'Artista'}{artistProfile?.genre ? ` • ${artistProfile.genre}` : ''}</p>
               <div className="flex items-center gap-1 mt-2">
                 <WaveIcon size={16} animated />
               </div>

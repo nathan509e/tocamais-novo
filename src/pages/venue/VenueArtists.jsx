@@ -1,25 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, Star, MapPin, Music, CheckCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
+import { useAuth } from '../../lib/AuthContext';
+import { useTheme } from '../../lib/ThemeContext';
+import { supabase } from '../../lib/supabaseClient';
 import ArtistCard from '../../components/shared/ArtistCard';
 import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 import NeonButton from '../../components/ui/NeonButton';
 
-const allArtists = [
-  { id: '1', artistic_name: 'Lucas Volta', genre: 'Sertanejo', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 48, followers: 125000, base_fee: 2800, verified: true, featured: true, live_now: false, total_shows: 24 },
-  { id: '2', artistic_name: 'Laxy Music', genre: 'Pop', city: 'Rio de Janeiro', photo_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop', rating: 4.7, total_reviews: 32, followers: 89000, base_fee: 2200, verified: true, featured: false, live_now: true, total_shows: 18 },
-  { id: '3', artistic_name: 'Banda Nova Era', genre: 'Rock', city: 'Belo Horizonte', photo_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop', rating: 4.8, total_reviews: 41, followers: 67000, base_fee: 4500, verified: true, featured: true, live_now: false, total_shows: 31 },
-  { id: '4', artistic_name: 'Sofia Neon', genre: 'Pop', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', rating: 4.6, total_reviews: 28, followers: 54000, base_fee: 1800, verified: true, featured: false, live_now: false, total_shows: 14 },
-  { id: '5', artistic_name: 'Dj Matteus', genre: 'Eletrônico', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop', rating: 4.8, total_reviews: 36, followers: 112000, base_fee: 3200, verified: true, featured: true, live_now: true, total_shows: 42 },
-  { id: '6', artistic_name: 'Trio Samba Amor', genre: 'Samba', city: 'Rio de Janeiro', photo_url: 'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 55, followers: 78000, base_fee: 2500, verified: true, featured: false, live_now: false, total_shows: 60 },
-  { id: '7', artistic_name: 'Ana Forró', genre: 'Forró', city: 'Fortaleza', photo_url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop', rating: 4.5, total_reviews: 21, followers: 32000, base_fee: 1200, verified: false, featured: false, live_now: false, total_shows: 28 },
-  { id: '8', artistic_name: 'Marcos Jazz', genre: 'Jazz', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=400&h=400&fit=crop', rating: 4.7, total_reviews: 19, followers: 24000, base_fee: 3800, verified: true, featured: false, live_now: false, total_shows: 16 },
-];
-
 const genres = ['Todos', 'Sertanejo', 'Pop', 'Rock', 'Forró', 'Samba', 'Jazz', 'Eletrônico', 'MPB'];
 
 export default function VenueArtists() {
+  const { user } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const [allArtists, setAllArtists] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('Todos');
   const [showFilters, setShowFilters] = useState(false);
@@ -27,6 +25,23 @@ export default function VenueArtists() {
   const [maxFee, setMaxFee] = useState(10000);
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
+  const [hireForm, setHireForm] = useState({ date: '', fee: 0, message: '' });
+  const [hireSuccess, setHireSuccess] = useState(false);
+  const [hiring, setHiring] = useState(false);
+
+  useEffect(() => {
+    async function loadArtists() {
+      try {
+        const { data } = await supabase.from('artists').select('*');
+        if (data) setAllArtists(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadArtists();
+  }, []);
 
   const filtered = allArtists.filter(a => {
     const matchSearch = a.artistic_name.toLowerCase().includes(search.toLowerCase()) || a.genre.toLowerCase().includes(search.toLowerCase());
@@ -36,8 +51,55 @@ export default function VenueArtists() {
     return matchSearch && matchGenre && matchRating && matchFee;
   });
 
+  const handleHireSubmit = async () => {
+    if (!selectedArtist || !user) return;
+    setHiring(true);
+    try {
+      const msg = hireForm.message.trim() || `Olá! Proposta para show no dia ${hireForm.date}. Cachê: R$ ${hireForm.fee}.`;
+
+      await supabase.from('events').insert({
+        title: `Show: ${selectedArtist.artistic_name}`,
+        description: hireForm.message || `Evento no dia ${hireForm.date}`,
+        date: hireForm.date,
+        time: '20:00',
+        duration: 120,
+        status: 'pending',
+        fee_proposed: hireForm.fee,
+        address: 'A definir',
+        artist_id: selectedArtist.id
+      });
+
+      const senderName = user?.user_metadata?.name || user?.email || 'Casa de Show';
+
+      await supabase.from('notifications').insert({
+        user_id: selectedArtist.user_id,
+        title: 'Nova Proposta de Show',
+        content: `${senderName} enviou uma proposta para ${hireForm.date}.`,
+        type: 'proposal'
+      });
+
+      await supabase.from('messages').insert({
+        sender_id: user.id,
+        receiver_id: selectedArtist.user_id,
+        text: msg
+      });
+
+      setHireSuccess(true);
+    } catch (e) {
+      console.error('Erro ao contratar:', e);
+    } finally {
+      setHiring(false);
+    }
+  };
+
+  const openHireModal = (artist) => {
+    setSelectedArtist(artist);
+    setHireForm({ date: '', fee: artist.base_fee || 0, message: '' });
+    setHireSuccess(false);
+  };
+
   return (
-    <AppLayout role="venue" userName="João Silva">
+    <AppLayout role="venue" userName={user?.name || ''}>
       <div className="px-4 py-5 space-y-4">
         <div>
           <h1 className="text-white font-bold text-xl">Encontrar Artistas</h1>
@@ -101,18 +163,24 @@ export default function VenueArtists() {
         </AnimatePresence>
 
         {/* Results count */}
-        <p className="text-gray-400 text-xs">{filtered.length} artistas encontrados</p>
+        <p className="text-gray-400 text-xs">
+          {loading ? 'Carregando...' : `${filtered.length} artistas encontrados`}
+        </p>
 
         {/* Artist Grid */}
         <div className="grid grid-cols-1 gap-4">
-          {filtered.map((artist, i) => (
+          {loading ? (
+            <p className="text-gray-500 text-sm text-center py-10">Carregando artistas...</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center py-10">Nenhum artista encontrado com esses filtros.</p>
+          ) : filtered.map((artist, i) => (
             <motion.div
               key={artist.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
             >
-              <ArtistCard artist={artist} onHire={() => setSelectedArtist(artist)} onView={() => setSelectedArtistProfile(artist)} />
+              <ArtistCard artist={artist} onHire={() => openHireModal(artist)} onView={() => setSelectedArtistProfile(artist)} />
             </motion.div>
           ))}
         </div>
@@ -134,59 +202,72 @@ export default function VenueArtists() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setSelectedArtist(null)} />
               <motion.div
-                initial={{ opacity: 0, y: '100%' }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: '100%' }}
+                initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-50%' }}
+                animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-50%' }}
+                style={{ left: '50%', top: '50%' }}
                 transition={{ type: 'spring', damping: 25 }}
-                className="fixed bottom-0 left-0 right-0 z-50 bg-app-dark rounded-t-3xl border-t border-white/10 p-6 max-h-[85vh] overflow-y-auto"
+                className={`fixed z-50 rounded-3xl border p-6 w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto shadow-2xl transition-all ${
+                  isDark ? 'bg-app-dark border-white/10' : 'bg-white border-gray-200'
+                }`}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-white font-bold text-lg">Contratar {selectedArtist.artistic_name}</h2>
-                  <button onClick={() => setSelectedArtist(null)} className="p-2 rounded-xl bg-white/5">
-                    <X className="w-5 h-5 text-gray-400" />
+                  <h2 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>Contratar {selectedArtist.artistic_name}</h2>
+                  <button onClick={() => setSelectedArtist(null)} className={`p-2 rounded-xl transition-all ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="flex items-center gap-4 mb-6 p-4 rounded-2xl bg-white/5 border border-white/8">
+                <div className={`flex items-center gap-4 mb-6 p-4 rounded-2xl border ${isDark ? 'bg-white/5 border-white/8' : 'bg-gray-50 border-gray-100'}`}>
                   <img src={selectedArtist.photo_url} alt={selectedArtist.artistic_name} className="w-16 h-16 rounded-xl object-cover" />
                   <div>
                     <div className="flex items-center gap-1">
-                      <p className="text-white font-bold">{selectedArtist.artistic_name}</p>
+                      <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedArtist.artistic_name}</p>
                       {selectedArtist.verified && <CheckCircle className="w-4 h-4 text-neon-purple" />}
                     </div>
-                    <p className="text-gray-400 text-sm">{selectedArtist.genre} • {selectedArtist.city}</p>
+                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{selectedArtist.genre} • {selectedArtist.city}</p>
                     <div className="flex items-center gap-1 mt-1">
                       <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                      <span className="text-gray-300 text-sm font-semibold">{selectedArtist.rating}</span>
+                      <span className={`text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{selectedArtist.rating}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-400 text-sm mb-2 block">Data do evento</label>
-                    <input type="date" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-neon-purple/50 transition-colors" />
+                    <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Data do evento</label>
+                    <input type="date" value={hireForm.date} onChange={e => setHireForm(f => ({ ...f, date: e.target.value }))} className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`} />
                   </div>
                   <div>
-                    <label className="text-gray-400 text-sm mb-2 block">Cachê proposto</label>
+                    <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Cachê proposto</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>R$</span>
                       <input
                         type="number"
-                        defaultValue={selectedArtist.base_fee}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-neon-purple/50 transition-colors"
+                        value={hireForm.fee}
+                        onChange={e => setHireForm(f => ({ ...f, fee: parseInt(e.target.value) || 0 }))}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`}
                       />
                     </div>
-                    <p className="text-gray-500 text-xs mt-1">Cachê base: R$ {selectedArtist.base_fee?.toLocaleString()}</p>
+                    <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Cachê base: R$ {selectedArtist.base_fee?.toLocaleString()}</p>
                   </div>
                   <div>
-                    <label className="text-gray-400 text-sm mb-2 block">Mensagem</label>
-                    <textarea placeholder="Descreva o evento e suas expectativas..." rows={3}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-neon-purple/50 transition-colors resize-none placeholder:text-gray-500" />
+                    <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Mensagem</label>
+                    <textarea placeholder="Descreva o evento e suas expectativas..." rows={3} value={hireForm.message} onChange={e => setHireForm(f => ({ ...f, message: e.target.value }))}
+                      className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors resize-none ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50 placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50 placeholder:text-gray-400'}`} />
                   </div>
-                  <NeonButton variant="gradient" size="lg" className="w-full" onClick={() => setSelectedArtist(null)}>
-                    Enviar Proposta
-                  </NeonButton>
+                  {hireSuccess ? (
+                    <div className="text-center py-4 space-y-2">
+                      <CheckCircle className="w-10 h-10 text-neon-green mx-auto" />
+                      <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Proposta Enviada!</p>
+                      <p className="text-xs text-gray-400">O artista responderá em breve.</p>
+                      <button onClick={() => setSelectedArtist(null)} className="text-xs text-neon-purple font-bold">Fechar</button>
+                    </div>
+                  ) : (
+                    <NeonButton variant="gradient" size="lg" className="w-full" disabled={hiring} onClick={handleHireSubmit}>
+                      {hiring ? 'Enviando...' : 'Enviar Proposta'}
+                    </NeonButton>
+                  )}
                 </div>
               </motion.div>
             </>

@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, Users, Calendar, Music,
   Star, ChevronRight, Flame, Clock, BarChart3, ArrowRight,
   SlidersHorizontal, CheckCircle, Shield, Play, MessageSquare,
-  Sparkles, FileText, Send, Landmark, X, Filter, Check, Award
+  Sparkles, FileText, Send, Landmark, X, Filter, Check, Award, Edit3
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
@@ -27,12 +27,19 @@ const chartData = [
 ];
 
 import { useTheme } from '../../lib/ThemeContext';
+import { useAuth } from '../../lib/AuthContext';
 
 export default function VenueDashboard() {
   const { theme } = useTheme();
+  const { user, userProfile, refreshProfile } = useAuth();
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
+  
+  // Profile editing state
+  const [isEditingVenue, setIsEditingVenue] = useState(false);
+  const [editVenueForm, setEditVenueForm] = useState({ venue_name: '', city: '', address: '', bio: '', capacity: '', logo_url: '' });
+  const [saveStatus, setSaveStatus] = useState('');
   
   // Advanced filters state
   const [showFilters, setShowFilters] = useState(false);
@@ -56,6 +63,8 @@ export default function VenueDashboard() {
   const [signatureName, setSignatureName] = useState('');
   const [signed, setSigned] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [eventMessage, setEventMessage] = useState('');
 
   // Fetch Artists
   useEffect(() => {
@@ -106,6 +115,49 @@ export default function VenueDashboard() {
     ]);
     setSigned(false);
     setPaymentDone(false);
+    setEventMessage('');
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!hiringArtist || !user) {
+      console.error('handleConfirmBooking: missing hiringArtist or user', { hiringArtist, user });
+      return;
+    }
+    console.log('handleConfirmBooking: starting', { artistId: hiringArtist.id, userId: user.id, proposalFee, eventDate, eventMessage });
+    try {
+      const { data: eventData, error: eventErr } = await supabase.from('events').insert({
+        title: `Show: ${hiringArtist.artistic_name}`,
+        description: eventMessage || `Evento no dia ${eventDate} às ${eventTime}`,
+        date: eventDate,
+        time: eventTime,
+        duration: 120,
+        status: 'pending',
+        fee_proposed: proposalFee,
+        address: 'A definir',
+        artist_id: hiringArtist.id
+      }).select();
+      console.log('events insert result:', { eventData, eventErr });
+
+      const senderName = user?.user_metadata?.name || user?.email || 'Casa de Show';
+      const msg = eventMessage.trim() || `Olá! Proposta para show no dia ${eventDate} às ${eventTime}. Cachê: R$ ${proposalFee}.`;
+
+      const { data: notifData, error: notifErr } = await supabase.from('notifications').insert({
+        user_id: hiringArtist.user_id,
+        title: 'Nova Proposta de Show',
+        content: `${senderName} enviou uma proposta para ${eventDate}.`,
+        type: 'proposal'
+      }).select();
+      console.log('notifications insert result:', { notifData, notifErr });
+
+      const { data: msgData, error: msgErr } = await supabase.from('messages').insert({
+        sender_id: user.id,
+        receiver_id: hiringArtist.user_id,
+        text: msg
+      }).select();
+      console.log('messages insert result:', { msgData, msgErr });
+    } catch (e) {
+      console.error('Failed to book venue:', e);
+    }
   };
 
   const handleSendMessage = () => {
@@ -124,6 +176,20 @@ export default function VenueDashboard() {
     setTimeout(() => {
       setChatHistory(prev => [...prev, { sender: 'artist', text: replyText }]);
     }, 1000);
+  };
+
+  const saveVenueField = async (field, value) => {
+    if (!user) return;
+    setSaveStatus('Salvando...');
+    try {
+      const { error } = await supabase.from('venues').update({ [field]: value }).eq('user_id', user.id);
+      if (error) throw error;
+      if (refreshProfile) refreshProfile();
+      setSaveStatus('');
+    } catch (err) {
+      console.error(`Erro ao salvar ${field}:`, err);
+      setSaveStatus(`Erro: ${err.message || 'desconhecido'}`);
+    }
   };
 
   return (
@@ -147,6 +213,129 @@ export default function VenueDashboard() {
           </div>
         </div>
 
+        {/* EDIT VENUE PROFILE */}
+        {!isEditingVenue ? (
+          <button
+            onClick={() => {
+              setEditVenueForm({
+                venue_name: userProfile?.venue_name || '',
+                city: userProfile?.city || '',
+                address: userProfile?.address || '',
+                bio: userProfile?.bio || '',
+                capacity: userProfile?.capacity || '',
+                logo_url: userProfile?.logo_url || ''
+              });
+              setIsEditingVenue(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-gray-300"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>Editar Perfil</span>
+          </button>
+        ) : (
+          <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+            theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+          }`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Editar Perfil</h3>
+              <button
+                onClick={() => setIsEditingVenue(false)}
+                className="p-1 rounded bg-white/5 hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">Logo / Foto</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setSaveStatus('Enviando imagem...');
+                  try {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `venue_${user.id}_${Date.now()}.${fileExt}`;
+                    const { data, error: uploadErr } = await supabase.storage.from('media').upload(`logos/${fileName}`, file);
+                    if (uploadErr) throw uploadErr;
+                    const publicUrl = supabase.storage.from('media').getPublicUrl(`logos/${fileName}`).data.publicUrl;
+                    setEditVenueForm(f => ({ ...f, logo_url: publicUrl }));
+                    setSaveStatus('Salvando...');
+                    const updResp = await supabase.from('venues').update({ logo_url: publicUrl }).eq('user_id', user.id);
+                    if (updResp.error) throw updResp.error;
+                    if (refreshProfile) refreshProfile();
+                    setSaveStatus('');
+                  } catch (err) {
+                    console.error(err);
+                    setSaveStatus('Erro ao enviar logo');
+                  }
+                }}
+                className="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-neon-purple file:text-white hover:file:opacity-90 cursor-pointer"
+              />
+              {editVenueForm.logo_url && (
+                <img src={editVenueForm.logo_url} alt="Logo" className="w-16 h-16 rounded-xl object-cover mt-2 border border-white/10"
+                  onError={e => e.target.style.display = 'none'}
+                />
+              )}
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">Nome do Estabelecimento</label>
+              <input type="text" value={editVenueForm.venue_name}
+                onChange={e => setEditVenueForm(f => ({ ...f, venue_name: e.target.value }))}
+                onBlur={e => saveVenueField('venue_name', e.target.value)}
+                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                }`}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">Cidade</label>
+              <input type="text" value={editVenueForm.city}
+                onChange={e => setEditVenueForm(f => ({ ...f, city: e.target.value }))}
+                onBlur={e => saveVenueField('city', e.target.value)}
+                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                }`}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">Endereço</label>
+              <input type="text" value={editVenueForm.address}
+                onChange={e => setEditVenueForm(f => ({ ...f, address: e.target.value }))}
+                onBlur={e => saveVenueField('address', e.target.value)}
+                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                }`}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">Sobre (Bio)</label>
+              <textarea value={editVenueForm.bio}
+                onChange={e => setEditVenueForm(f => ({ ...f, bio: e.target.value }))}
+                onBlur={e => saveVenueField('bio', e.target.value)}
+                rows={2}
+                className={`w-full p-2.5 rounded-xl border text-xs outline-none resize-none ${
+                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                }`}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">Capacidade (pessoas)</label>
+              <input type="number" value={editVenueForm.capacity}
+                onChange={e => setEditVenueForm(f => ({ ...f, capacity: e.target.value }))}
+                onBlur={e => saveVenueField('capacity', Number(e.target.value))}
+                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                }`}
+              />
+            </div>
+            {saveStatus && (
+              <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
+            )}
+          </div>
+        )}
+
         {/* HERO INVESTMENT CARD */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -162,22 +351,22 @@ export default function VenueDashboard() {
               <p className="text-gray-400 text-xs mt-1">Total investido no estabelecimento ({selectedMonth})</p>
               
               <div className="flex items-baseline gap-3 mt-2">
-                <h2 className="text-4xl md:text-5xl font-black text-white">R$ 8.800,00</h2>
+                <h2 className="text-4xl md:text-5xl font-black text-white">R$ 0,00</h2>
                 <div className="flex items-center gap-0.5 text-neon-green text-xs font-bold">
                   <TrendingUp className="w-4 h-4" />
-                  <span>+18.4%</span>
+                  <span>+0%</span>
                 </div>
               </div>
               
-              <p className="text-[10px] text-gray-500 mt-1">vs. período anterior: R$ 7.430,00</p>
+              <p className="text-[10px] text-gray-500 mt-1">vs. período anterior: R$ 0,00</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { title: 'Cachês Pagos', value: 'R$ 7.560', icon: '💰', color: 'border-neon-purple/20' },
-                { title: 'Gorjetas Extras', value: 'R$ 1.240', icon: '💝', color: 'border-neon-green/20' },
-                { title: 'Total Eventos', value: '14 Shows', icon: '🎤', color: 'border-white/5' },
-                { title: 'Média de Público', value: '187 pessoas', icon: '👥', color: 'border-white/5' }
+                { title: 'Cachês Pagos', value: 'R$ 0', icon: '💰', color: 'border-neon-purple/20' },
+                { title: 'Gorjetas Extras', value: 'R$ 0', icon: '💝', color: 'border-neon-green/20' },
+                { title: 'Total Eventos', value: '0 Shows', icon: '🎤', color: 'border-white/5' },
+                { title: 'Média de Público', value: '0 pessoas', icon: '👥', color: 'border-white/5' }
               ].map((m, i) => (
                 <div key={i} className={`p-3.5 rounded-2xl bg-white/5 border ${m.color} backdrop-blur-sm`}>
                   <div className="flex items-center gap-2 mb-1">
@@ -193,10 +382,10 @@ export default function VenueDashboard() {
 
         {/* METRICS ROW */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Faturamento noites" value="R$ 34.000" change={22} changeLabel="vs. mês anterior" icon={DollarSign} iconColor="green" />
-          <StatCard title="Artistas contratados" value="8 bandas" change={12} changeLabel="novos músicos" icon={Music} iconColor="purple" />
-          <StatCard title="Eventos futuros" value="6 agendados" icon={Calendar} iconColor="green" />
-          <StatCard title="Ocupação média" value="90% casa" change={8} icon={Users} iconColor="purple" />
+          <StatCard title="Faturamento noites" value="R$ 0" change={0} changeLabel="vs. mês anterior" icon={DollarSign} iconColor="green" />
+          <StatCard title="Artistas contratados" value="0" change={0} changeLabel="novos músicos" icon={Music} iconColor="purple" />
+          <StatCard title="Eventos futuros" value="0" icon={Calendar} iconColor="green" />
+          <StatCard title="Ocupação média" value="0%" change={0} icon={Users} iconColor="purple" />
         </div>
 
         {/* ADVANCED FILTERS PANEL */}
@@ -513,23 +702,23 @@ export default function VenueDashboard() {
         {/* STEP-BY-STEP HIRING FLOW MODAL */}
         <AnimatePresence>
           {hiringArtist && (
-            <>
-              {/* Backdrop */}
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setHiringArtist(null)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
-              />
-
-              {/* Modal Container */}
-              <motion.div
-                initial={{ opacity: 0, y: '50%' }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: '50%' }}
-                className="fixed bottom-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 left-0 right-0 sm:max-w-xl sm:mx-auto z-50 bg-[#0F0926] rounded-t-3xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
-              >
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto"
+              onClick={() => setHiringArtist(null)}
+            >
+              <div className="min-h-full flex items-center justify-center p-4">
+                <motion.div
+                  key="card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-full sm:max-w-xl bg-[#0F0926] rounded-2xl border border-white/10 p-6 shadow-2xl"
+                >
                 
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
@@ -586,99 +775,133 @@ export default function VenueDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Cachê Proposto (R$)</label>
+                      <label className="text-xs text-gray-400 font-bold block mb-1">Valor do Show (R$)</label>
                       <input 
-                        type="number" 
+                        type="number"
                         value={proposalFee}
                         onChange={e => setProposalFee(parseInt(e.target.value))}
-                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-neon-green font-bold" 
+                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
                       />
                     </div>
 
-                    <NeonButton variant="purple" className="w-full py-3 mt-4" onClick={() => setHireStep(2)}>
+                    <div>
+                      <label className="text-xs text-gray-400 font-bold block mb-1">Mensagem para o Artista</label>
+                      <textarea 
+                        value={eventMessage}
+                        onChange={e => setEventMessage(e.target.value)}
+                        placeholder="Escreva sua proposta... (data, valores, condições)"
+                        rows={3}
+                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs resize-none" 
+                      />
+                    </div>
+
+                    <NeonButton variant="purple" className="w-full py-3 mt-4" onClick={async () => {
+                      await handleConfirmBooking();
+                      setHireStep(2);
+                    }}>
                       Avançar para Negociação
                     </NeonButton>
                   </div>
                 )}
 
-                {/* STEP 2: CHAT NEGOTIATION */}
+                {/* STEP 2: NEGOTIATION CHAT */}
                 {hireStep === 2 && (
                   <div className="space-y-4">
-                    <div className="h-60 overflow-y-auto bg-black/20 border border-white/5 rounded-xl p-3 space-y-2 flex flex-col">
-                      {chatHistory.map((m, i) => (
-                        <div 
-                          key={i} 
-                          className={`max-w-[80%] p-3 rounded-2xl text-xs ${
-                            m.sender === 'venue' 
-                              ? 'bg-neon-purple text-white self-end rounded-tr-none' 
-                              : 'bg-white/5 text-gray-300 self-start rounded-tl-none border border-white/5'
-                          }`}
-                        >
-                          {m.text}
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {chatHistory.map((msg, i) => (
+                        <div key={i} className={`flex ${msg.sender === 'venue' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[80%] p-2.5 rounded-xl text-xs ${
+                            msg.sender === 'venue' 
+                              ? 'bg-neon-purple text-white rounded-tr-sm' 
+                              : 'bg-white/5 text-gray-300 rounded-tl-sm'
+                          }`}>
+                            <p>{msg.text}</p>
+                            <span className="text-[9px] opacity-60 mt-1 block">{msg.time}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
 
                     <div className="flex gap-2">
                       <input 
-                        type="text" 
+                        type="text"
                         value={chatMessage}
                         onChange={e => setChatMessage(e.target.value)}
-                        placeholder="Envie uma mensagem..."
+                        placeholder="Digite sua mensagem..."
                         className="flex-1 p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs"
                       />
-                      <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-neon-purple hover:bg-neon-purple/80">
+                      <button 
+                        onClick={() => {
+                          if (chatMessage.trim()) {
+                            setChatHistory([...chatHistory, {
+                              sender: 'venue',
+                              text: chatMessage,
+                              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            }]);
+                            setChatMessage('');
+                          }
+                        }}
+                        className="px-4 rounded-xl bg-neon-purple text-white"
+                      >
                         <Send className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex gap-3 pt-3">
+                    <div className="flex gap-2">
                       <button onClick={() => setHireStep(1)} className="flex-1 py-2.5 border border-white/10 text-xs rounded-xl hover:bg-white/5">
                         Voltar
                       </button>
                       <button onClick={() => setHireStep(3)} className="flex-1 py-2.5 bg-neon-green text-black font-bold text-xs rounded-xl">
-                        Avançar Contrato
+                        Avançar para Assinatura
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* STEP 3: DIGITAL SIGNATURE */}
+                {/* STEP 3: SIGNATURE */}
                 {hireStep === 3 && (
                   <div className="space-y-4">
-                    <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-xs text-gray-300 space-y-2">
-                      <p className="font-bold text-white border-b border-white/5 pb-1">CONTRATO DE APRESENTAÇÃO MUSICAL</p>
-                      <p><strong>Contratante:</strong> Bar do João</p>
-                      <p><strong>Contratado:</strong> {hiringArtist.artistic_name}</p>
-                      <p><strong>Serviço:</strong> Apresentação musical ao vivo de 2 horas.</p>
-                      <p><strong>Data:</strong> {eventDate} às {eventTime}</p>
-                      <p><strong>Valor acordado:</strong> R$ {proposalFee.toLocaleString()}</p>
+                    <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <img src={hiringArtist.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{hiringArtist.artistic_name}</h4>
+                          <p className="text-xs text-gray-400">R$ {proposalFee.toLocaleString()} • {eventDate}</p>
+                        </div>
+                      </div>
+                      <div className="border-t border-white/5 pt-3">
+                        <h5 className="text-xs font-bold text-neon-green uppercase tracking-wider">Termos do Contrato</h5>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                          O contratante compromete-se a pagar o valor acordado de R$ {proposalFee.toLocaleString()} 
+                          para o show no dia {eventDate}. O artista compromete-se a realizar a apresentação 
+                          conforme combinado.
+                        </p>
+                      </div>
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Assinatura Digital (Digite seu Nome)</label>
+                      <label className="text-xs text-gray-400 font-bold block mb-1">Assinatura Digital</label>
                       <input 
-                        type="text" 
+                        type="text"
                         value={signatureName}
                         onChange={e => setSignatureName(e.target.value)}
-                        placeholder="Nome completo para assinar"
+                        placeholder="Digite seu nome completo para assinar"
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs"
                       />
                     </div>
 
-                    <div className="flex gap-3 pt-3">
+                    <div className="flex gap-2">
                       <button onClick={() => setHireStep(2)} className="flex-1 py-2.5 border border-white/10 text-xs rounded-xl hover:bg-white/5">
                         Voltar
                       </button>
                       <button 
                         onClick={() => {
-                          if (signatureName) {
+                          if (signatureName.trim()) {
                             setSigned(true);
                             setHireStep(4);
                           }
                         }}
-                        disabled={!signatureName}
-                        className="flex-1 py-2.5 bg-neon-purple text-white font-bold text-xs rounded-xl disabled:opacity-50"
+                        className="flex-1 py-2.5 bg-neon-green text-black font-bold text-xs rounded-xl"
                       >
                         Assinar Contrato
                       </button>
@@ -686,69 +909,72 @@ export default function VenueDashboard() {
                   </div>
                 )}
 
-                {/* STEP 4: PAYMENT SIMULATION */}
+                {/* STEP 4: PAYMENT */}
                 {hireStep === 4 && (
-                  <div className="space-y-4 text-center">
-                    <Landmark className="w-12 h-12 text-neon-green mx-auto mb-2" />
-                    <h4 className="font-bold text-white text-sm">Garantia de Cachê Integrado</h4>
-                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                      O TocaMais garante o cachê seguro do artista. O dinheiro ficará retido na plataforma e será transferido automaticamente no encerramento da apresentação.
-                    </p>
-
-                    <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-left max-w-sm mx-auto">
-                      <div className="flex justify-between text-xs py-1">
-                        <span className="text-gray-400">Cachê do Evento</span>
-                        <span className="text-white font-bold">R$ {proposalFee.toLocaleString()}</span>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                      <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Resumo do Pagamento</h5>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-300">Cachê Artístico</span>
+                        <span className="text-sm font-bold text-neon-green">R$ {proposalFee.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-xs py-1">
-                        <span className="text-gray-400">Taxa de Serviço</span>
-                        <span className="text-white font-bold">R$ 0,00</span>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs text-gray-400">Taxa de Serviço (10%)</span>
+                        <span className="text-xs text-gray-400">R$ {Math.round(proposalFee * 0.1).toLocaleString()}</span>
                       </div>
-                      <div className="border-t border-white/5 mt-2 pt-2 flex justify-between text-sm font-bold">
-                        <span className="text-white">Total</span>
-                        <span className="text-neon-green">R$ {proposalFee.toLocaleString()}</span>
+                      <div className="border-t border-white/5 mt-2 pt-2 flex justify-between items-center">
+                        <span className="text-sm font-bold text-white">Total</span>
+                        <span className="text-sm font-bold text-white">R$ {Math.round(proposalFee * 1.1).toLocaleString()}</span>
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-3 max-w-sm mx-auto">
+                    <div className="grid grid-cols-2 gap-3">
+                      {['pix', 'credit', 'boleto', 'cash'].map(method => (
+                        <button key={method} onClick={() => setPaymentMethod(method)} className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                          paymentMethod === method 
+                            ? 'border-neon-purple bg-neon-purple/10 text-neon-purple' 
+                            : 'border-white/10 text-gray-400 hover:border-white/20'
+                        }`}>
+                          {method === 'pix' ? 'Pix' : method === 'credit' ? 'Cartão' : method === 'boleto' ? 'Boleto' : 'Dinheiro'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2">
                       <button onClick={() => setHireStep(3)} className="flex-1 py-2.5 border border-white/10 text-xs rounded-xl hover:bg-white/5">
                         Voltar
                       </button>
                       <button 
-                        onClick={() => {
+                        onClick={async () => {
+                          await handleConfirmBooking();
                           setPaymentDone(true);
                           setHireStep(5);
                         }}
-                        className="flex-1 py-2.5 bg-neon-green text-black font-black text-xs rounded-xl"
+                        className="flex-1 py-2.5 bg-neon-green text-black font-bold text-xs rounded-xl"
                       >
-                        Autorizar Pix
+                        Confirmar Pagamento
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* STEP 5: SUCCESS */}
                 {hireStep === 5 && (
-                  <div className="space-y-4 text-center py-4">
-                    <div className="w-16 h-16 bg-neon-green/20 rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_0_20px_rgba(57,255,106,0.3)]">
-                      <Check className="w-8 h-8 text-neon-green" />
-                    </div>
-                    <h4 className="font-black text-white text-lg">Contratação Concluída!</h4>
-                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                      O show de {hiringArtist.artistic_name} foi agendado para o dia {eventDate}. O contrato assinado foi enviado para o e-mail cadastrado.
-                    </p>
-
+                  <div className="space-y-4 text-center">
+                    <CheckCircle className="w-16 h-16 text-neon-green mx-auto" />
+                    <h3 className="text-white font-bold text-lg">Contratação Concluída!</h3>
+                    <p className="text-gray-400 text-xs">O contrato foi assinado e o pagamento processado com sucesso.</p>
                     <button 
-                      onClick={() => setHiringArtist(null)}
-                      className="px-6 py-2.5 bg-neon-purple text-white font-bold text-xs rounded-xl mt-4"
+                      onClick={() => { setHiringArtist(null); setHireStep(1); setPaymentDone(false); setSigned(false); setChatHistory([]); }}
+                      className="w-full py-3 bg-neon-green text-black font-bold text-xs rounded-xl hover:opacity-90 transition-opacity"
                     >
                       Voltar ao Painel
                     </button>
                   </div>
                 )}
 
-              </motion.div>
-            </>
+                </motion.div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 

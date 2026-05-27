@@ -2,22 +2,20 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Star, CheckCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
+import { useAuth } from '../../lib/AuthContext';
 import ArtistCard from '../../components/shared/ArtistCard';
 import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 
-const favs = [
-  { id: '1', artistic_name: 'Lucas Volta', genre: 'Sertanejo', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', rating: 4.9, total_reviews: 48, followers: 125000, base_fee: 2800, verified: true, featured: true, live_now: false, total_shows: 24 },
-  { id: '3', artistic_name: 'Quarteto Jazz', genre: 'Jazz', city: 'São Paulo', photo_url: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=400&h=400&fit=crop', rating: 4.7, total_reviews: 29, followers: 28000, base_fee: 4200, verified: true, featured: true, live_now: false, total_shows: 31 },
-];
-
 export default function ContractorFavorites() {
-  const [favorites, setFavorites] = useState(favs);
+  const { user } = useAuth();
+
+  const [favorites, setFavorites] = useState([]);
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
 
   const remove = (id) => setFavorites(prev => prev.filter(f => f.id !== id));
 
   return (
-    <AppLayout role="contractor" userName="Maria Santos">
+    <AppLayout role="contractor" userName={user?.name || ''}>
       <div className="px-4 py-5 space-y-4">
         <div className="flex items-center gap-2">
           <Heart className="w-5 h-5 text-red-400 fill-red-400" />

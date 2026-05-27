@@ -4,60 +4,85 @@ import { Link } from 'react-router-dom';
 import {
   TrendingUp, DollarSign, Calendar, Star, Users, Music,
   Bell, ChevronRight, CheckCircle, Clock, MapPin, Play, Pause, Mic,
-  Volume2, UploadCloud, Plus, ToggleLeft, ToggleRight, Sparkles, Check, X, ShieldAlert
+  Volume2, UploadCloud, Plus, ToggleLeft, ToggleRight, Sparkles, Check, X, ShieldAlert, Search
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
 import NeonButton from '../../components/ui/NeonButton';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../lib/AuthContext';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line
 } from 'recharts';
 
-const earningsData = [
-  { week: 'S1', ganhos: 1200 },
-  { week: 'S2', ganhos: 1800 },
-  { week: 'S3', ganhos: 2200 },
-  { week: 'S4', ganhos: 1900 },
-  { week: 'S5', ganhos: 3100 },
-  { week: 'S6', ganhos: 2800 },
-];
+const earningsData = [];
 
-const growthData = [
-  { month: 'Jan', seguidores: 45000 },
-  { month: 'Fev', seguidores: 52000 },
-  { month: 'Mar', seguidores: 61000 },
-  { month: 'Abr', seguidores: 74000 },
-  { month: 'Mai', seguidores: 89000 },
-  { month: 'Jun', seguidores: 103000 },
-];
+const growthData = [];
 
 export default function ArtistDashboard() {
-  const [proposals, setProposals] = useState([
-    { id: 'evt-2', venue: 'Sunset Lounge', date: '2026-05-23', fee: 2200, status: 'pending', avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=100&h=100&fit=crop' },
-    { id: 'evt-3', venue: 'Espaço Jardins', date: '2026-05-30', fee: 2000, status: 'pending', avatar: 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=100&h=100&fit=crop' }
-  ]);
+  const { user, userProfile, isLoadingAuth, refreshProfile } = useAuth();
+
+  const [proposals, setProposals] = useState([]);
   
-  const [shows, setShows] = useState([
-    { id: 'evt-1', venue: 'Bar do João', date: 'Hoje', time: '21:00', city: 'São Paulo', fee: 1800 }
-  ]);
+  const [shows, setShows] = useState([]);
 
   // Audio Player State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState('Modão Sertanejo - Demo');
+  const [currentTrack, setCurrentTrack] = useState('');
   
   // Media Upload State
-  const [mediaList, setMediaList] = useState([
-    { id: 1, type: 'video', name: 'Show_Ao_Vivo_Pinheiros.mp4', size: '24MB' },
-    { id: 2, type: 'audio', name: 'Autoral_Estudio_Gravacao.wav', size: '8MB' }
-  ]);
+  const [mediaList, setMediaList] = useState([]);
   const [uploading, setUploading] = useState(false);
 
+  // Repertório state
+  const [musicasRepertorio, setMusicasRepertorio] = useState([]);
+  const [selectedMusicasIds, setSelectedMusicasIds] = useState([]);
+  const [searchRepertorio, setSearchRepertorio] = useState('');
+  const [filterMinhas, setFilterMinhas] = useState(true);
+
   // Availability calendar state
-  const [busyDates, setBusyDates] = useState(['2026-05-22', '2026-05-25']);
+  const [busyDates, setBusyDates] = useState([]);
   const [newBusyDate, setNewBusyDate] = useState('');
   const [availabilityAuto, setAvailabilityAuto] = useState(true);
+
+  useEffect(() => {
+    async function loadRepertorio() {
+      const { data: musicas } = await supabase.from('musicas_repertorio').select('*').order('artista_nome', { ascending: true });
+      if (musicas) setMusicasRepertorio(musicas);
+    }
+    loadRepertorio();
+  }, []);
+
+  useEffect(() => {
+    if (userProfile?.selected_musicas_ids) {
+      setSelectedMusicasIds(userProfile.selected_musicas_ids);
+    }
+  }, [userProfile]);
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const toggleMusica = (musicaId) => {
+    setSaved(false);
+    setSelectedMusicasIds(prev =>
+      prev.includes(musicaId)
+        ? prev.filter(id => id !== musicaId)
+        : [...prev, musicaId]
+    );
+  };
+
+  const salvarRepertorio = async () => {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      await supabase.from('artists').update({ selected_musicas_ids: selectedMusicasIds }).eq('user_id', user.id);
+    } catch (e) { console.error('Erro ao salvar repertório:', e); }
+    if (refreshProfile) refreshProfile();
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
 
   const handleAcceptProposal = (id) => {
     const prop = proposals.find(p => p.id === id);
@@ -113,7 +138,7 @@ export default function ArtistDashboard() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <img 
-                src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop" 
+                src={userProfile?.photo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop'} 
                 alt="Avatar" 
                 className="w-16 h-16 rounded-2xl object-cover border-2 border-neon-purple/50"
               />
@@ -123,10 +148,10 @@ export default function ArtistDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-2xl font-black text-white">Lucas Volta</h1>
+                <h1 className="text-2xl font-black text-white">{userProfile?.artistic_name || user?.name || 'Artista'}</h1>
                 <CheckCircle className="w-5 h-5 text-neon-purple" />
               </div>
-              <p className="text-xs text-gray-400">Sertanejo Universitário • São Paulo</p>
+              <p className="text-xs text-gray-400">{userProfile?.genre ? `${userProfile.genre} • ` : ''}{userProfile?.city || 'Local não definido'}</p>
             </div>
           </div>
 
@@ -154,18 +179,18 @@ export default function ArtistDashboard() {
           
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
-              <span className="text-[10px] uppercase font-black text-neon-green tracking-widest">Ganhos do Mês</span>
-              <h2 className="text-4xl font-black text-white mt-1">R$ 13.000,00</h2>
+              <span className="text-[10px] uppercase font-black text-neon-green tracking-widest">Cachê Base</span>
+              <h2 className="text-4xl font-black text-white mt-1">{userProfile?.base_fee ? `R$ ${userProfile.base_fee.toLocaleString()}` : 'R$ 0'}</h2>
               <div className="flex items-center gap-1 text-neon-green text-xs font-bold mt-1">
                 <TrendingUp className="w-4 h-4" />
-                <span>+31.4% vs. mês anterior</span>
+                <span>{shows.length} shows agendados</span>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center">
               {[
-                { title: 'Shows Feitos', val: '7 Gigs', icon: '🎤' },
-                { title: 'Gorjetas Fãs', val: 'R$ 940', icon: '💝' },
+                { title: 'Shows Feitos', val: `${shows.length} Gigs`, icon: '🎤' },
+                { title: 'Cachê Médio', val: `R$ ${(userProfile?.base_fee || 0).toLocaleString()}`, icon: '💰' },
                 { title: 'Pendentes', val: proposals.length.toString(), icon: '📩' }
               ].map((item, idx) => (
                 <div key={idx} className="p-3 rounded-2xl bg-white/5 border border-white/5">
@@ -180,10 +205,10 @@ export default function ArtistDashboard() {
 
         {/* METRICS ROW */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Seguidores" value="103K" change={15} icon={Users} iconColor="purple" />
-          <StatCard title="Avaliação Fãs" value="4.9 / 5" icon={Star} iconColor="green" />
-          <StatCard title="Visualizações" value="18K" icon={Play} iconColor="purple" />
-          <StatCard title="Próximo Show" value="Hoje, 21:00" icon={Calendar} iconColor="green" />
+          <StatCard title="Seguidores" value={userProfile?.followers ? `${(userProfile.followers / 1000).toFixed(0)}K` : '0'} icon={Users} iconColor="purple" />
+          <StatCard title="Avaliação Fãs" value={userProfile?.rating ? `${userProfile.rating} / 5` : '--'} icon={Star} iconColor="green" />
+          <StatCard title="Cachê Base" value={userProfile?.base_fee ? `R$ ${userProfile.base_fee.toLocaleString()}` : '--'} icon={DollarSign} iconColor="purple" />
+          <StatCard title="Próximo Show" value={shows.length > 0 ? shows[0].date : 'Nenhum'} icon={Calendar} iconColor="green" />
         </div>
 
         {/* GRAPHS */}
@@ -271,6 +296,99 @@ export default function ArtistDashboard() {
                 <p className="text-gray-400 text-xs">Nenhuma proposta pendente no momento.</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* REPERTÓRIO SECTION */}
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-4">Meu Repertório</h3>
+          <p className="text-[10px] text-gray-400 mb-4">Selecione as músicas que você canta. Elas aparecerão no seu perfil público.</p>
+
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                value={searchRepertorio}
+                onChange={e => setSearchRepertorio(e.target.value)}
+                placeholder="Pesquisar música ou artista..."
+                className="w-full pl-10 pr-4 py-2.5 bg-[#0F0926] border border-white/10 rounded-xl text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-neon-purple/50 transition-all"
+              />
+              {searchRepertorio && (
+                <button onClick={() => setSearchRepertorio('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setFilterMinhas(!filterMinhas)}
+              className={`flex items-center gap-1.5 py-2.5 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all flex-shrink-0 ${
+                filterMinhas
+                  ? 'bg-neon-purple/20 border-neon-purple/50 text-neon-purple'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+              }`}
+            >
+              <Music className="w-3.5 h-3.5" />
+              Minhas Músicas
+              {selectedMusicasIds.length > 0 && (
+                <span className="ml-1 text-[10px]">({selectedMusicasIds.length})</span>
+              )}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {musicasRepertorio
+              .filter(musica =>
+                (!searchRepertorio || 
+                musica.titulo.toLowerCase().includes(searchRepertorio.toLowerCase()) ||
+                musica.artista_nome.toLowerCase().includes(searchRepertorio.toLowerCase())) &&
+                (!filterMinhas || selectedMusicasIds.includes(musica.id))
+              )
+              .map(musica => {
+              const selected = selectedMusicasIds.includes(musica.id);
+              return (
+                <button
+                  key={musica.id}
+                  onClick={() => toggleMusica(musica.id)}
+                  className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                    selected
+                      ? 'bg-neon-green/10 border-neon-green/40 text-white'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    selected ? 'bg-neon-green border-neon-green' : 'border-white/20'
+                  }`}>
+                    {selected && <Check className="w-3.5 h-3.5 text-black" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate">{musica.titulo}</p>
+                    <p className="text-[10px] text-gray-500">{musica.artista_nome} • {Math.floor(musica.duracao_seg / 60)}m{musica.duracao_seg % 60}s</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">
+                {selectedMusicasIds.length} de {musicasRepertorio.length} músicas selecionadas
+              </span>
+              {saved && (
+                <span className="flex items-center gap-1 text-[10px] text-neon-green font-bold">
+                  <Check className="w-3 h-3" />
+                  Salvo com sucesso!
+                </span>
+              )}
+            </div>
+            <button
+              onClick={salvarRepertorio}
+              disabled={saving}
+              className="py-2.5 px-6 rounded-xl bg-neon-green text-black text-xs font-black uppercase tracking-wider hover:shadow-[0_0_20px_rgba(57,255,106,0.3)] transition-all disabled:opacity-50"
+            >
+              {saving ? 'Salvando...' : 'Salvar Repertório'}
+            </button>
           </div>
         </div>
 

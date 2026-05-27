@@ -54,7 +54,7 @@ const AuthenticatedApp = () => {
   }
 
   // Determine user dashboard landing page
-  const userRole = user?.role || 'artist';
+  const userRole = user?.user_metadata?.role || user?.role || 'artist';
   const defaultDashboard = userRole === 'artist' 
     ? '/artist' 
     : userRole === 'venue' 

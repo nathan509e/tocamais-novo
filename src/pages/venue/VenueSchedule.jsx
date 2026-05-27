@@ -2,17 +2,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
+import { useAuth } from '../../lib/AuthContext';
 import NeonButton from '../../components/ui/NeonButton';
 
-const events = [
-  { id: '1', artist: 'Lucas Volta', genre: 'Sertanejo', date: '10 Jun', time: '21h', status: 'confirmed', fee: 2800, audience: 200, avatar: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop' },
-  { id: '2', artist: 'Dj Matteus', genre: 'Eletrônico', date: '14 Jun', time: '23h', status: 'confirmed', fee: 3200, audience: 350, avatar: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=100&h=100&fit=crop' },
-  { id: '3', artist: 'Sofia Neon', genre: 'Pop', date: '18 Jun', time: '21h', status: 'pending', fee: 1800, audience: 150, avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100&h=100&fit=crop' },
-  { id: '4', artist: 'Trio Samba', genre: 'Samba', date: '21 Jun', time: '20h', status: 'confirmed', fee: 2500, audience: 180, avatar: 'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=100&h=100&fit=crop' },
-  { id: '5', artist: 'Banda Nova Era', genre: 'Rock', date: '28 Jun', time: '21:30h', status: 'confirmed', fee: 4500, audience: 280, avatar: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop' },
-];
+const events = [];
 
 export default function VenueSchedule() {
+  const { user, userProfile } = useAuth();
+
   const [filter, setFilter] = useState('all');
 
   const filtered = events.filter(e => filter === 'all' || e.status === filter);
@@ -20,7 +17,7 @@ export default function VenueSchedule() {
   const confirmedCount = events.filter(e => e.status === 'confirmed').length;
 
   return (
-    <AppLayout role="venue" userName="João Silva" venueName="Bar do João">
+    <AppLayout role="venue" userName={user?.name || ''} venueName={userProfile?.venue_name || ''}>
       <div className="px-4 py-5 space-y-5">
         <div className="flex items-center justify-between">
           <div>

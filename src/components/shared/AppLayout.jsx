@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
+import { supabase } from '@/lib/supabaseClient';
 import { 
   Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Settings, Sun, Moon
 } from 'lucide-react';
@@ -33,19 +34,28 @@ const navItems = {
 export default function AppLayout({ children, role = 'artist' }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) setNotifications(data);
+      });
+  }, [user?.id]);
 
   const nav = navItems[role] || navItems.artist;
   const username = user?.full_name || user?.name || 'Usuário';
-
-  const notifications = [
-    { id: 1, title: 'Nova Proposta', text: 'Você recebeu uma nova proposta de show.', time: '5m atrás' },
-    { id: 2, title: 'Pagamento Confirmado', text: 'O cachê do show de ontem foi depositado.', time: '1h atrás' }
-  ];
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const isDark = theme === 'dark';
 
@@ -109,7 +119,7 @@ export default function AppLayout({ children, role = 'artist' }) {
         <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3 mb-3">
             <img 
-              src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
+              src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
               alt="Avatar" 
               className="w-10 h-10 rounded-xl object-cover border border-white/10"
             />
@@ -207,7 +217,11 @@ export default function AppLayout({ children, role = 'artist' }) {
                 }`}
               >
                 <Bell className={`w-4 h-4 ${isDark ? 'text-white' : 'text-gray-700'}`} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-purple rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               <AnimatePresence>
@@ -226,17 +240,22 @@ export default function AppLayout({ children, role = 'artist' }) {
                         <h4 className="text-xs font-bold uppercase tracking-wider">Notificações</h4>
                         <span className="text-[10px] text-neon-green font-semibold cursor-pointer">Limpar tudo</span>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {notifications.length === 0 && (
+                          <p className="text-xs text-gray-500 text-center py-4">Nenhuma notificação</p>
+                        )}
                         {notifications.map(n => (
                           <div 
                             key={n.id} 
                             className={`p-2.5 rounded-xl transition-colors cursor-pointer ${
                               isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'
-                            }`}
+                            } ${!n.read ? 'border-l-2 border-neon-purple' : ''}`}
                           >
                             <p className="text-xs font-bold">{n.title}</p>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{n.text}</p>
-                            <span className="text-[9px] text-gray-500 mt-1 block">{n.time}</span>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{n.content}</p>
+                            <span className="text-[9px] text-gray-500 mt-1 block">
+                              {new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -352,7 +371,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
                 <div className="flex items-center gap-3 mb-3">
                   <img 
-                    src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
+              src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
                     alt="Avatar" 
                     className="w-9 h-9 rounded-lg object-cover"
                   />

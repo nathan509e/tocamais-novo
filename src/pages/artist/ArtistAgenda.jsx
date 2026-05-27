@@ -2,29 +2,25 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight, MapPin, Clock, DollarSign, CheckCircle, X, AlertCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
+import { useAuth } from '../../lib/AuthContext';
 import NeonButton from '../../components/ui/NeonButton';
 
-const shows = [
-  { id: '1', day: 10, venue: 'Bar Maresias', time: '21h', city: 'São Paulo', fee: 1800, status: 'confirmed' },
-  { id: '2', day: 14, venue: 'Sunset Lounge', time: '22h', city: 'Campinas', fee: 2200, status: 'confirmed' },
-  { id: '3', day: 15, venue: 'Ao Vivo Club', time: '21:30h', city: 'São Paulo', fee: 3000, status: 'confirmed' },
-  { id: '4', day: 18, venue: 'Evento Privado', time: '19h', city: 'Santos', fee: 4500, status: 'pending' },
-  { id: '5', day: 22, venue: 'Festival Primavera', time: '20h', city: 'São Paulo', fee: 8000, status: 'confirmed' },
-  { id: '6', day: 28, venue: 'Churrasco VIP', time: '14h', city: 'Barueri', fee: 2800, status: 'pending' },
-];
+const shows = [];
 
 const daysOfWeek = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const days = Array.from({ length: 30 }, (_, i) => i + 1);
 
 export default function ArtistAgenda() {
+  const { user } = useAuth();
+
   const [selectedDay, setSelectedDay] = useState(null);
-  const currentMonth = 'Junho 2026';
+  const currentMonth = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   const showDays = shows.map(s => s.day);
   const selectedShows = shows.filter(s => s.day === selectedDay);
 
   return (
-    <AppLayout role="artist" userName="Lucas Volta">
+    <AppLayout role="artist" userName={user?.name || ''}>
       <div className="px-4 py-5 space-y-5">
         <div>
           <h1 className="text-white font-bold text-xl">Minha Agenda</h1>

@@ -7,6 +7,7 @@ import {
 import AppLayout from '@/components/layout/AppLayout';
 import NeonButton from '@/components/ui/NeonButton';
 import { supabase } from '@/integrations/supabase/client';
+import { useTheme } from '@/lib/ThemeContext';
 
 const eventTypes = [
   { id: 'wedding', icon: '💍', label: 'Casamento', desc: 'Eventos luxuosos e românticos' },
@@ -51,6 +52,8 @@ const budgetTiers = {
 };
 
 export default function ContractorDashboard() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -366,67 +369,71 @@ export default function ContractorDashboard() {
               />
               
               <motion.div
-                initial={{ opacity: 0, y: '50%' }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: '50%' }}
-                className="fixed bottom-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 left-0 right-0 sm:max-w-md sm:mx-auto z-50 bg-[#0F0926] rounded-t-3xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl"
+                initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-50%' }}
+                animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-50%' }}
+                style={{ left: '50%', top: '50%' }}
+                transition={{ type: 'spring', damping: 25 }}
+                className={`fixed z-50 rounded-3xl border p-6 w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto shadow-2xl transition-all ${
+                  isDark ? 'bg-[#0F0926] border-white/10' : 'bg-white border-gray-200'
+                }`}
               >
                 {!bookingSuccess ? (
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                      <h3 className="font-bold text-white text-base">Solicitar Proposta</h3>
-                      <button onClick={() => setBookingArtist(null)} className="p-1 rounded bg-white/5">
+                    <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+                      <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>Solicitar Proposta</h3>
+                      <button onClick={() => setBookingArtist(null)} className={`p-1 rounded transition-all ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
                       <img src={bookingArtist.photo_url} alt="Booking" className="w-12 h-12 rounded-lg object-cover" />
                       <div>
-                        <h4 className="text-sm font-bold text-white">{bookingArtist.artistic_name}</h4>
+                        <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{bookingArtist.artistic_name}</h4>
                         <p className="text-xs text-neon-green font-bold">R$ {bookingArtist.base_fee?.toLocaleString()}</p>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Data Desejada</label>
+                      <label className={`text-xs font-bold block mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Data Desejada</label>
                       <input 
                         type="date" 
                         value={eventDate}
                         onChange={e => setEventDate(e.target.value)}
-                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                        className={`w-full p-2.5 rounded-xl border text-xs outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} 
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Local do Evento</label>
+                      <label className={`text-xs font-bold block mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Local do Evento</label>
                       <input 
                         type="text" 
                         value={eventAddress}
                         onChange={e => setEventAddress(e.target.value)}
                         placeholder="Ex: Salão de Festas, Rua XYZ"
-                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                        className={`w-full p-2.5 rounded-xl border text-xs outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} 
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Cachê Oferecido (R$)</label>
+                      <label className={`text-xs font-bold block mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Cachê Oferecido (R$)</label>
                       <input 
                         type="number" 
                         value={proposalFee}
                         onChange={e => setProposalFee(parseInt(e.target.value))}
-                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-neon-green font-bold" 
+                        className={`w-full p-2.5 rounded-xl border text-xs outline-none transition-all text-neon-green font-bold ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`} 
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Detalhes Adicionais</label>
+                      <label className={`text-xs font-bold block mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Detalhes Adicionais</label>
                       <textarea 
                         value={eventDetails}
                         onChange={e => setEventDetails(e.target.value)}
                         placeholder="Gostaria de solicitar músicas especiais ou tem alguma dúvida?"
                         rows={2}
-                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs resize-none" 
+                        className={`w-full p-2.5 rounded-xl border text-xs resize-none outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} 
                       />
                     </div>
 
@@ -442,8 +449,8 @@ export default function ContractorDashboard() {
                     <div className="w-12 h-12 rounded-full bg-neon-green/20 flex items-center justify-center mx-auto text-neon-green">
                       <CheckCircle className="w-6 h-6" />
                     </div>
-                    <h3 className="font-bold text-white text-base">Proposta Enviada!</h3>
-                    <p className="text-xs text-gray-400 max-w-xs mx-auto">
+                    <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>Proposta Enviada!</h3>
+                    <p className={`text-xs max-w-xs mx-auto ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       Sua solicitação de show foi enviada para {bookingArtist.artistic_name}. O músico responderá por meio do chat interno em instantes.
                     </p>
                     <button 

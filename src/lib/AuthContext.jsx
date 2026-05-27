@@ -24,15 +24,7 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         await loadUserProfile(session.user);
       } else {
-        // Double check local storage session fallback
-        const localSession = localStorage.getItem('tocamais_auth_session');
-        if (localSession) {
-          const parsed = JSON.parse(localSession);
-          if (parsed) {
-            setUser(parsed);
-            await loadUserProfile(parsed);
-          }
-        }
+        setIsLoadingAuth(false);
       }
     } catch (err) {
       console.error('Session loading failed:', err);
@@ -47,17 +39,107 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
 
       // Load specific user profile metadata from DB based on role
-      const role = currentUser.role || 'contractor';
+      const role = (currentUser.user_metadata?.role || currentUser.role || 'contractor').replace('bar_owner', 'venue');
       
+      // Ensure public.users entry exists
+      let pubUser = null;
+      try {
+        const { data: existingUser } = await supabase.from('users').select('*').eq('id', currentUser.id).single();
+        pubUser = existingUser;
+      } catch (e) {
+        console.warn('Error loading public.users, will attempt insert:', e);
+      }
+
+      if (!pubUser) {
+        const { data: newUserRow, error: insertErr } = await supabase.from('users').insert({
+          id: currentUser.id,
+          email: currentUser.email,
+          name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário',
+          role: role,
+          avatar_url: currentUser.user_metadata?.avatar_url || ''
+        }).select().single();
+        if (newUserRow) {
+          pubUser = newUserRow;
+        } else if (insertErr) {
+          console.error('Failed to create users entry:', insertErr);
+        }
+      }
+
       if (role === 'artist') {
-        const { data } = await supabase.from('artists').select('*').eq('user_id', currentUser.id).single();
-        setUserProfile(data);
+        let artistData = null;
+        try {
+          const { data } = await supabase.from('artists').select('*').eq('user_id', currentUser.id).single();
+          artistData = data;
+        } catch (e) {
+          console.warn('Error loading artist profile, will attempt insert:', e);
+        }
+
+        if (!artistData) {
+          // Create default artist entry
+          const { data: newArtist, error: newArtistErr } = await supabase.from('artists').insert({
+            user_id: currentUser.id,
+            artistic_name: pubUser?.name || currentUser.user_metadata?.name || 'Artista',
+            genre: 'Sertanejo',
+            city: 'São Paulo',
+            bio: 'Adicione sua biografia aqui.',
+            base_fee: 0,
+            cover_url: '',
+            photo_url: pubUser?.avatar_url || ''
+          }).select().single();
+          if (newArtist) {
+            artistData = newArtist;
+          } else if (newArtistErr) {
+            console.error('Failed to create default artist entry:', newArtistErr);
+          }
+        }
+        setUserProfile(artistData);
       } else if (role === 'venue') {
-        const { data } = await supabase.from('venues').select('*').eq('user_id', currentUser.id).single();
-        setUserProfile(data);
+        let venueData = null;
+        try {
+          const { data } = await supabase.from('venues').select('*').eq('user_id', currentUser.id).single();
+          venueData = data;
+        } catch (e) {
+          console.warn('Error loading venue profile, will attempt insert:', e);
+        }
+
+        if (!venueData) {
+          const { data: newVenue, error: newVenueErr } = await supabase.from('venues').insert({
+            user_id: currentUser.id,
+            venue_name: pubUser?.name || currentUser.user_metadata?.name || 'Meu Estabelecimento',
+            city: 'São Paulo',
+            address: 'Endereço não definido',
+            capacity: 100,
+            average_budget: 0
+          }).select().single();
+          if (newVenue) {
+            venueData = newVenue;
+          } else if (newVenueErr) {
+            console.error('Failed to create default venue entry:', newVenueErr);
+          }
+        }
+        setUserProfile(venueData);
       } else {
-        const { data } = await supabase.from('contractors').select('*').eq('user_id', currentUser.id).single();
-        setUserProfile(data);
+        let contractorData = null;
+        try {
+          const { data } = await supabase.from('contractors').select('*').eq('user_id', currentUser.id).single();
+          contractorData = data;
+        } catch (e) {
+          console.warn('Error loading contractor profile, will attempt insert:', e);
+        }
+
+        if (!contractorData) {
+          const { data: newContractor, error: newContractorErr } = await supabase.from('contractors').insert({
+            user_id: currentUser.id,
+            phone: '',
+            preferences: {}
+          }).select().single();
+          if (newContractor) {
+            contractorData = newContractor;
+          } else if (newContractorErr) {
+            console.error('Failed to create default contractor entry:', newContractorErr);
+          }
+        }
+        setUserProfile(contractorData);
       }
     } catch (err) {
       console.error('Failed to load profile:', err);
@@ -92,28 +174,53 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
 
     try {
+      // Step 1: try supabase auth signup
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            name,
-            role,
-            avatar_url: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop`
-          }
+          data: { name, role, avatar_url: '' }
         }
       });
 
-      if (error) {
-        return { error };
+      if (!error && data?.user) {
+        await loadUserProfile(data.user);
+        if (!data.session && !import.meta.env.VITE_USE_MOCK) {
+          return {
+            user: data.user,
+            error: { message: 'Conta criada com sucesso! Enviamos um e-mail de confirmação para você. Por favor, confirme o seu e-mail para poder entrar.' }
+          };
+        }
+        return { user: data.user, error: null };
       }
 
-      if (data?.user) {
-        // Build additional profile metadata tables
-        const currentUser = data.user;
-        await loadUserProfile(currentUser);
-        return { user: currentUser, error: null };
+      // Step 2: fallback to RPC if auth.signUp fails (pgcrypto not installed)
+      console.warn('auth.signUp failed, trying RPC fallback:', error?.message);
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_user_direct', {
+        user_email: email,
+        user_password: password,
+        user_name: name,
+        user_role: role,
+        user_phone: phone || ''
+      });
+
+      if (rpcError) {
+        return { error: rpcError };
       }
+
+      // Step 3: log in with the newly created user
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginError) {
+        return { error: { message: 'Conta criada, mas falha ao fazer login automático. Tente entrar manualmente.' } };
+      }
+
+      // Step 4: reload everything
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      if (freshUser) {
+        await loadUserProfile(freshUser);
+        return { user: freshUser, error: null };
+      }
+
       return { error: { message: 'Erro desconhecido ao cadastrar.' } };
     } catch (err) {
       return { error: { message: err.message || 'Erro de cadastro.' } };

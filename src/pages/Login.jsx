@@ -11,7 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('123456'); // Default simple password
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -25,6 +25,12 @@ export default function Login() {
 
     if (!email) {
       setErrorMsg('Por favor, preencha o e-mail.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!password) {
+      setErrorMsg('Por favor, preencha a senha.');
       setIsLoading(false);
       return;
     }
@@ -48,7 +54,8 @@ export default function Login() {
         if (error) {
           setErrorMsg(error.message || 'Dados inválidos ou usuário não cadastrado.');
         } else if (user) {
-          navigate(user.role === 'artist' ? '/artist' : user.role === 'venue' ? '/venue' : '/contractor');
+          const role = (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
+          navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
         }
       }
     } catch (err) {
@@ -67,7 +74,8 @@ export default function Login() {
       if (error) {
         setErrorMsg(error.message);
       } else if (user) {
-        navigate(user.role === 'artist' ? '/artist' : user.role === 'venue' ? '/venue' : '/contractor');
+        const role = (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
+        navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
       }
     } catch (err) {
       setErrorMsg('Erro no login rápido');
@@ -134,7 +142,7 @@ export default function Login() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
           <AnimatePresence mode="wait">
             {errorMsg && (
               <motion.div 
@@ -228,12 +236,25 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Password */}
+          <div>
+            <label className="text-xs text-gray-400 font-bold block mb-1.5 uppercase tracking-wider">Senha</label>
+            <input 
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-neon-purple/50 transition-all placeholder:text-gray-600"
+            />
+          </div>
+
           {/* Login / Register Button */}
           <NeonButton 
             variant="gradient" 
             size="lg" 
             className="w-full flex items-center justify-center gap-2 mt-2 h-12"
             disabled={isLoading}
+            type="submit"
           >
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

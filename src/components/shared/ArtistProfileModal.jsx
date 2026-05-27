@@ -1,15 +1,31 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Star, X } from 'lucide-react';
+import { CheckCircle, Star, X, Music } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function ArtistProfileModal({ artist, onClose, onHire }) {
   const { theme } = useTheme();
+  const [songs, setSongs] = useState([]);
+
+  useEffect(() => {
+    if (!artist?.selected_musicas_ids?.length) return;
+    async function loadSongs() {
+      const { data } = await supabase
+        .from('musicas_repertorio')
+        .select('*')
+        .in('id', artist.selected_musicas_ids);
+      if (data) setSongs(data);
+    }
+    loadSongs();
+  }, [artist]);
 
   if (!artist) return null;
 
   return (
     <AnimatePresence>
       <motion.div 
+        key="backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -17,7 +33,7 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
         className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
       ></motion.div>
 
-      <motion.div className="fixed inset-0 flex items-center justify-center z-[70]" >
+      <motion.div key="modal" className="fixed inset-0 z-[70] flex items-start justify-center pt-1" >
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -93,6 +109,26 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
               {artist.bio || 'Sem biografia disponível.'}
             </p>
           </div>
+
+          {/* Repertório */}
+          {songs.length > 0 && (
+            <div className="space-y-2">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-gray-500">Repertório</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {songs.map(song => (
+                  <div key={song.id} className={`flex items-center gap-2 p-2.5 rounded-xl border ${
+                    theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'
+                  }`}>
+                    <Music className="w-3.5 h-3.5 text-neon-purple flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className={`text-xs font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{song.titulo}</p>
+                      <p className="text-[10px] text-gray-500">{song.artista_nome} • {Math.floor(song.duracao_seg / 60)}m{song.duracao_seg % 60}s</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-white/5">

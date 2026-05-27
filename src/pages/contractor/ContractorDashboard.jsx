@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
+import { useAuth } from '../../lib/AuthContext';
+import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
 
 const eventTypes = [
@@ -51,6 +53,9 @@ const budgetTiers = {
 };
 
 export default function ContractorDashboard() {
+  const { user } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -132,7 +137,6 @@ export default function ContractorDashboard() {
   };
 
   const handleConfirmBooking = async () => {
-    // Simulate inserting event proposal into DB
     const newEvent = {
       title: `Show Particular: ${bookingArtist.artistic_name}`,
       description: eventDetails || `Evento particular categoria ${selectedEvent}`,
@@ -147,6 +151,23 @@ export default function ContractorDashboard() {
 
     try {
       await supabase.from('events').insert(newEvent);
+
+      const senderName = user?.user_metadata?.name || user?.email || 'Contratante';
+      const msg = eventDetails.trim() || `Olá! Tenho interesse em contratar seu show para o dia ${eventDate}. Cachê proposto: R$ ${proposalFee}.`;
+
+      await supabase.from('notifications').insert({
+        user_id: bookingArtist.user_id,
+        title: 'Nova Proposta de Show',
+        content: `${senderName} enviou uma proposta para ${eventDate}.`,
+        type: 'proposal'
+      });
+
+      await supabase.from('messages').insert({
+        sender_id: user.id,
+        receiver_id: bookingArtist.user_id,
+        text: msg
+      });
+
       setBookingSuccess(true);
     } catch (e) {
       console.error('Failed to book', e);
@@ -160,7 +181,7 @@ export default function ContractorDashboard() {
         {/* HEADER HERO */}
         <div>
           <span className="text-[10px] uppercase font-black text-neon-purple tracking-widest">Painel Particular</span>
-          <h1 className="text-3xl font-black text-white mt-1">Maria Santos</h1>
+          <h1 className="text-3xl font-black text-white mt-1">{user?.user_metadata?.name || user?.name || 'Contratante'}</h1>
           <p className="text-gray-400 text-xs mt-1">Agende atrações exclusivas para comemorações e datas especiais</p>
         </div>
 
@@ -208,18 +229,20 @@ export default function ContractorDashboard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="p-5 rounded-2xl border border-white/10 bg-gradient-to-r from-[#0F0926] to-[#08041A] shadow-xl"
+              className={`p-5 rounded-2xl border transition-all ${
+                isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'
+              }`}
             >
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-4 h-4 text-neon-green" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white">Calculadora Automática de Orçamento ({selectedEvent})</h4>
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>Calculadora Automática de Orçamento ({selectedEvent})</h4>
               </div>
               <p className="text-[10px] text-gray-400 mb-4">Estimativa recomendada de cachê baseada em contratações passadas.</p>
 
               <div className="grid sm:grid-cols-3 gap-3">
                 {budgetTiers[selectedEvent]?.map((tier, idx) => (
-                  <div key={idx} className={`p-4 rounded-xl bg-white/5 border ${tier.style} text-center`}>
-                    <p className="text-xs font-bold text-white">{tier.label}</p>
+                  <div key={idx} className={`p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${tier.style} text-center`}>
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{tier.label}</p>
                     <p className="text-sm font-black text-neon-green mt-1">{tier.range}</p>
                   </div>
                 ))}
@@ -356,21 +379,23 @@ export default function ContractorDashboard() {
         {/* BOOKING FLOW MODAL */}
         <AnimatePresence>
           {bookingArtist && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50" 
-                onClick={() => setBookingArtist(null)} 
-              />
-              
-              <motion.div
-                initial={{ opacity: 0, y: '50%' }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: '50%' }}
-                className="fixed bottom-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 left-0 right-0 sm:max-w-md sm:mx-auto z-50 bg-[#0F0926] rounded-t-3xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl"
-              >
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto"
+              onClick={() => setBookingArtist(null)}
+            >
+              <div className="min-h-full flex items-center justify-center p-4">
+                <motion.div
+                  key="card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-full sm:max-w-md bg-[#0F0926] rounded-2xl border border-white/10 p-6 shadow-2xl"
+                >
                 {!bookingSuccess ? (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center border-b border-white/5 pb-3">
@@ -379,7 +404,7 @@ export default function ContractorDashboard() {
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-
+ 
                     <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
                       <img src={bookingArtist.photo_url} alt="Booking" className="w-12 h-12 rounded-lg object-cover" />
                       <div>
@@ -387,7 +412,7 @@ export default function ContractorDashboard() {
                         <p className="text-xs text-neon-green font-bold">R$ {bookingArtist.base_fee?.toLocaleString()}</p>
                       </div>
                     </div>
-
+ 
                     <div>
                       <label className="text-xs text-gray-400 font-bold block mb-1">Data Desejada</label>
                       <input 
@@ -397,7 +422,7 @@ export default function ContractorDashboard() {
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
                       />
                     </div>
-
+ 
                     <div>
                       <label className="text-xs text-gray-400 font-bold block mb-1">Local do Evento</label>
                       <input 
@@ -408,7 +433,7 @@ export default function ContractorDashboard() {
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
                       />
                     </div>
-
+ 
                     <div>
                       <label className="text-xs text-gray-400 font-bold block mb-1">Cachê Oferecido (R$)</label>
                       <input 
@@ -418,7 +443,7 @@ export default function ContractorDashboard() {
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-neon-green font-bold" 
                       />
                     </div>
-
+ 
                     <div>
                       <label className="text-xs text-gray-400 font-bold block mb-1">Detalhes Adicionais</label>
                       <textarea 
@@ -429,7 +454,7 @@ export default function ContractorDashboard() {
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs resize-none" 
                       />
                     </div>
-
+ 
                     <button 
                       onClick={handleConfirmBooking}
                       className="w-full py-3 bg-neon-purple text-white font-bold text-xs rounded-xl hover:shadow-[0_0_15px_rgba(123,46,255,0.4)] transition-all"
@@ -454,8 +479,9 @@ export default function ContractorDashboard() {
                     </button>
                   </div>
                 )}
-              </motion.div>
-            </>
+                </motion.div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 

@@ -1,39 +1,24 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, MapPin, Music, Star, Heart } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
+import { useAuth } from '../../lib/AuthContext';
 import StatCard from '../../components/ui/StatCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, Radar, PolarGrid, PolarAngleAxis
 } from 'recharts';
 
-const cityData = [
-  { city: 'São Paulo', shows: 24 },
-  { city: 'Rio de Janeiro', shows: 12 },
-  { city: 'Campinas', shows: 8 },
-  { city: 'Belo Horizonte', shows: 6 },
-  { city: 'Santos', shows: 4 },
-];
+const cityData = [];
 
-const topSongs = [
-  { song: 'Amor da Roça', plays: 48000, trend: '+12%' },
-  { song: 'Coração Vagabundo', plays: 35000, trend: '+8%' },
-  { song: 'Noite de Sertanejo', plays: 29000, trend: '+22%' },
-  { song: 'Chuva de Bênção', plays: 21000, trend: '+5%' },
-  { song: 'Minha Terra', plays: 18000, trend: '+3%' },
-];
+const topSongs = [];
 
-const performanceData = [
-  { subject: 'Pontualidade', A: 95 },
-  { subject: 'Qualidade', A: 88 },
-  { subject: 'Público', A: 82 },
-  { subject: 'Repertório', A: 91 },
-  { subject: 'Interação', A: 85 },
-];
+const performanceData = [];
 
 export default function ArtistMetrics() {
+  const { user } = useAuth();
+
   return (
-    <AppLayout role="artist" userName="Lucas Volta">
+    <AppLayout role="artist" userName={user?.name || ''}>
       <div className="px-4 py-5 space-y-6">
         <div>
           <h1 className="text-white font-bold text-xl">Métricas de Performance</h1>

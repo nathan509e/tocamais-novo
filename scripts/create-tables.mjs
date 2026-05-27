@@ -28,6 +28,8 @@ const statements = [
     featured BOOLEAN DEFAULT false,
     video_portfolio_urls TEXT[],
     music_playlist_urls TEXT[],
+    presentation_video_url TEXT,
+    selected_musicas_ids UUID[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
   )`,
 
