@@ -13,6 +13,7 @@ const navItems = {
     { icon: Home, label: 'Painel', path: '/artist' },
     { icon: Calendar, label: 'Agenda', path: '/artist/agenda' },
     { icon: Video, label: 'Métricas', path: '/artist/metrics' },
+    { icon: Mail, label: 'Propostas', path: '/artist/proposals' },
     { icon: Mail, label: 'Mensagens', path: '/artist/messages' },
     { icon: UserIcon, label: 'Perfil', path: '/artist/profile' },
   ],

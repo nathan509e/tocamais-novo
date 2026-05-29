@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   TrendingUp, DollarSign, Calendar, Star, Users, Music,
-  Bell, ChevronRight, CheckCircle, Clock, MapPin, Play, Pause, Mic,
-  Volume2, UploadCloud, Plus, ToggleLeft, ToggleRight, Sparkles, Check, X, ShieldAlert, Search
+  CheckCircle, Play, Pause,
+  Volume2, UploadCloud, ToggleLeft, ToggleRight, Check, X, Search
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
-import NeonButton from '../../components/ui/NeonButton';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../lib/AuthContext';
 import {
@@ -23,8 +21,6 @@ const growthData = [];
 export default function ArtistDashboard() {
   const { user, userProfile, isLoadingAuth, refreshProfile } = useAuth();
 
-  const [proposals, setProposals] = useState([]);
-  
   const [shows, setShows] = useState([]);
 
   // Audio Player State
@@ -55,6 +51,20 @@ export default function ArtistDashboard() {
   }, []);
 
   useEffect(() => {
+    async function fetchShows() {
+      if (!userProfile?.id) return;
+      const { data: showsData } = await supabase
+        .from('events')
+        .select('*')
+        .eq('artist_id', userProfile.id)
+        .eq('status', 'confirmed')
+        .order('date', { ascending: true });
+      if (showsData) setShows(showsData);
+    }
+    fetchShows();
+  }, [userProfile]);
+
+  useEffect(() => {
     if (userProfile?.selected_musicas_ids) {
       setSelectedMusicasIds(userProfile.selected_musicas_ids);
     }
@@ -82,28 +92,6 @@ export default function ArtistDashboard() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
-  };
-
-  const handleAcceptProposal = (id) => {
-    const prop = proposals.find(p => p.id === id);
-    if (!prop) return;
-    
-    // Move to shows list
-    setShows(prev => [...prev, {
-      id: prop.id,
-      venue: prop.venue,
-      date: prop.date,
-      time: '21:00',
-      city: 'São Paulo',
-      fee: prop.fee
-    }]);
-
-    // Remove from proposals
-    setProposals(prev => prev.filter(p => p.id !== id));
-  };
-
-  const handleRejectProposal = (id) => {
-    setProposals(prev => prev.filter(p => p.id !== id));
   };
 
   const handleUploadMedia = (e) => {
@@ -191,7 +179,7 @@ export default function ArtistDashboard() {
               {[
                 { title: 'Shows Feitos', val: `${shows.length} Gigs`, icon: '🎤' },
                 { title: 'Cachê Médio', val: `R$ ${(userProfile?.base_fee || 0).toLocaleString()}`, icon: '💰' },
-                { title: 'Pendentes', val: proposals.length.toString(), icon: '📩' }
+                { title: 'Pendentes', val: '0', icon: '📩' }
               ].map((item, idx) => (
                 <div key={idx} className="p-3 rounded-2xl bg-white/5 border border-white/5">
                   <div className="text-lg mb-1">{item.icon}</div>
@@ -260,44 +248,7 @@ export default function ArtistDashboard() {
 
         </div>
 
-        {/* PROPOSALS LIST */}
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-4">Propostas de Shows</h3>
-          
-          <div className="grid gap-3">
-            {proposals.length > 0 ? (
-              proposals.map(p => (
-                <div key={p.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <img src={p.avatar} alt="Proposer" className="w-12 h-12 rounded-xl object-cover" />
-                    <div>
-                      <h4 className="font-bold text-sm text-white">{p.venue}</h4>
-                      <p className="text-xs text-gray-400">Data: {p.date} • Proposta Cachê: <span className="text-neon-green font-bold">R$ {p.fee.toLocaleString()}</span></p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleRejectProposal(p.id)}
-                      className="p-2 px-3 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold transition-all"
-                    >
-                      Recusar
-                    </button>
-                    <button 
-                      onClick={() => handleAcceptProposal(p.id)}
-                      className="p-2 px-4 rounded-lg bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_10px_rgba(123,46,255,0.4)] transition-all"
-                    >
-                      Aceitar Show
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-6 text-center bg-white/5 rounded-xl border border-white/5">
-                <p className="text-gray-400 text-xs">Nenhuma proposta pendente no momento.</p>
-              </div>
-            )}
-          </div>
-        </div>
+
 
         {/* REPERTÓRIO SECTION */}
         <div>

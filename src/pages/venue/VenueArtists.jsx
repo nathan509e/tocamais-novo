@@ -12,7 +12,7 @@ import NeonButton from '../../components/ui/NeonButton';
 const genres = ['Todos', 'Sertanejo', 'Pop', 'Rock', 'Forró', 'Samba', 'Jazz', 'Eletrônico', 'MPB'];
 
 export default function VenueArtists() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -25,7 +25,7 @@ export default function VenueArtists() {
   const [maxFee, setMaxFee] = useState(10000);
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
-  const [hireForm, setHireForm] = useState({ date: '', fee: 0, message: '' });
+  const [hireForm, setHireForm] = useState({ date: '', time: '20:00', fee: 0, message: '', address: '', precisa_equipamento: false, quantidade_pessoas: 100 });
   const [hireSuccess, setHireSuccess] = useState(false);
   const [hiring, setHiring] = useState(false);
 
@@ -61,12 +61,15 @@ export default function VenueArtists() {
         title: `Show: ${selectedArtist.artistic_name}`,
         description: hireForm.message || `Evento no dia ${hireForm.date}`,
         date: hireForm.date,
-        time: '20:00',
+        time: hireForm.time || '20:00',
         duration: 120,
         status: 'pending',
         fee_proposed: hireForm.fee,
-        address: 'A definir',
-        artist_id: selectedArtist.id
+        address: hireForm.address || 'A definir',
+        precisa_equipamento: hireForm.precisa_equipamento,
+        quantidade_pessoas: hireForm.quantidade_pessoas,
+        artist_id: selectedArtist.id,
+        venue_id: userProfile?.id
       });
 
       const senderName = user?.user_metadata?.name || user?.email || 'Casa de Show';
@@ -94,7 +97,7 @@ export default function VenueArtists() {
 
   const openHireModal = (artist) => {
     setSelectedArtist(artist);
-    setHireForm({ date: '', fee: artist.base_fee || 0, message: '' });
+    setHireForm({ date: '', time: '20:00', fee: artist.base_fee || 0, message: '', address: userProfile?.address || '', precisa_equipamento: false, quantidade_pessoas: 100 });
     setHireSuccess(false);
   };
 
@@ -234,9 +237,15 @@ export default function VenueArtists() {
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Data do evento</label>
-                    <input type="date" value={hireForm.date} onChange={e => setHireForm(f => ({ ...f, date: e.target.value }))} className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Data do evento</label>
+                      <input type="date" value={hireForm.date} onChange={e => setHireForm(f => ({ ...f, date: e.target.value }))} className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`} />
+                    </div>
+                    <div>
+                      <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Horário</label>
+                      <input type="time" value={hireForm.time} onChange={e => setHireForm(f => ({ ...f, time: e.target.value }))} className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`} />
+                    </div>
                   </div>
                   <div>
                     <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Cachê proposto</label>
@@ -250,6 +259,22 @@ export default function VenueArtists() {
                       />
                     </div>
                     <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Cachê base: R$ {selectedArtist.base_fee?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Local do Evento</label>
+                    <input type="text" value={hireForm.address} onChange={e => setHireForm(f => ({ ...f, address: e.target.value }))} placeholder="Ex: Rua das Flores, 123" className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Público Médio</label>
+                      <input type="number" value={hireForm.quantidade_pessoas} onChange={e => setHireForm(f => ({ ...f, quantidade_pessoas: parseInt(e.target.value) || 0 }))} placeholder="Nº de pessoas" className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-neon-purple/50' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-neon-purple/50'}`} />
+                    </div>
+                    <div className="flex items-end pb-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={hireForm.precisa_equipamento} onChange={e => setHireForm(f => ({ ...f, precisa_equipamento: e.target.checked }))} className="w-4 h-4 rounded bg-white/5 border-white/10 text-neon-purple focus:ring-0 cursor-pointer" />
+                        <span className="text-xs text-gray-300 font-semibold">Precisa levar equipamento?</span>
+                      </label>
+                    </div>
                   </div>
                   <div>
                     <label className={`text-sm mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-600 font-bold'}`}>Mensagem</label>

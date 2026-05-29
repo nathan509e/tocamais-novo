@@ -15,6 +15,7 @@ import ArtistDashboard from './pages/artist/ArtistDashboard';
 import ArtistAgenda from './pages/artist/ArtistAgenda';
 import ArtistMetrics from './pages/artist/ArtistMetrics';
 import ArtistProfile from './pages/artist/ArtistProfile';
+import ArtistProposals from './pages/artist/ArtistProposals';
 import ContractorDashboard from './pages/contractor/ContractorDashboard';
 import ContractorSearch from './pages/contractor/ContractorSearch';
 import ContractorFavorites from './pages/contractor/ContractorFavorites';
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
       <Route path="/artist/agenda" element={<ArtistAgenda />} />
       <Route path="/artist/metrics" element={<ArtistMetrics />} />
       <Route path="/artist/profile" element={<ArtistProfile />} />
+      <Route path="/artist/proposals" element={<ArtistProposals />} />
       <Route path="/artist/messages" element={<MessagesPage role="artist" />} />
 
       {/* Venue Routes */}

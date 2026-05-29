@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Heart, Star, MapPin, Music, CheckCircle, Calendar, Sparkles,
-  X, SlidersHorizontal, Plus, Trash2, ListMusic, Volume2, ShieldAlert
+  X, SlidersHorizontal, Plus, Trash2, ListMusic, Volume2, ShieldAlert,
+  FileText, DollarSign
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
@@ -53,7 +54,7 @@ const budgetTiers = {
 };
 
 export default function ContractorDashboard() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [artists, setArtists] = useState([]);
@@ -74,10 +75,18 @@ export default function ContractorDashboard() {
   // Booking Form Modal State
   const [bookingArtist, setBookingArtist] = useState(null);
   const [eventDate, setEventDate] = useState('2026-06-12');
+  const [eventTime, setEventTime] = useState('20:00');
   const [eventAddress, setEventAddress] = useState('');
   const [proposalFee, setProposalFee] = useState(0);
   const [eventDetails, setEventDetails] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [precisaEquipamento, setPrecisaEquipamento] = useState(false);
+  const [quantidadePessoas, setQuantidadePessoas] = useState(50);
+
+  // Proposals panel state
+  const [contractorProposals, setContractorProposals] = useState([]);
+  const [contractorProposalsLoading, setContractorProposalsLoading] = useState(true);
+  const [proposalArtistMap, setProposalArtistMap] = useState({});
 
   useEffect(() => {
     async function loadArtists() {
@@ -132,7 +141,11 @@ export default function ContractorDashboard() {
 
   const handleOpenBooking = (artist) => {
     setBookingArtist(artist);
+    setEventDate('2026-06-12');
+    setEventTime('20:00');
     setProposalFee(artist.base_fee);
+    setPrecisaEquipamento(false);
+    setQuantidadePessoas(50);
     setBookingSuccess(false);
   };
 
@@ -141,12 +154,15 @@ export default function ContractorDashboard() {
       title: `Show Particular: ${bookingArtist.artistic_name}`,
       description: eventDetails || `Evento particular categoria ${selectedEvent}`,
       date: eventDate,
-      time: '20:00',
+      time: eventTime || '20:00',
       duration: 120,
       status: 'pending',
       fee_proposed: proposalFee,
       address: eventAddress || 'Salão de Festas, São Paulo',
-      artist_id: bookingArtist.id
+      precisa_equipamento: precisaEquipamento,
+      quantidade_pessoas: quantidadePessoas,
+      artist_id: bookingArtist.id,
+      contractor_id: userProfile?.id
     };
 
     try {
@@ -171,6 +187,51 @@ export default function ContractorDashboard() {
       setBookingSuccess(true);
     } catch (e) {
       console.error('Failed to book', e);
+    }
+  };
+
+  // Fetch contractor proposals
+  const fetchContractorProposals = async () => {
+    if (!userProfile?.id) { setContractorProposalsLoading(false); return; }
+    try {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('contractor_id', userProfile.id)
+        .in('status', ['pending', 'pending_artist_approval', 'proposed', 'confirmed', 'rejected'])
+        .order('date', { ascending: false });
+      if (data) {
+        const artistIds = [...new Set(data.map(p => p.artist_id).filter(Boolean))];
+        let artists = {};
+        if (artistIds.length > 0) {
+          const { data: artistsData } = await supabase
+            .from('artists')
+            .select('id, artistic_name, photo_url, genre')
+            .in('id', artistIds);
+          if (artistsData) {
+            artists = artistsData.reduce((acc, a) => { acc[a.id] = a; return acc; }, {});
+          }
+        }
+        setProposalArtistMap(artists);
+        setContractorProposals(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setContractorProposalsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContractorProposals();
+  }, [userProfile]);
+
+  const handleDeleteContractorProposal = async (proposalId) => {
+    try {
+      await supabase.from('events').delete().eq('id', proposalId);
+      setContractorProposals(prev => prev.filter(p => p.id !== proposalId));
+    } catch (err) {
+      console.error('Erro ao deletar proposta:', err);
     }
   };
 
@@ -250,6 +311,76 @@ export default function ContractorDashboard() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* PROPOSTAS ENVIADAS */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-neon-purple" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Propostas Enviadas</h3>
+              {!contractorProposalsLoading && (
+                <span className="text-[10px] text-gray-500 font-semibold">({contractorProposals.length})</span>
+              )}
+            </div>
+          </div>
+
+          {contractorProposalsLoading ? (
+            <div className="h-24 flex items-center justify-center bg-white/5 rounded-2xl border border-white/5">
+              <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : contractorProposals.length === 0 ? (
+            <div className="p-6 text-center bg-white/5 rounded-2xl border border-white/5">
+              <p className="text-gray-500 text-xs">Nenhuma proposta enviada ainda.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 mb-8">
+              {contractorProposals.map(p => {
+                const artist = proposalArtistMap[p.artist_id];
+                const statusConfig = {
+                  pending: { label: 'Pendente', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
+                  pending_artist_approval: { label: 'Aguardando Artista', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
+                  proposed: { label: 'Proposto', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
+                  confirmed: { label: 'Aceito', color: 'text-neon-green bg-neon-green/10 border-neon-green/20' },
+                  rejected: { label: 'Recusado', color: 'text-red-400 bg-red-400/10 border-red-400/20' },
+                };
+                const sc = statusConfig[p.status] || { label: p.status, color: 'text-gray-400 bg-white/5 border-white/10' };
+                return (
+                  <div key={p.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-4 hover:border-white/10 transition-all">
+                    <img
+                      src={artist?.photo_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop'}
+                      alt={artist?.artistic_name || 'Artista'}
+                      className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white truncate">{artist?.artistic_name || 'Artista'}</h4>
+                        {artist?.genre && <span className="text-[10px] text-gray-500 hidden sm:inline">{artist.genre}</span>}
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        {p.time && <> às {p.time.substring(0, 5)}</>}
+                        <span className="mx-1.5 text-gray-600">•</span>
+                        R$ {Number(p.fee_proposed).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${sc.color}`}>
+                        {sc.label}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteContractorProposal(p.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-all"
+                        title="Excluir proposta"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* CONTENT SPLIT: LISTINGS & EVENT PLAYLISTS */}
         <div className="grid lg:grid-cols-3 gap-8">
@@ -413,16 +544,27 @@ export default function ContractorDashboard() {
                       </div>
                     </div>
  
-                    <div>
-                      <label className="text-xs text-gray-400 font-bold block mb-1">Data Desejada</label>
-                      <input 
-                        type="date" 
-                        value={eventDate}
-                        onChange={e => setEventDate(e.target.value)}
-                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-400 font-bold block mb-1">Data Desejada</label>
+                        <input 
+                          type="date" 
+                          value={eventDate}
+                          onChange={e => setEventDate(e.target.value)}
+                          className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 font-bold block mb-1">Horário</label>
+                        <input 
+                          type="time" 
+                          value={eventTime}
+                          onChange={e => setEventTime(e.target.value)}
+                          className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                        />
+                      </div>
                     </div>
- 
+  
                     <div>
                       <label className="text-xs text-gray-400 font-bold block mb-1">Local do Evento</label>
                       <input 
@@ -443,7 +585,31 @@ export default function ContractorDashboard() {
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-neon-green font-bold" 
                       />
                     </div>
- 
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-400 font-bold block mb-1">Público Médio</label>
+                        <input 
+                          type="number"
+                          value={quantidadePessoas}
+                          onChange={e => setQuantidadePessoas(parseInt(e.target.value) || 0)}
+                          placeholder="Nº de pessoas"
+                          className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                        />
+                      </div>
+                      <div className="flex items-end pb-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            checked={precisaEquipamento}
+                            onChange={e => setPrecisaEquipamento(e.target.checked)}
+                            className="w-4 h-4 rounded bg-white/5 border-white/10 text-neon-purple focus:ring-0 cursor-pointer"
+                          />
+                          <span className="text-xs text-gray-300 font-semibold">Precisa levar equipamento?</span>
+                        </label>
+                      </div>
+                    </div>
+  
                     <div>
                       <label className="text-xs text-gray-400 font-bold block mb-1">Detalhes Adicionais</label>
                       <textarea 

@@ -5,7 +5,8 @@ import {
   TrendingUp, TrendingDown, DollarSign, Users, Calendar, Music,
   Star, ChevronRight, Flame, Clock, BarChart3, ArrowRight,
   SlidersHorizontal, CheckCircle, Shield, Play, MessageSquare,
-  Sparkles, FileText, Send, Landmark, X, Filter, Check, Award, Edit3
+  Sparkles, FileText, Send, Landmark, X, Filter, Check, Award, Edit3,
+  CalendarCheck, Trash2
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
@@ -65,6 +66,22 @@ export default function VenueDashboard() {
   const [paymentDone, setPaymentDone] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [eventMessage, setEventMessage] = useState('');
+  const [eventAddress, setEventAddress] = useState('');
+  const [precisaEquipamento, setPrecisaEquipamento] = useState(false);
+  const [quantidadePessoas, setQuantidadePessoas] = useState(100);
+
+  // Proposals state
+  const [proposals, setProposals] = useState([]);
+  const [proposalsLoading, setProposalsLoading] = useState(true);
+  const [proposalArtistsMap, setProposalArtistsMap] = useState({});
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState('painel');
+
+  // Confirmed shows state
+  const [confirmedShows, setConfirmedShows] = useState([]);
+  const [confirmedShowsLoading, setConfirmedShowsLoading] = useState(true);
+  const [confirmedArtistsMap, setConfirmedArtistsMap] = useState({});
 
   // Fetch Artists
   useEffect(() => {
@@ -82,6 +99,93 @@ export default function VenueDashboard() {
     }
     loadArtists();
   }, []);
+
+  // Fetch proposals sent by this venue
+  const fetchProposals = async () => {
+    if (!userProfile?.id) { setProposalsLoading(false); return; }
+    try {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('venue_id', userProfile.id)
+        .in('status', ['pending', 'pending_artist_approval', 'proposed', 'confirmed', 'rejected'])
+        .order('date', { ascending: false });
+      if (data) {
+        const artistIds = [...new Set(data.map(p => p.artist_id).filter(Boolean))];
+        let artists = {};
+        if (artistIds.length > 0) {
+          const { data: artistsData } = await supabase
+            .from('artists')
+            .select('id, artistic_name, photo_url, genre')
+            .in('id', artistIds);
+          if (artistsData) {
+            artists = artistsData.reduce((acc, a) => { acc[a.id] = a; return acc; }, {});
+          }
+        }
+        setProposalArtistsMap(artists);
+        setProposals(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProposalsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProposals();
+  }, [userProfile]);
+
+  // Fetch confirmed shows for this venue
+  const fetchConfirmedShows = async () => {
+    if (!userProfile?.id) { setConfirmedShowsLoading(false); return; }
+    try {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('venue_id', userProfile.id)
+        .eq('status', 'confirmed')
+        .order('date', { ascending: false });
+      if (data) {
+        const artistIds = [...new Set(data.map(p => p.artist_id).filter(Boolean))];
+        let artists = {};
+        if (artistIds.length > 0) {
+          const { data: artistsData } = await supabase
+            .from('artists')
+            .select('id, artistic_name, photo_url, genre')
+            .in('id', artistIds);
+          if (artistsData) {
+            artists = artistsData.reduce((acc, a) => { acc[a.id] = a; return acc; }, {});
+          }
+        }
+        setConfirmedArtistsMap(artists);
+        setConfirmedShows(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setConfirmedShowsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchConfirmedShows();
+  }, [userProfile]);
+
+  const handleDeleteProposal = async (proposalId) => {
+    try {
+      await supabase.from('events').delete().eq('id', proposalId);
+      setProposals(prev => prev.filter(p => p.id !== proposalId));
+    } catch (err) {
+      console.error('Erro ao deletar proposta:', err);
+    }
+  };
+
+  // Poll for proposal status changes
+  useEffect(() => {
+    const interval = setInterval(fetchProposals, 5000);
+    return () => clearInterval(interval);
+  }, [userProfile]);
 
   // Filtered artists logic
   const filteredArtists = artists.filter(artist => {
@@ -113,6 +217,9 @@ export default function VenueDashboard() {
     setChatHistory([
       { sender: 'artist', text: `Olá! Fico muito feliz pelo interesse. Meu cachê padrão para São Paulo é de R$ ${artist.base_fee.toLocaleString()}, com som e equipamentos inclusos. O que acha?` }
     ]);
+    setEventAddress(userProfile?.address || '');
+    setPrecisaEquipamento(false);
+    setQuantidadePessoas(100);
     setSigned(false);
     setPaymentDone(false);
     setEventMessage('');
@@ -133,8 +240,11 @@ export default function VenueDashboard() {
         duration: 120,
         status: 'pending',
         fee_proposed: proposalFee,
-        address: 'A definir',
-        artist_id: hiringArtist.id
+        address: eventAddress || 'A definir',
+        precisa_equipamento: precisaEquipamento,
+        quantidade_pessoas: quantidadePessoas,
+        artist_id: hiringArtist.id,
+        venue_id: userProfile.id
       }).select();
       console.log('events insert result:', { eventData, eventErr });
 
@@ -203,16 +313,46 @@ export default function VenueDashboard() {
             <p className="text-gray-400 text-xs mt-1">Gestão inteligente e contratação rápida de música ao vivo</p>
           </div>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-neon-purple"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span>Filtros Avançados</span>
-            </button>
+            {activeTab === 'painel' && (
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-neon-purple"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Filtros Avançados</span>
+              </button>
+            )}
           </div>
         </div>
 
+        {/* TAB NAVIGATION */}
+        <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/5 w-fit">
+          <button
+            onClick={() => setActiveTab('painel')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'painel'
+                ? 'bg-neon-purple text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Painel</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('shows')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'shows'
+                ? 'bg-neon-purple text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <CalendarCheck className="w-4 h-4" />
+            <span>Shows Agendados</span>
+          </button>
+        </div>
+
+        {activeTab === 'painel' ? (
+          <>
         {/* EDIT VENUE PROFILE */}
         {!isEditingVenue ? (
           <button
@@ -386,6 +526,76 @@ export default function VenueDashboard() {
           <StatCard title="Artistas contratados" value="0" change={0} changeLabel="novos músicos" icon={Music} iconColor="purple" />
           <StatCard title="Eventos futuros" value="0" icon={Calendar} iconColor="green" />
           <StatCard title="Ocupação média" value="0%" change={0} icon={Users} iconColor="purple" />
+        </div>
+
+        {/* PROPOSTAS ENVIADAS */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-neon-purple" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Propostas Enviadas</h3>
+              {!proposalsLoading && (
+                <span className="text-[10px] text-gray-500 font-semibold">({proposals.length})</span>
+              )}
+            </div>
+          </div>
+
+          {proposalsLoading ? (
+            <div className="h-32 flex items-center justify-center bg-white/5 rounded-2xl border border-white/5">
+              <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : proposals.length === 0 ? (
+            <div className="p-6 text-center bg-white/5 rounded-2xl border border-white/5">
+              <p className="text-gray-500 text-xs">Nenhuma proposta enviada ainda. Comece contratando artistas acima!</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {proposals.map(p => {
+                const artist = proposalArtistsMap[p.artist_id];
+                const statusConfig = {
+                  pending: { label: 'Pendente', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
+                  pending_artist_approval: { label: 'Aguardando Artista', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
+                  proposed: { label: 'Proposto', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
+                  confirmed: { label: 'Aceito', color: 'text-neon-green bg-neon-green/10 border-neon-green/20' },
+                  rejected: { label: 'Recusado', color: 'text-red-400 bg-red-400/10 border-red-400/20' },
+                };
+                const sc = statusConfig[p.status] || { label: p.status, color: 'text-gray-400 bg-white/5 border-white/10' };
+                return (
+                  <div key={p.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-4 hover:border-white/10 transition-all">
+                    <img
+                      src={artist?.photo_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop'}
+                      alt={artist?.artistic_name || 'Artista'}
+                      className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white truncate">{artist?.artistic_name || 'Artista'}</h4>
+                        {artist?.genre && <span className="text-[10px] text-gray-500 hidden sm:inline">{artist.genre}</span>}
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        {p.time && <> às {p.time.substring(0, 5)}</>}
+                        <span className="mx-1.5 text-gray-600">•</span>
+                        R$ {Number(p.fee_proposed).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${sc.color}`}>
+                        {sc.label}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteProposal(p.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-all"
+                        title="Excluir proposta"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ADVANCED FILTERS PANEL */}
@@ -699,6 +909,77 @@ export default function VenueDashboard() {
 
         </div>
 
+          </>
+        ) : (
+          <>
+        {/* SHOWS AGENDADOS */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="w-4 h-4 text-neon-green" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Shows Agendados</h3>
+              {confirmedShows.length > 0 && (
+                <span className="text-[10px] text-gray-500 font-semibold">({confirmedShows.length})</span>
+              )}
+            </div>
+          </div>
+
+          {confirmedShowsLoading ? (
+            <div className="h-40 flex items-center justify-center bg-white/5 rounded-2xl border border-white/5">
+              <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : confirmedShows.length === 0 ? (
+            <div className="p-8 text-center bg-white/5 rounded-2xl border border-white/5">
+              <CalendarCheck className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm font-semibold">Nenhum show agendado ainda</p>
+              <p className="text-gray-500 text-xs mt-1">As propostas aceitas pelos artistas aparecerão aqui.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {confirmedShows.map(s => {
+                const artist = confirmedArtistsMap[s.artist_id];
+                const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                return (
+                  <div key={s.id} className="p-5 bg-white/5 border border-neon-green/10 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-4 hover:border-neon-green/20 transition-all">
+                    <img
+                      src={artist?.photo_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop'}
+                      alt={artist?.artistic_name || 'Artista'}
+                      className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-white">{artist?.artistic_name || 'Artista'}</h4>
+                        <CheckCircle className="w-4 h-4 text-neon-green" />
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-neon-green/10 text-neon-green border border-neon-green/20">Confirmado</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{artist?.genre || ''}</p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-neon-green" /> {formattedDate}
+                          {s.time && <> às {s.time.substring(0, 5)}</>}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-neon-green" /> {s.address || 'Local não informado'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="w-3.5 h-3.5 text-neon-green" /> R$ {Number(s.fee_proposed || s.fee_agreed).toLocaleString('pt-BR')}
+                        </span>
+                        {s.quantidade_pessoas && (
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-neon-green" /> {s.quantidade_pessoas} pessoas
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+          </>
+        )}
+
         {/* STEP-BY-STEP HIRING FLOW MODAL */}
         <AnimatePresence>
           {hiringArtist && (
@@ -782,6 +1063,41 @@ export default function VenueDashboard() {
                         onChange={e => setProposalFee(parseInt(e.target.value))}
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
                       />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-400 font-bold block mb-1">Local do Evento</label>
+                      <input 
+                        type="text"
+                        value={eventAddress}
+                        onChange={e => setEventAddress(e.target.value)}
+                        placeholder="Ex: Rua das Flores, 123 - Pinheiros"
+                        className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-400 font-bold block mb-1">Público Médio</label>
+                        <input 
+                          type="number"
+                          value={quantidadePessoas}
+                          onChange={e => setQuantidadePessoas(parseInt(e.target.value) || 0)}
+                          placeholder="Nº de pessoas"
+                          className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs" 
+                        />
+                      </div>
+                      <div className="flex items-end pb-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            checked={precisaEquipamento}
+                            onChange={e => setPrecisaEquipamento(e.target.checked)}
+                            className="w-4 h-4 rounded bg-white/5 border-white/10 text-neon-purple focus:ring-0 cursor-pointer"
+                          />
+                          <span className="text-xs text-gray-300 font-semibold">Precisa levar equipamento?</span>
+                        </label>
+                      </div>
                     </div>
 
                     <div>

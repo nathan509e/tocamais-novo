@@ -48,7 +48,23 @@ const initialDb = {
   events: [
     { id: 'evt-1', title: 'Sertanejo Universitário', description: 'Show principal Lucas Volta', date: '2026-05-20', time: '21:00', duration: 120, status: 'confirmed', fee_proposed: 1800, fee_agreed: 1800, address: 'Rua das Flores, 123 - Pinheiros', venue_id: 'ven-1', artist_id: 'art-1', contractor_id: null },
     { id: 'evt-2', title: 'Sunset Party', description: 'Sunset Acoustic Pop', date: '2026-05-23', time: '17:00', duration: 180, status: 'pending', fee_proposed: 2200, fee_agreed: null, address: 'Praia de Maresias, 500', venue_id: null, artist_id: 'art-1', contractor_id: 'con-1' },
-    { id: 'evt-3', title: 'Aniversário da Maria', description: 'Show particular pop', date: '2026-05-30', time: '20:00', duration: 120, status: 'proposed', fee_proposed: 2000, fee_agreed: null, address: 'Salão de Festas Jardins', venue_id: null, artist_id: 'art-4', contractor_id: 'con-1' }
+    { id: 'evt-3', title: 'Aniversário da Maria', description: 'Show particular pop', date: '2026-05-30', time: '20:00', duration: 120, status: 'proposed', fee_proposed: 2000, fee_agreed: null, address: 'Salão de Festas Jardins', venue_id: null, artist_id: 'art-4', contractor_id: 'con-1' },
+    { 
+      id: 'evt-test-proposal', 
+      title: 'Sextaneja no Bar do João', 
+      description: 'Show de Sertanejo Universitário animado', 
+      date: '2026-06-12', 
+      time: '21:00:00', 
+      duration: 120, 
+      status: 'pending_artist_approval', 
+      fee_proposed: 3500, 
+      fee_agreed: null, 
+      address: 'Rua das Flores, 123 - Pinheiros', 
+      venue_id: 'ven-1', 
+      artist_id: 'art-1', 
+      contractor_id: null,
+      message: 'Olá Lucas Volta! Vimos o seu perfil no TocaMais e ficamos impressionados com o seu engajamento e repertório. Gostaríamos muito de contratá-lo para comandar a nossa "Sextaneja" no dia 12 de Junho no Bar do João. Oferecemos um cachê de R$ 3.500 com toda a estrutura de som inclusa!'
+    }
   ],
   contracts: [],
   payments: [
@@ -124,6 +140,16 @@ Object.keys(initialDb).forEach(k => {
   db[k] = loadStorage(k, initialDb[k]);
 });
 
+// Force insert the test proposal if it is not present in local storage (guarantees simulator matches expectations)
+const hasTestProposal = db.events?.some(e => e.id === 'evt-test-proposal');
+if (!hasTestProposal && db.events) {
+  const testProposal = initialDb.events.find(e => e.id === 'evt-test-proposal');
+  if (testProposal) {
+    db.events.push(testProposal);
+    saveStorage('events', db.events);
+  }
+}
+
 // A robust mock chain builder to emulate Supabase's fluent API
 class MockSupabaseQueryBuilder {
   constructor(tableName) {
@@ -145,6 +171,11 @@ class MockSupabaseQueryBuilder {
 
   neq(column, value) {
     this.filters.push({ column, value, type: 'neq' });
+    return this;
+  }
+
+  in(column, values) {
+    this.filters.push({ column, value: values, type: 'in' });
     return this;
   }
 
@@ -191,6 +222,9 @@ class MockSupabaseQueryBuilder {
         filtered = filtered.filter(row => row[f.column] === f.value);
       } else if (f.type === 'neq') {
         filtered = filtered.filter(row => row[f.column] !== f.value);
+      } else if (f.type === 'in') {
+        const set = new Set(f.value || []);
+        filtered = filtered.filter(row => set.has(row[f.column]));
       }
     });
 

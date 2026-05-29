@@ -29,6 +29,9 @@
 
     --neon-purple: #7B2EFF;
     --neon-green: #39FF6A;
+
+    --google-sync-gradient-from: #0c1f2e;
+    --google-sync-gradient-to: #08041A;
   }
 
   * {
@@ -299,4 +302,9 @@
 
 .light .border-app-dark {
   border-color: #F4F5FA !important;
+}
+
+.light {
+  --google-sync-gradient-from: #EBE8FC;
+  --google-sync-gradient-to: #FFFFFF;
 }

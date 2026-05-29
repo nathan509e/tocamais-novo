@@ -67,10 +67,12 @@ CREATE TABLE IF NOT EXISTS public.events (
     date DATE NOT NULL,
     time TIME NOT NULL,
     duration INTEGER DEFAULT 120, -- in minutes
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'proposed', 'confirmed', 'completed', 'cancelled')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'proposed', 'confirmed', 'completed', 'cancelled', 'rejected', 'pending_artist_approval')),
     fee_proposed NUMERIC(10, 2) NOT NULL,
     fee_agreed NUMERIC(10, 2),
     address TEXT NOT NULL,
+    precisa_equipamento BOOLEAN DEFAULT false,
+    quantidade_pessoas INTEGER DEFAULT 0,
     venue_id UUID REFERENCES public.venues(id) ON DELETE SET NULL,
     contractor_id UUID REFERENCES public.contractors(id) ON DELETE SET NULL,
     artist_id UUID REFERENCES public.artists(id) ON DELETE CASCADE,
@@ -231,6 +233,12 @@ ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS id UUID PRIMARY KEY DEFAUL
 ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.users(id) ON DELETE CASCADE;
 ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE CASCADE;
 ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS precisa_equipamento BOOLEAN DEFAULT false;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS quantidade_pessoas INTEGER DEFAULT 0;
+-- Update status CHECK constraint to include rejected and pending_artist_approval
+ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_status_check;
+ALTER TABLE public.events ADD CONSTRAINT events_status_check CHECK (status IN ('pending', 'proposed', 'confirmed', 'completed', 'cancelled', 'rejected', 'pending_artist_approval'));
 
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS id UUID PRIMARY KEY DEFAULT gen_random_uuid();
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS title TEXT;
