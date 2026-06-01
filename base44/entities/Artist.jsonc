@@ -89,6 +89,9 @@
     },
     "upcoming_shows": {
       "type": "integer"
+    },
+    "pix_key": {
+      "type": "string"
     }
   },
   "required": [

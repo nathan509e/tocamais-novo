@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Star, CheckCircle, MapPin, Music, Users, Instagram, Share2,
-  Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles
+  Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles, Wallet
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
@@ -22,11 +22,13 @@ export default function ArtistProfile() {
   
   const [artistProfile, setArtistProfile] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoFile, setVideoFile] = useState(null);
   const [isEditingVideo, setIsEditingVideo] = useState(false);
   const [selectedMusicas, setSelectedMusicas] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ photo_url: '', cover_url: '', artistic_name: '', bio: '', genre: '', city: '', base_fee: 0 });
+  const [editForm, setEditForm] = useState({ photo_url: '', cover_url: '', artistic_name: '', bio: '', genre: '', city: '', base_fee: 0, pix_key: '' });
   const [saveStatus, setSaveStatus] = useState('');
+  const [pixKey, setPixKey] = useState('');
 
   const handleImageUpload = async (file, type) => {
     const fileExt = file.name.split('.').pop();
@@ -93,7 +95,8 @@ export default function ArtistProfile() {
         if (artistData) {
           setArtistProfile(artistData);
           setVideoUrl(artistData.presentation_video_url || '');
-          setEditForm({ photo_url: artistData.photo_url || '', cover_url: artistData.cover_url || '', artistic_name: artistData.artistic_name || '', bio: artistData.bio || '', genre: artistData.genre || '', city: artistData.city || '', base_fee: artistData.base_fee || 0 });
+          setEditForm({ photo_url: artistData.photo_url || '', cover_url: artistData.cover_url || '', artistic_name: artistData.artistic_name || '', bio: artistData.bio || '', genre: artistData.genre || '', city: artistData.city || '', base_fee: artistData.base_fee || 0, pix_key: artistData.pix_key || '' });
+          setPixKey(artistData.pix_key || '');
         }
       }
     }
@@ -111,20 +114,47 @@ export default function ArtistProfile() {
     loadRepertorio();
   }, [artistProfile]);
 
+  useEffect(() => {
+    if (!isEditingVideo && artistProfile) {
+      setVideoUrl(artistProfile.presentation_video_url || '');
+      setVideoFile(null);
+    }
+  }, [isEditingVideo, artistProfile]);
+
   const handleSaveVideo = async () => {
     if (!user) return;
     try {
+      let finalVideoUrl = videoUrl;
+      
+      if (videoFile) {
+        const fileExt = videoFile.name.split('.').pop();
+        const fileName = `video_${user.id}_${Date.now()}.${fileExt}`;
+        const { data, error: uploadErr } = await supabase.storage.from('media').upload(`videos/${fileName}`, videoFile);
+        if (uploadErr) throw uploadErr;
+        finalVideoUrl = supabase.storage.from('media').getPublicUrl(`videos/${fileName}`).data.publicUrl;
+      }
+      
       await supabase.from('artists').update({
-        presentation_video_url: videoUrl
+        presentation_video_url: finalVideoUrl
       }).eq('user_id', user.id);
       
       setArtistProfile(prev => ({
         ...prev,
-        presentation_video_url: videoUrl
+        presentation_video_url: finalVideoUrl
       }));
+      setVideoUrl(finalVideoUrl);
+      setVideoFile(null);
       setIsEditingVideo(false);
     } catch (err) {
       console.error(err);
+    }
+  };
+  
+  const handleVideoFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setVideoFile(file);
+      setVideoUrl(URL.createObjectURL(file));
     }
   };
 
@@ -299,6 +329,17 @@ export default function ArtistProfile() {
                   }`}
                 />
               </div>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold block mb-1">Chave PIX (para receber gorjetas)</label>
+                <input type="text" value={editForm.pix_key}
+                  onChange={e => setEditForm(f => ({ ...f, pix_key: e.target.value }))}
+                  onBlur={e => saveProfileField('pix_key', e.target.value)}
+                  placeholder="CPF, email, telefone ou chave aleatória"
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                    isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                />
+              </div>
               {saveStatus && (
                 <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
               )}
@@ -363,15 +404,38 @@ export default function ArtistProfile() {
             {isEditingVideo ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-[10px] text-gray-400 font-bold block mb-1">URL do Vídeo (MP4, YouTube, Vimeo, etc.)</label>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">Selecione um vídeo do seu dispositivo</label>
                   <input 
-                    type="text" 
-                    value={videoUrl}
-                    onChange={e => setVideoUrl(e.target.value)}
-                    placeholder="Ex: https://assets.mixkit.co/videos/preview/mixkit-singing-into-a-microphone-41712-large.mp4"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoFileChange}
                     className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
                       isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
                     }`}
+                  />
+                </div>
+                {videoFile && (
+                  <p className="text-xs text-neon-green">Vídeo selecionado: {videoFile.name}</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-white/10"></div>
+                  <span className="text-[10px] text-gray-500">ou</span>
+                  <div className="flex-1 h-px bg-white/10"></div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">URL do Vídeo (YouTube, Vimeo, etc.)</label>
+                  <input 
+                    type="text" 
+                    value={videoUrl}
+                    onChange={e => {
+                      setVideoUrl(e.target.value);
+                      setVideoFile(null);
+                    }}
+                    placeholder="Ex: https://youtube.com/watch?v=..."
+                    disabled={!!videoFile}
+                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                      videoFile ? 'opacity-50' : ''
+                    } ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
                   />
                 </div>
                 <button 
@@ -382,20 +446,31 @@ export default function ArtistProfile() {
                 </button>
               </div>
             ) : (
-              <div className="aspect-video rounded-xl overflow-hidden bg-black/40 relative border border-white/5">
+              <div className="rounded-xl overflow-hidden bg-black/40 relative border border-white/5">
                 {videoUrl ? (
                   videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
-                    <iframe 
-                      src={videoUrl.replace('watch?v=', 'embed/').split('&')[0]} 
-                      className="w-full h-full" 
-                      allowFullScreen 
-                      title="Vídeo de Apresentação"
-                    />
+                    <div className="w-full flex justify-center">
+                      <div style={{ aspectRatio: '9/16', width: '100%', maxWidth: '280px' }}>
+                        <iframe 
+                          src={videoUrl.replace('watch?v=', 'embed/').split('&')[0] + '?aspect_ratio=9:16'} 
+                          className="w-full h-full" 
+                          allowFullScreen 
+                          title="Vídeo de Apresentação"
+                        />
+                      </div>
+                    </div>
                   ) : (
-                    <video src={videoUrl} controls className="w-full h-full object-cover" />
+                    <div className="w-full flex justify-center">
+                      <video 
+                        src={videoUrl} 
+                        controls 
+                        className="max-h-[70vh]"
+                        style={{ width: 'auto', aspectRatio: '9/16', maxWidth: '280px' }} 
+                      />
+                    </div>
                   )
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                  <div className="flex flex-col items-center justify-center p-6 text-center">
                     <p className="text-xs text-gray-500">Nenhum vídeo cadastrado. Clique em 'Alterar Vídeo' para compartilhar seu trabalho!</p>
                   </div>
                 )}
@@ -457,6 +532,29 @@ export default function ArtistProfile() {
               <Heart className="w-4 h-4 text-gray-500" />
             </NeonButton>
           </div>
+
+          {/* Tip Card */}
+          {(artistProfile?.pix_key || user?.id === artistProfile?.user_id) && (
+            <a
+              href={user?.id === artistProfile?.user_id ? '/artist/tip/' + user.id : '/artist/tip/' + artistProfile?.user_id}
+              className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
+                isDark ? 'bg-white/5 border-white/5 hover:border-neon-green/30' : 'bg-white border-gray-200 hover:border-neon-green/30'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-xl bg-neon-green/20 flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-neon-green" />
+              </div>
+              <div className="flex-1">
+                <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Dar Gorjeta
+                </p>
+                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Acompanhe esse artista no seu.show
+                </p>
+              </div>
+              <div className="text-neon-green text-2xl">→</div>
+            </a>
+          )}
 
           {/* Mini Player */}
           <div className={`flex items-center gap-4 p-4 rounded-2xl border ${

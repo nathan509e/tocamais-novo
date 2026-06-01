@@ -26,6 +26,8 @@ import Profile from './pages/Profile';
 import Messages from './pages/Messages';
 import ContractorProfile from './pages/contractor/ContractorProfile';
 import MessagesPage from './pages/shared/MessagesPage';
+import ArtistTip from './pages/artist/ArtistTip';
+import ArtistRequests from './pages/artist/ArtistRequests';
 
 const AuthenticatedApp = () => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
@@ -77,6 +79,8 @@ const AuthenticatedApp = () => {
       <Route path="/artist/profile" element={<ArtistProfile />} />
       <Route path="/artist/proposals" element={<ArtistProposals />} />
       <Route path="/artist/messages" element={<MessagesPage role="artist" />} />
+      <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
+      <Route path="/artist/requests" element={<ArtistRequests />} />
 
       {/* Venue Routes */}
       <Route path="/venue" element={<VenueDashboard />} />

@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import { GoogleTokenService } from './googleTokenService';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const REDIRECT_URI = `${window.location.origin}/oauth-callback.html`;
+const SCOPES = 'openid profile email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
 
 const GoogleOAuthContext = createContext();
 
@@ -21,8 +24,46 @@ export function GoogleOAuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const handleTokenReceived = useCallback(async (token) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const userInfo = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setAccessToken(token);
+      setGoogleUser(userInfo.data);
+      setIsGoogleConnected(true);
+
+      localStorage.setItem('tocamais_google_token', token);
+      localStorage.setItem('tocamais_google_user', JSON.stringify(userInfo.data));
+      localStorage.setItem('tocamais_google_expires_in', '3600');
+
+      const expiresAt = new Date().getTime() + 3600 * 1000;
+      localStorage.setItem('tocamais_google_expires_at', expiresAt.toString());
+    } catch (err) {
+      console.error('Erro ao fazer login com Google:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'GOOGLE_OAUTH_TOKEN' && event.data.accessToken) {
+        handleTokenReceived(event.data.accessToken);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [handleTokenReceived]);
+
   // Recuperar token do Supabase ao inicializar
-  React.useEffect(() => {
+  useEffect(() => {
     const loadTokenFromStorage = async () => {
       try {
         const savedTokenId = localStorage.getItem('tocamais_google_token_id');
@@ -32,14 +73,12 @@ export function GoogleOAuthProvider({ children }) {
           setTokenId(savedTokenId);
           setGoogleUser(JSON.parse(savedUser));
           
-          // Validar e renovar token se necessário
           const validToken = await GoogleTokenService.getValidAccessToken(savedTokenId);
           setAccessToken(validToken);
           setIsGoogleConnected(true);
         }
       } catch (err) {
         console.error('Erro ao carregar token do Supabase:', err);
-        // Limpar storage se houver erro
         localStorage.removeItem('tocamais_google_token_id');
         localStorage.removeItem('tocamais_google_user');
       }
@@ -48,62 +87,20 @@ export function GoogleOAuthProvider({ children }) {
     loadTokenFromStorage();
   }, []);
 
-  // Configurar Google Login
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (codeResponse) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Obter informações do usuário
-        const userInfo = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: {
-            Authorization: `Bearer ${codeResponse.access_token}`
-          }
-        });
-
-        // Aqui você precisaria do artistId - você pode obter do seu contexto de autenticação
-        // Por enquanto, vou usar um placeholder
-        const artistId = localStorage.getItem('tocamais_artist_id') || userInfo.data.id;
-
-        // Trocar código por tokens no backend (Supabase)
-        // OBS: Você precisaria implementar uma edge function no Supabase para isso
-        // Por enquanto, vamos armazenar o access token localmente (não ideal para produção)
-        
-        // Salvar informações no contexto
-        setAccessToken(codeResponse.access_token);
-        setGoogleUser(userInfo.data);
-        setIsGoogleConnected(true);
-
-        // Persistir no localStorage (temporário até implementar backend)
-        localStorage.setItem('tocamais_google_token', codeResponse.access_token);
-        localStorage.setItem('tocamais_google_user', JSON.stringify(userInfo.data));
-        localStorage.setItem('tocamais_google_expires_in', codeResponse.expires_in || 3600);
-
-        // Salvar também a data de expiração
-        const expiresAt = new Date().getTime() + (codeResponse.expires_in || 3600) * 1000;
-        localStorage.setItem('tocamais_google_expires_at', expiresAt.toString());
-
-      } catch (err) {
-        console.error('Erro ao fazer login com Google:', err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    onError: (error) => {
-      console.error('Google Login error:', error);
-      setError(error.message || 'Erro ao conectar com Google');
-      setIsLoading(false);
-    },
-    flow: 'implicit',
-    scope: 'openid profile email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly'
-  });
-
   const handleConnectGoogle = useCallback(() => {
+    console.log("GOOGLE_CLIENT_ID:", GOOGLE_CLIENT_ID);
     setIsLoading(true);
-    googleLogin();
-  }, [googleLogin]);
+    setError(null);
+
+    const state = Math.random().toString(36).substring(2);
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${encodeURIComponent(SCOPES)}&include_granted_scopes=true&state=${state}&prompt=select_account`;
+
+    const popup = window.open(authUrl, 'google-oauth', 'width=500,height=700');
+    if (!popup) {
+      setError('Popup bloqueada. Permita popups para este site e tente novamente.');
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleDisconnectGoogle = useCallback(async () => {
     try {

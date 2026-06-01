@@ -1,0 +1,67 @@
+{
+  "name": "MusicRequest",
+  "type": "object",
+  "properties": {
+    "artist_id": {
+      "type": "string",
+      "description": "ID do artista que receberá o pedido"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID do usuário que fez o pedido (pode ser null)"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Nome do usuário (para pedidos sem login)"
+    },
+    "musica_id": {
+      "type": "integer",
+      "description": "ID da música no repertório"
+    },
+    "musica_titulo": {
+      "type": "string",
+      "description": "Título da música"
+    },
+    "musica_artista": {
+      "type": "string",
+      "description": "Artista原作者 da música"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "playing",
+        "completed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "pix_payment_id": {
+      "type": "string",
+      "description": "ID do pagamento PIX (futuro)"
+    },
+    "pix_status": {
+      "type": "string",
+      "description": "Status do pagamento PIX (futuro)"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Valor do pedido"
+    },
+    "requested_at": {
+      "type": "string",
+      "description": "Horário do pedido"
+    },
+    "played_at": {
+      "type": "string",
+      "description": "Horário quando começou a tocar"
+    }
+  },
+  "required": [
+    "artist_id",
+    "musica_id",
+    "musica_titulo",
+    "status"
+  ]
+}

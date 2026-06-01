@@ -30,53 +30,44 @@ export default function MessagesPage({ role = 'artist' }) {
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
-    console.log('msgs', msgs);
-
     if (!msgs) return;
 
-    const partnerIds = new Set();
-    msgs.forEach(m => {
-      const pid = m.sender_id === user.id ? m.receiver_id : m.sender_id;
-      partnerIds.add(pid);
-    });
+    const partnerIds = [...new Set(msgs.map(m => m.sender_id === user.id ? m.receiver_id : m.sender_id))];
+    if (partnerIds.length === 0) { setConversations([]); return; }
 
-    console.log('partnerIds', partnerIds);
+    const [usersData, artistsData, venuesData, contractorsData] = await Promise.all([
+      supabase.from('users').select('id, name').in('id', partnerIds),
+      supabase.from('artists').select('user_id, artistic_name, photo_url').in('user_id', partnerIds),
+      supabase.from('venues').select('user_id, venue_name, logo_url').in('user_id', partnerIds),
+      supabase.from('contractors').select('user_id, photo_url').in('user_id', partnerIds)
+    ]);
 
-    const convs = [];
-    for (const pid of partnerIds) {
+    const userMap = new Map((usersData.data || []).map(u => [u.id, { name: u.name, photo: '' }]));
+    const artistMap = new Map((artistsData.data || []).map(a => [a.user_id, { name: a.artistic_name, photo: a.photo_url }]));
+    const venueMap = new Map((venuesData.data || []).map(v => [v.user_id, { name: v.venue_name, photo: v.logo_url }]));
+    const contractorMap = new Map((contractorsData.data || []).map(c => [c.user_id, { photo: c.photo_url }]));
+
+    const convs = partnerIds.map(pid => {
       const partnerMsgs = msgs.filter(m => (m.sender_id === pid && m.receiver_id === user.id) || (m.sender_id === user.id && m.receiver_id === pid));
       const last = partnerMsgs[0];
-
+      
       let name = pid.slice(0, 8);
       let photo = '';
 
-      const { data: u } = await supabase.from('users').select('name').eq('id', pid).single();
-      if (u) name = u.name;
+      if (artistMap.has(pid)) { const a = artistMap.get(pid); name = a.name; photo = a.photo || ''; }
+      else if (venueMap.has(pid)) { const v = venueMap.get(pid); name = v.name; photo = v.photo || ''; }
+      else if (userMap.has(pid)) { name = userMap.get(pid).name; }
+      else if (contractorMap.has(pid)) { photo = contractorMap.get(pid).photo || ''; }
 
-      const { data: artist } = await supabase.from('artists').select('artistic_name, photo_url').eq('user_id', pid).single();
-      if (artist) { name = artist.artistic_name; photo = artist.photo_url || ''; }
-
-      if (!photo) {
-        const { data: venue } = await supabase.from('venues').select('venue_name, logo_url').eq('user_id', pid).single();
-        if (venue) { name = venue.venue_name; photo = venue.logo_url || ''; }
-      }
-
-      if (!photo) {
-        const { data: ctr } = await supabase.from('contractors').select('photo_url').eq('user_id', pid).single();
-        if (ctr) photo = ctr.photo_url || '';
-      }
-
-      convs.push({
+      return {
         id: pid,
         name,
         avatar: photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7B2EFF&color=fff`,
-        lastMessage: last.text,
-        time: new Date(last.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        lastMessage: last?.text || '',
+        time: new Date(last?.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         unread: 0
-      });
-    }
-
-    console.log('convs', convs);
+      };
+    });
 
     setConversations(convs);
   };

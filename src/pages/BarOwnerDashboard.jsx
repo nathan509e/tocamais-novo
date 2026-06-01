@@ -763,7 +763,7 @@ export default function VenueDashboard() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedArtistProfile(null)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90]"
               />
 
               {/* Modal Container */}
@@ -771,7 +771,7 @@ export default function VenueDashboard() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl z-50 border p-6 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto transition-colors duration-300 ${
+                className={`fixed top-4 left-0 right-0 mx-auto w-[90%] max-w-sm sm:max-w-2xl z-[100] border p-4 sm:p-6 shadow-2xl rounded-2xl max-h-[85vh] overflow-y-auto transition-colors duration-300 ${
                   theme === 'dark' ? 'bg-[#0F0926] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'
                 }`}
               >
@@ -815,12 +815,13 @@ export default function VenueDashboard() {
                   {/* Presentation Video Player */}
                   <div className="space-y-2">
                     <h5 className="text-xs font-bold uppercase tracking-wider text-gray-500">Vídeo de Apresentação</h5>
-                    <div className="aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
+                    <div className="rounded-xl overflow-hidden bg-black/40 border border-white/5 relative" style={{ aspectRatio: '9/16', maxWidth: '320px', margin: '0 auto' }}>
                       {selectedArtistProfile.presentation_video_url ? (
                         selectedArtistProfile.presentation_video_url.includes('youtube.com') || selectedArtistProfile.presentation_video_url.includes('youtu.be') ? (
                           <iframe 
                             src={selectedArtistProfile.presentation_video_url.replace('watch?v=', 'embed/').split('&')[0]} 
                             className="w-full h-full" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                             allowFullScreen 
                             title="Vídeo de Apresentação"
                           />

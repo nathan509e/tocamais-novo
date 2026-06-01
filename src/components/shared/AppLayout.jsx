@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { supabase } from '@/lib/supabaseClient';
 import { 
-  Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Settings, Sun, Moon
+  Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Settings, Sun, Moon, Mailbox
 } from 'lucide-react';
 
 const navItems = {
@@ -13,7 +13,8 @@ const navItems = {
     { icon: Home, label: 'Painel', path: '/artist' },
     { icon: Calendar, label: 'Agenda', path: '/artist/agenda' },
     { icon: Video, label: 'Métricas', path: '/artist/metrics' },
-    { icon: Mail, label: 'Propostas', path: '/artist/proposals' },
+    { icon: Mailbox, label: 'Propostas', path: '/artist/proposals' },
+    { icon: Music, label: 'Pedidos', path: '/artist/requests' },
     { icon: Mail, label: 'Mensagens', path: '/artist/messages' },
     { icon: UserIcon, label: 'Perfil', path: '/artist/profile' },
   ],
@@ -57,6 +58,16 @@ export default function AppLayout({ children, role = 'artist' }) {
   const nav = navItems[role] || navItems.artist;
   const username = user?.full_name || user?.name || 'Usuário';
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const mobileNav = role === 'artist'
+    ? [
+        { icon: Home, label: 'Painel', path: '/artist' },
+        { icon: Calendar, label: 'Agenda', path: '/artist/agenda' },
+        { icon: Music, label: 'Pedidos', path: '/artist/requests' },
+        { icon: Mail, label: 'Mensagens', path: '/artist/messages' },
+        { icon: UserIcon, label: 'Perfil', path: '/artist/profile' },
+      ]
+    : nav;
 
   const isDark = theme === 'dark';
 
@@ -344,7 +355,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               </div>
 
               <nav className="flex-1 space-y-2">
-                {nav.map((item) => {
+        {mobileNav.map((item) => {
                   const Icon = item.icon;
                   const active = location.pathname === item.path;
                   return (

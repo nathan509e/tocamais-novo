@@ -33,12 +33,12 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
         className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
       ></motion.div>
 
-      <motion.div key="modal" className="fixed inset-0 z-[70] flex items-start justify-center pt-1" >
+      <motion.div key="modal" className="fixed inset-0 z-[100] flex items-start justify-center pt-4 sm:pt-12" >
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className={`w-full max-w-2xl border p-6 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto transition-colors duration-300 ${
+          className={`w-full max-w-2xl border p-4 sm:p-6 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto transition-colors duration-300 ${
             theme === 'dark' ? 'bg-[#0F0926] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'
           }`}
         >
@@ -82,12 +82,13 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
           {/* Presentation Video Player */}
           <div className="space-y-2">
             <h5 className="text-xs font-bold uppercase tracking-wider text-gray-500">Vídeo de Apresentação</h5>
-            <div className="aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
+            <div className="rounded-xl overflow-hidden bg-black/40 border border-white/5 relative" style={{ aspectRatio: '9/16', maxWidth: '280px', margin: '0 auto' }}>
               {artist.presentation_video_url ? (
                 artist.presentation_video_url.includes('youtube.com') || artist.presentation_video_url.includes('youtu.be') ? (
                   <iframe 
                     src={artist.presentation_video_url.replace('watch?v=', 'embed/').split('&')[0]} 
                     className="w-full h-full" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                     allowFullScreen 
                     title="Vídeo de Apresentação"
                   />
