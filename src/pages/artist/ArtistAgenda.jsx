@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { useGoogleOAuth } from '../../lib/GoogleOAuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import NeonButton from '../../components/ui/NeonButton';
 
@@ -42,6 +43,15 @@ const daysOfWeek = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export default function ArtistAgenda() {
   const { user, userProfile } = useAuth();
+  const { 
+    isGoogleConnected, 
+    googleUser, 
+    accessToken,
+    handleConnectGoogle: handleGoogleConnect,
+    handleDisconnectGoogle: handleGoogleDisconnect,
+    isLoading: isGoogleLoading,
+    error: googleError
+  } = useGoogleOAuth();
   
   // Calendar Month Navigation State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -53,13 +63,7 @@ export default function ArtistAgenda() {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Google Sync States (Stored in localStorage for persistence in demo)
-  const [isGoogleConnected, setIsGoogleConnected] = useState(() => {
-    return localStorage.getItem('tocamais_google_connected') === 'true';
-  });
-  const [googleEmail, setGoogleEmail] = useState(() => {
-    return localStorage.getItem('tocamais_google_email') || 'lucas.volta@gmail.com';
-  });
+  // Google Sync States
   const [selectedCalendar, setSelectedCalendar] = useState('primary');
   const [syncOptions, setSyncOptions] = useState({
     importBlocks: true,
@@ -70,8 +74,6 @@ export default function ArtistAgenda() {
     return localStorage.getItem('tocamais_google_last_sync') || '';
   });
   const [isSyncing, setIsSyncing] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authStep, setAuthStep] = useState(1);
   const [successToast, setSuccessToast] = useState('');
   const [detailShow, setDetailShow] = useState(null);
 
@@ -198,84 +200,139 @@ export default function ArtistAgenda() {
     fetchAgendaData();
   };
 
-  // Connect Google Calendar - Open OAuth Mock Modal
-  const handleConnectGoogle = () => {
-    setAuthStep(1);
-    setShowAuthModal(true);
-  };
-
-  const handleCompleteAuth = (email) => {
-    setGoogleEmail(email);
-    localStorage.setItem('tocamais_google_connected', 'true');
-    localStorage.setItem('tocamais_google_email', email);
-    setIsGoogleConnected(true);
-    setShowAuthModal(false);
-    
-    setSuccessToast(`Google Agenda conectada: ${email}`);
-    setTimeout(() => setSuccessToast(''), 4000);
-
-    // Auto-sync after connection
-    handleStartSync(true);
+  // Connect Google Calendar - Real OAuth
+  const handleConnectGoogle = async () => {
+    try {
+      handleGoogleConnect();
+    } catch (error) {
+      console.error('Erro ao conectar Google:', error);
+      setSuccessToast('Erro ao conectar com Google Calendar');
+      setTimeout(() => setSuccessToast(''), 3000);
+    }
   };
 
   const handleDisconnectGoogle = () => {
-    localStorage.removeItem('tocamais_google_connected');
-    localStorage.removeItem('tocamais_google_email');
+    handleGoogleDisconnect();
     localStorage.removeItem('tocamais_google_last_sync');
-    setIsGoogleConnected(false);
     setLastSync('');
     
     setSuccessToast('Google Agenda desconectada com sucesso.');
     setTimeout(() => setSuccessToast(''), 3000);
   };
 
-  // Google Sync Action
+  // Google Sync Action - Real API
   const handleStartSync = async (forceImport = false) => {
-    if (!isGoogleConnected) return;
+    if (!isGoogleConnected || !accessToken) {
+      setSuccessToast('Google Calendar não conectado');
+      setTimeout(() => setSuccessToast(''), 3000);
+      return;
+    }
+    
     setIsSyncing(true);
 
-    // Simulate network delay for API calls
-    setTimeout(async () => {
+    try {
       const nowStr = new Date().toLocaleString('pt-BR');
       setLastSync(nowStr);
       localStorage.setItem('tocamais_google_last_sync', nowStr);
 
-      // If "Import Blocks" option is checked, inject some mock Google Calendar events into Supabase agendas
+      // If "Import Blocks" option is checked, fetch events from Google Calendar
       if (syncOptions.importBlocks || forceImport) {
         try {
-          // Block specific days from Google Calendar simulation
-          // We'll block the 5th and 18th of the current selected month
-          const googleBlock1 = `${year}-${String(month + 1).padStart(2, '0')}-05`;
-          const googleBlock2 = `${year}-${String(month + 1).padStart(2, '0')}-18`;
+          // Fetch events from Google Calendar for the current month
+          const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+          const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-          // Check if they are already blocked
-          const datesToBlock = [
-            { date: googleBlock1, note: 'Compromisso Pessoal (Google Calendar)' },
-            { date: googleBlock2, note: 'Consulta Médica (Google Calendar)' }
-          ];
+          const response = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
+            `timeMin=${startDate.toISOString()}&` +
+            `timeMax=${endDate.toISOString()}&` +
+            `access_token=${accessToken}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`
+              }
+            }
+          );
 
-          for (const item of datesToBlock) {
-            const alreadyBlocked = busyDates.some(b => b.busy_date === item.date);
-            if (!alreadyBlocked) {
-              await supabase
-                .from('agendas')
-                .insert({
-                  artist_id: userProfile.id,
-                  busy_date: item.date,
-                  note: item.note
-                });
+          if (!response.ok) {
+            throw new Error('Erro ao buscar eventos do Google Calendar');
+          }
+
+          const data = await response.json();
+          const events = data.items || [];
+
+          // Process events and add busy dates
+          for (const event of events) {
+            if (event.start?.date || event.start?.dateTime) {
+              const eventDate = event.start.date || event.start.dateTime.split('T')[0];
+              
+              // Check if date is already blocked
+              const alreadyBlocked = busyDates.some(b => b.busy_date === eventDate);
+              
+              if (!alreadyBlocked && eventDate >= startDate.toISOString().split('T')[0]) {
+                await supabase
+                  .from('agendas')
+                  .insert({
+                    artist_id: userProfile.id,
+                    busy_date: eventDate,
+                    note: `${event.summary} (Google Calendar)`
+                  });
+              }
             }
           }
         } catch (e) {
-          console.error('Error importing google events:', e);
+          console.error('Erro ao importar eventos do Google:', e);
+        }
+      }
+
+      // If "Export Shows" option is checked, export shows to Google Calendar
+      if (syncOptions.exportShows) {
+        try {
+          for (const show of shows) {
+            if (show.status === 'confirmed') {
+              // Create event in Google Calendar
+              const venue = venues.find(v => v.id === show.venue_id);
+              
+              const event = {
+                summary: `Show - ${venue?.name || 'Sem local'}`,
+                description: `Show confirmado via TocaMais\nValor: R$ ${show.fee_agreed || 0}`,
+                start: {
+                  date: show.date
+                },
+                end: {
+                  date: new Date(new Date(show.date).getTime() + 86400000).toISOString().split('T')[0]
+                },
+                colorId: '2' // Green
+              };
+
+              await fetch(
+                'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(event)
+                }
+              );
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao exportar shows para Google:', e);
         }
       }
 
       await fetchAgendaData();
-      setIsSyncing(false);
       setSuccessToast('Sincronização com Google Agenda realizada!');
       setTimeout(() => setSuccessToast(''), 3000);
-    }, 2000);
+    } catch (error) {
+      console.error('Erro durante sincronização:', error);
+      setSuccessToast('Erro ao sincronizar com Google Calendar');
+      setTimeout(() => setSuccessToast(''), 3000);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const selectedShows = selectedDay ? getDayInfo(selectedDay).shows : [];
@@ -623,7 +680,7 @@ export default function ArtistAgenda() {
                   <div className="flex justify-between items-center p-3 rounded-2xl bg-white/5 border border-white/8 text-xs">
                     <div>
                       <p className="text-gray-400 text-[10px]">Conta Conectada</p>
-                      <p className="text-white font-bold">{googleEmail}</p>
+                      <p className="text-white font-bold">{googleUser?.email || 'Conectado'}</p>
                     </div>
                     <button 
                       onClick={handleDisconnectGoogle}
@@ -648,7 +705,7 @@ export default function ArtistAgenda() {
                         onChange={e => setSelectedCalendar(e.target.value)}
                         className="w-full bg-[#0F0926] border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
                       >
-                        <option value="primary">Pessoal ({googleEmail})</option>
+                        <option value="primary">Pessoal ({googleUser?.email || 'Google Calendar'})</option>
                         <option value="shows">TocaMais - Shows (Criada automaticamente)</option>
                         <option value="work">Trabalho</option>
                       </select>
@@ -737,105 +794,28 @@ export default function ArtistAgenda() {
 
       </div>
 
-      {/* MOCK AUTH OAUTH POPUP MODAL */}
-      <AnimatePresence>
-        {showAuthModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#181829] border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-6"
-            >
-              {/* Top logo */}
-              <div className="flex flex-col items-center text-center gap-2">
-                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
-                  <GoogleIcon />
-                </div>
-                <h3 className="text-white font-bold text-lg">Fazer login com o Google</h3>
-                <p className="text-gray-400 text-xs">para prosseguir para o app <span className="text-neon-purple font-bold">TocaMais</span></p>
-              </div>
+      {/* Loading state indicator */}
+      {isGoogleLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#181829] border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col items-center gap-4"
+          >
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <p className="text-white font-bold text-sm">Conectando com Google...</p>
+          </motion.div>
+        </div>
+      )}
 
-              {authStep === 1 ? (
-                <div className="space-y-3">
-                  <p className="text-[11px] text-gray-500 uppercase font-black tracking-wider">Escolha uma conta</p>
-                  
-                  {/* Account selections */}
-                  <button 
-                    onClick={() => setAuthStep(2)}
-                    className="w-full p-3 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 text-left flex items-center gap-3 transition-all"
-                  >
-                    <img 
-                      src={userProfile?.photo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop'} 
-                      alt="Avatar" 
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
-                    <div className="text-xs">
-                      <p className="text-white font-bold">{userProfile?.artistic_name || user?.name || 'Lucas Volta'}</p>
-                      <p className="text-gray-400">lucas.volta@gmail.com</p>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => handleCompleteAuth('nathan.contato@gmail.com')}
-                    className="w-full p-3 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 text-left flex items-center gap-3 transition-all"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-neon-purple/20 text-neon-purple font-bold flex items-center justify-center text-xs">
-                      N
-                    </div>
-                    <div className="text-xs">
-                      <p className="text-white font-bold">Nathan Silva</p>
-                      <p className="text-gray-400">nathan.contato@gmail.com</p>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => {
-                      const email = prompt('Digite outro e-mail do Google:');
-                      if (email) handleCompleteAuth(email);
-                    }}
-                    className="w-full p-3 rounded-2xl border border-dashed border-white/10 hover:border-white/30 text-center text-xs text-gray-400 hover:text-white transition-all"
-                  >
-                    Usar outra conta
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    O app <span className="text-neon-purple font-bold">TocaMais</span> quer acessar sua conta Google:
-                  </p>
-
-                  <div className="space-y-2 p-3.5 rounded-2xl bg-white/5 border border-white/5 text-xs text-gray-400">
-                    <div className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-neon-green flex-shrink-0 mt-0.5" />
-                      <span>Ver, editar, compartilhar e excluir permanentemente todos os calendários que você pode acessar usando o Google Agenda.</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-gray-500 leading-normal">
-                    Ao clicar em "Permitir", você autoriza o TocaMais a usar suas informações de acordo com os Termos de Serviço e a Política de Privacidade deles.
-                  </p>
-
-                  <div className="flex gap-3 pt-2">
-                    <button 
-                      onClick={() => setAuthStep(1)}
-                      className="flex-1 py-2.5 rounded-xl border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      onClick={() => handleCompleteAuth('lucas.volta@gmail.com')}
-                      className="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold transition-all"
-                    >
-                      Permitir
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Error indicator */}
+      {googleError && (
+        <div className="fixed bottom-4 right-4 z-50 bg-red-500 text-white p-4 rounded-xl max-w-sm">
+          <p className="font-bold">Erro ao conectar</p>
+          <p className="text-sm">{googleError}</p>
+        </div>
+      )}
 
       {/* DETAIL MODAL */}
       <AnimatePresence>
