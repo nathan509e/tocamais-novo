@@ -52,6 +52,7 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Landing />} />
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );

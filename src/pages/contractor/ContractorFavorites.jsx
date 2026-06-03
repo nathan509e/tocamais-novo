@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Star, CheckCircle } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import ArtistCard from '../../components/shared/ArtistCard';

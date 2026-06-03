@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, X, Star, MapPin, Music, CheckCircle } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Star, CheckCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';

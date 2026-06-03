@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Heart, Star, MapPin, Music, CheckCircle, Calendar, Sparkles,
-  X, SlidersHorizontal, Plus, Trash2, ListMusic, Volume2, ShieldAlert,
-  FileText, DollarSign
+  Search, Heart, Star, CheckCircle, Sparkles,
+  X, Trash2, ListMusic,
+  FileText
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
-import NeonButton from '../../components/ui/NeonButton';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';

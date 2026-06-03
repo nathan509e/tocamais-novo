@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { Sparkles, Music, Home, User, Mail, ArrowRight, UserPlus, CheckCircle } from 'lucide-react';
+import { Music, Home, User, Mail, ArrowRight } from 'lucide-react';
 import NeonButton from '../components/ui/NeonButton';
 
 export default function Login() {

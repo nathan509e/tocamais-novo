@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  Music, Search, Building2, Radio, Heart, ArrowRight, Star, Zap, Shield,
-  ChevronRight, Play, QrCode, Users, BarChart3, Check, HelpCircle,
+  Music, Building2, Star, Play, Users, Check,
   Apple, ExternalLink
 } from "lucide-react";
 import {
@@ -15,7 +14,7 @@ import { supabase } from "@/lib/supabaseClient";
 import logoTocaMais from "@/assets/logo-tocamais.png";
 import tableTent from "@/assets/table-tent.png";
 import cantoraImg from "@/assets/Cantora.png";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import ParticleBackground from "@/components/shared/ParticleBackground";
 
 // Modals - placeholders since they might be missing in target

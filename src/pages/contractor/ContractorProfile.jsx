@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, MapPin, Phone, Edit3, Star, Calendar, DollarSign, Sun, Moon, X, Camera } from 'lucide-react';
+import { MapPin, Edit3, Star, Calendar, DollarSign, Sun, Moon, X, Camera } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';

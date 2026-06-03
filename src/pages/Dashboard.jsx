@@ -2,7 +2,6 @@ import React from 'react';
 import BarOwnerDashboard from './BarOwnerDashboard';
 import ArtistDashboard from './ArtistDashboard';
 import ContractorDashboard from './ContractorDashboard';
-import Home from './Home';
 
 export default function Dashboard({ user }) {
   const role = user?.role;

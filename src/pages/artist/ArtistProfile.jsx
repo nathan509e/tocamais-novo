@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Star, CheckCircle, MapPin, Music, Users, Instagram, Share2,
+  Star, CheckCircle, MapPin, Music, Share2,
   Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles, Wallet
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';

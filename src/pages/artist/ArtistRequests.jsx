@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Music, Clock, CheckCircle, XCircle, Play, Trash2, RefreshCw } from 'lucide-react';
+import { Music, Clock, CheckCircle, XCircle, Play, Trash2, RefreshCw, Sparkles, MessageCircle } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
@@ -22,6 +21,7 @@ export default function ArtistRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastCheckedIds, setLastCheckedIds] = useState([]);
 
   useEffect(() => {
     if (user?.id) {
@@ -37,19 +37,82 @@ export default function ArtistRequests() {
 
   const loadRequests = async () => {
     if (!user?.id) return;
-    setLoading(true);
+    const isFirstLoad = requests.length === 0;
+    if (isFirstLoad) setLoading(true);
     try {
       const { data } = await supabase
         .from('music_requests')
         .select('*')
         .eq('artist_id', user.id)
         .order('requested_at', { ascending: false });
-      setRequests(data || []);
+      
+      const newData = data || [];
+
+      if (isFirstLoad) {
+        setRequests(newData);
+      } else {
+        const existingIds = new Set(requests.map(r => r.id));
+        const newReqs = newData.filter(r => !existingIds.has(r.id));
+        const hasChanges = newReqs.length > 0 || newData.some(r => {
+          const existing = requests.find(e => e.id === r.id);
+          return existing && (existing.status !== r.status || Number(existing.amount) !== Number(r.amount));
+        });
+
+        if (newReqs.length > 0) {
+          setRequests(prev => [...newReqs, ...newData.filter(r => existingIds.has(r.id))]);
+        } else if (hasChanges) {
+          setRequests(newData);
+        }
+      }
+
+      if (lastCheckedIds.length > 0) {
+        const pendingWithTip = newData.filter(r => r.status === 'pending' && (Number(r.amount) || 0) > 0);
+        const newPendingWithTip = pendingWithTip.filter(r => !lastCheckedIds.includes(r.id));
+        if (newPendingWithTip.length > 0 && autoRefresh) {
+          playNotificationSound();
+        }
+      }
+      
+      const pendingIds = newData.filter(r => r.status === 'pending').map(r => r.id);
+      setLastCheckedIds(pendingIds);
     } catch (e) {
       console.log('Table not ready yet');
-      setRequests([]);
+      if (requests.length === 0) setRequests([]);
     }
-    setLoading(false);
+    if (isFirstLoad) setLoading(false);
+  };
+
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleBoAQp3T259pHhA2jaXS4K1fHQtDodLkrmMcDkWh0+SvXx0MRaHT5K5fHQxFodLkrmAcDEWh0uSuYBwMRaHS5K5gHAxFodLkrmAcDEWh0uSuYBwMRaHS5K5gHAxFodLkrmAcDEWh0uSuYBwMRaHS5K5gHAxFodLkrmAcDEWh0uSuYBw=');
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+    } catch (e) {}
+  };
+
+  const sortedRequests = () => {
+    const activeRequests = requests.filter(r => r.status !== 'completed' && r.status !== 'cancelled');
+    
+    const withTips = activeRequests
+      .filter(r => {
+        const amount = Number(r.amount) || 0;
+        return amount > 0;
+      })
+      .sort((a, b) => {
+        const amountA = Number(a.amount) || 0;
+        const amountB = Number(b.amount) || 0;
+        if (amountB !== amountA) return amountB - amountA;
+        return new Date(b.requested_at) - new Date(a.requested_at);
+      });
+    
+    const withoutTips = activeRequests
+      .filter(r => {
+        const amount = Number(r.amount) || 0;
+        return amount === 0;
+      })
+      .sort((a, b) => new Date(a.requested_at) - new Date(b.requested_at));
+    
+    return [...withTips, ...withoutTips];
   };
 
   const updateStatus = async (requestId, newStatus) => {
@@ -78,6 +141,7 @@ export default function ArtistRequests() {
   };
 
   const pendingCount = requests.filter(r => r.status === 'pending').length;
+  const pendingWithTipsCount = requests.filter(r => r.status === 'pending' && (Number(r.amount) || 0) > 0).length;
   const playingNow = requests.find(r => r.status === 'playing');
 
   return (
@@ -102,24 +166,45 @@ export default function ArtistRequests() {
           </button>
         </div>
 
-        {pendingCount > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-xl bg-yellow-400/10 border border-yellow-400/30"
+        {pendingWithTipsCount > 0 && (
+          <div
+            className="p-4 rounded-xl bg-neon-green/10 border border-neon-green/30 flex items-center justify-between"
           >
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-neon-green" />
+              <div>
+                <p className="text-neon-green font-bold text-sm">
+                  {pendingWithTipsCount} novo pedido{pendingWithTipsCount > 1 ? 's' : ''} com gorjeta!
+                </p>
+                <p className="text-neon-green/70 text-xs">
+                  Confirme o recebimento para priorizar na fila
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                const tipRequests = requests.filter(r => r.status === 'pending' && (Number(r.amount) || 0) > 0);
+                for (const req of tipRequests) {
+                  await updateStatus(req.id, 'approved');
+                }
+              }}
+              className="px-4 py-2 rounded-lg bg-neon-green text-white text-sm font-bold hover:bg-neon-green/80 transition-colors"
+            >
+              Confirmar Todos
+            </button>
+          </div>
+        )}
+
+        {pendingCount > 0 && pendingWithTipsCount === 0 && (
+          <div className="p-4 rounded-xl bg-yellow-400/10 border border-yellow-400/30">
             <p className="text-yellow-400 font-bold text-sm">
               {pendingCount} pedido{pendingCount > 1 ? 's' : ''} pendente{pendingCount > 1 ? 's' : ''}
             </p>
-          </motion.div>
+          </div>
         )}
 
         {playingNow && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-4 rounded-xl bg-neon-purple/10 border border-neon-purple/30"
-          >
+          <div className="p-4 rounded-xl bg-neon-purple/10 border border-neon-purple/30">
             <p className="text-neon-purple text-xs font-bold uppercase tracking-wider mb-1">
               Tocando Agora
             </p>
@@ -136,35 +221,30 @@ export default function ArtistRequests() {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
-        {loading ? (
+        {loading && requests.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-4 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin" />
           </div>
-        ) : requests.length === 0 ? (
-          <div className={`text-center py-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            <Music className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">Nenhum pedido ainda</p>
-            <p className="text-sm mt-1">Os pedidos aparecerão aqui</p>
-          </div>
-        ) : (
+        )}
+
+        {!loading && requests.length > 0 && (
           <div className="space-y-3">
-            <AnimatePresence>
-              {requests.map((request, index) => {
+            {sortedRequests().map((request, index) => {
                 const config = statusConfig[request.status];
                 const StatusIcon = config.icon;
+                const tipValue = Number(request.amount) || 0;
+                const hasTip = tipValue > 0;
 
                 return (
-                  <motion.div
+                  <div
                     key={request.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ delay: index * 0.05 }}
                     className={`p-4 rounded-xl border ${
-                      isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'
+                      hasTip 
+                        ? 'border-neon-green/30 bg-neon-green/5' 
+                        : isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -186,6 +266,15 @@ export default function ArtistRequests() {
                           </div>
                         </div>
 
+                        {request.message && (
+                          <div className={`mt-2 p-2 rounded-lg text-sm flex items-start gap-2 ${
+                            isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-50 text-gray-700'
+                          }`}>
+                            <MessageCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-neon-purple" />
+                            <span>"{request.message}"</span>
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
@@ -197,8 +286,11 @@ export default function ArtistRequests() {
                           {request.user_name && (
                             <span>por {request.user_name}</span>
                           )}
-                          {request.amount && (
-                            <span className="text-neon-green">R$ {request.amount.toFixed(2)}</span>
+                          {hasTip && (
+                            <span className="text-neon-green font-bold flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              PIX R$ {tipValue.toFixed(2)}
+                            </span>
                           )}
                         </div>
 
@@ -260,10 +352,9 @@ export default function ArtistRequests() {
                         </button>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
-            </AnimatePresence>
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, DollarSign, Users, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, Users, CheckCircle, Plus } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import NeonButton from '../../components/ui/NeonButton';

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Heart, Star, MapPin, Music, CheckCircle, Calendar, Sparkles,
-  X, SlidersHorizontal, Plus, Trash2, ListMusic, Volume2, ShieldAlert
+  Search, Heart, Star, CheckCircle, Sparkles,
+  X, Trash2, ListMusic
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
-import NeonButton from '@/components/ui/NeonButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/lib/ThemeContext';
 

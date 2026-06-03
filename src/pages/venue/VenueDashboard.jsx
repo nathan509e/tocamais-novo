@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import {
-  TrendingUp, TrendingDown, DollarSign, Users, Calendar, Music,
-  Star, ChevronRight, Flame, Clock, BarChart3, ArrowRight,
-  SlidersHorizontal, CheckCircle, Shield, Play, MessageSquare,
-  Sparkles, FileText, Send, Landmark, X, Filter, Check, Award, Edit3,
+  TrendingUp, DollarSign, Users, Calendar, Music,
+  Star, Flame, BarChart3,
+  SlidersHorizontal, CheckCircle, Shield, FileText, Send, X, Filter, Award, Edit3,
   CalendarCheck, Trash2, MapPin
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -14,7 +12,7 @@ import NeonButton from '../../components/ui/NeonButton';
 import { supabase } from '../../lib/supabaseClient';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, LineChart, Line
+  CartesianGrid, Tooltip, Legend
 } from 'recharts';
 
 // Mock charts data

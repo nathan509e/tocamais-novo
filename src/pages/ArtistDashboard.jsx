@@ -1,15 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-  TrendingUp, DollarSign, Calendar, Star, Users, Music,
-  Bell, ChevronRight, CheckCircle, Clock, MapPin, Play, Pause, Mic,
-  Volume2, UploadCloud, Plus, ToggleLeft, ToggleRight, Sparkles, Check, X, ShieldAlert
+  TrendingUp, DollarSign, Calendar, Star, Users, CheckCircle, Play, Pause,
+  Volume2, UploadCloud, ToggleLeft, ToggleRight, X
 } from 'lucide-react';
-import AppLayout from '@/components/layout/AppLayout';
 import StatCard from '@/components/ui/StatCard';
-import NeonButton from '@/components/ui/NeonButton';
-import { supabase } from '@/integrations/supabase/client';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line

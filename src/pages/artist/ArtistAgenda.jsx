@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Calendar as CalendarIcon, 
   ChevronLeft, 
   ChevronRight, 
   MapPin, 
@@ -9,13 +8,10 @@ import {
   DollarSign, 
   CheckCircle, 
   X, 
-  AlertCircle, 
   RefreshCw, 
   Settings, 
   Check, 
   Lock, 
-  ShieldAlert, 
-  ArrowLeftRight, 
   HelpCircle, 
   Loader2, 
   CalendarRange, 
@@ -27,7 +23,6 @@ import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useGoogleOAuth } from '../../lib/GoogleOAuthContext';
 import { supabase } from '../../lib/supabaseClient';
-import NeonButton from '../../components/ui/NeonButton';
 
 // Inline Google Logo SVG Component for Authenticity
 const GoogleIcon = () => (

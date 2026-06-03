@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import AppLayout from '@/components/shared/AppLayout';
-import { Check, X, Loader2, DollarSign, MapPin, Clock, Info, CalendarRange, AlertCircle, Users, Speaker, Eye } from 'lucide-react';
+import { Check, X, Loader2, DollarSign, MapPin, Clock, CalendarRange, AlertCircle, Users, Speaker, Eye } from 'lucide-react';
 
 export default function ArtistProposals() {
   const { user, userProfile } = useAuth();
