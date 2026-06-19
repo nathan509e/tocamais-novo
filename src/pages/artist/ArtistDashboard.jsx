@@ -44,7 +44,10 @@ export default function ArtistDashboard() {
 
   useEffect(() => {
     async function loadRepertorio() {
-      const { data: musicas } = await supabase.from('musicas_repertorio').select('*').order('artista_nome', { ascending: true });
+      const { data: musicas } = await supabase
+        .from('musicas_repertorio')
+        .select('*')
+        .order('artista_nome', { ascending: true });
       if (musicas) setMusicasRepertorio(musicas);
     }
     loadRepertorio();
@@ -177,12 +180,12 @@ export default function ArtistDashboard() {
 
             <div className="grid grid-cols-3 gap-2 text-center">
               {[
-                { title: 'Shows Feitos', val: `${shows.length} Gigs`, icon: '🎤' },
-                { title: 'Cachê Médio', val: `R$ ${(userProfile?.base_fee || 0).toLocaleString()}`, icon: '💰' },
-                { title: 'Pendentes', val: '0', icon: '📩' }
+                { title: 'Shows Feitos', val: `${shows.length} Gigs`, icon: Music, iconColor: 'text-neon-purple' },
+                { title: 'Cachê Médio', val: `R$ ${(userProfile?.base_fee || 0).toLocaleString()}`, icon: DollarSign, iconColor: 'text-neon-green' },
+                { title: 'Pendentes', val: '0', icon: Star, iconColor: 'text-yellow-400' }
               ].map((item, idx) => (
                 <div key={idx} className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="text-lg mb-1">{item.icon}</div>
+                  <item.icon className={`w-5 h-5 mx-auto mb-1 ${item.iconColor}`} />
                   <p className="text-xs text-gray-400 uppercase tracking-wider">{item.title}</p>
                   <p className="text-sm font-bold text-white mt-0.5">{item.val}</p>
                 </div>

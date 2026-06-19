@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Star, CheckCircle, MapPin, Music, Share2,
-  Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles, Wallet
+  Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles, Wallet,
+  Loader, AlertCircle, ExternalLink
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
@@ -29,6 +30,8 @@ export default function ArtistProfile() {
   const [editForm, setEditForm] = useState({ photo_url: '', cover_url: '', artistic_name: '', bio: '', genre: '', city: '', base_fee: 0, pix_key: '' });
   const [saveStatus, setSaveStatus] = useState('');
   const [pixKey, setPixKey] = useState('');
+  const [stripeStatus, setStripeStatus] = useState(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   const handleImageUpload = async (file, type) => {
     const fileExt = file.name.split('.').pop();
@@ -50,7 +53,7 @@ export default function ArtistProfile() {
 
   const saveProfileField = async (field, value) => {
     if (!user) return;
-    setSaveStatus('Saving...');
+    setSaveStatus('Salvando...');
     try {
       const { error } = await supabase.from('artists').update({ [field]: value }).eq('user_id', user.id);
       if (error) throw error;
@@ -158,6 +161,63 @@ export default function ArtistProfile() {
     }
   };
 
+  const checkStripeStatus = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'stripe-connect-status',
+        { body: { user_id: user.id } }
+      );
+      if (!error && data) {
+        setStripeStatus(data);
+      }
+    } catch (e) {
+      console.error('Error checking stripe status:', e);
+    }
+  }, [user]);
+
+  const handleConnectStripe = async () => {
+    if (!user) return;
+    setStripeLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'stripe-create-connect-account',
+        {
+          body: {
+            user_id: user.id,
+            refresh_url: window.location.href,
+            return_url: window.location.href + '?stripe=success'
+          }
+        }
+      );
+
+      if (error) throw new Error(error.message);
+      if (!data?.accountLinkUrl) throw new Error('No account link returned');
+
+      window.location.href = data.accountLinkUrl;
+    } catch (e) {
+      console.error('Error connecting stripe:', e);
+      alert('Erro ao conectar Stripe: ' + e.message);
+    }
+    setStripeLoading(false);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe') === 'success') {
+      checkStripeStatus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete('stripe');
+      window.history.replaceState({}, '', url);
+    }
+  }, [checkStripeStatus]);
+
+  useEffect(() => {
+    if (user && artistProfile) {
+      checkStripeStatus();
+    }
+  }, [user, artistProfile, checkStripeStatus]);
+
   const isDark = theme === 'dark';
 
   return (
@@ -261,7 +321,7 @@ export default function ArtistProfile() {
                       setEditForm(f => ({ ...f, photo_url: url }));
                       setArtistProfile(prev => ({ ...prev, photo_url: url }));
                       setSaveStatus('Salvando...');
-                      const updResp = await supabase.from('artists').update({ photo_url: url }).eq('user_id', user.id);
+                       const updResp = await supabase.from('artists').update({ photo_url: url }).eq('user_id', user.id);
                       if (updResp.error) { console.error('DB save error:', updResp.error); setSaveStatus('Erro ao salvar: ' + updResp.error.message); return; }
                       if (refreshProfile) refreshProfile();
                       setSaveStatus('');
@@ -377,6 +437,68 @@ export default function ArtistProfile() {
                 <span>Modo Escuro</span>
               </button>
             </div>
+          </div>
+
+          {/* Stripe Connect Card */}
+          <div className={`p-4 rounded-2xl border transition-all ${
+            isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+          } space-y-3`}>
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-neon-green" />
+              <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                Receber Pagamentos
+              </h3>
+            </div>
+
+            {stripeLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader className="w-4 h-4 animate-spin text-neon-purple" />
+                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Conectando ao Stripe...
+                </span>
+              </div>
+            ) : stripeStatus?.connected ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-neon-green" />
+                  <span className="text-xs font-semibold text-neon-green">
+                    Stripe Conectado
+                  </span>
+                </div>
+                <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Gorjetas: 5% plataforma | 95% sua conta Stripe
+                </p>
+                <a
+                  href={`https://dashboard.stripe.com/connect/accounts/${stripeStatus.accountId || ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-1 text-xs font-bold text-neon-purple hover:underline`}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Ver conta no Stripe
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Conecte sua conta Stripe para receber gorjetas dos seus fãs automaticamente.
+                </p>
+                <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Comissão: 5% TocaMais | 95% para você
+                </p>
+                <button
+                  onClick={handleConnectStripe}
+                  className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2"
+                  style={{
+                    background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
+                    boxShadow: '0 0 15px rgba(123,46,255,0.3)'
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Conectar Conta Stripe
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Bio */}

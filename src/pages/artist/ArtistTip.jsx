@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Copy, Check, Music, Search, X, Loader, Heart, Send, Sparkles } from 'lucide-react';
+import { QrCode, Copy, Check, Music, Search, X, Loader, Heart, Send, Sparkles, Star } from 'lucide-react';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -37,6 +37,39 @@ export default function ArtistTip() {
   const [message, setMessage] = useState('');
   const [tipAmount, setTipAmount] = useState(0);
   const [includeTip, setIncludeTip] = useState(false);
+  const [pixLoading, setPixLoading] = useState(false);
+  const [pixError, setPixError] = useState('');
+  const [pixQrCodeBase64, setPixQrCodeBase64] = useState('');
+  const [pixQrCode, setPixQrCode] = useState('');
+  const [pixPaymentId, setPixPaymentId] = useState(null);
+  const [pixCreated, setPixCreated] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [customerCpf, setCustomerCpf] = useState('');
+  const autoConfirmedRef = useRef(false);
+  const pollingRef = useRef(null);
+
+  useEffect(() => {
+    if (!pixCreated || !pixPaymentId) return;
+    autoConfirmedRef.current = false;
+    const checkPayment = async () => {
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke(
+          'stripe-check-payment',
+          { body: { payment_intent_id: pixPaymentId } }
+        );
+        if (!fnError && data?.mpStatus === 'approved' && !autoConfirmedRef.current) {
+          autoConfirmedRef.current = true;
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          processTipPayment();
+        }
+      } catch (e) {
+        console.error('Polling error:', e);
+      }
+    };
+    pollingRef.current = setInterval(checkPayment, 5000);
+    checkPayment();
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, [pixCreated, pixPaymentId]);
 
   const generatedPixKey = `tocamais.${artistId?.slice(0, 8)}@tocamais.com.br`;
 
@@ -94,12 +127,43 @@ export default function ArtistTip() {
   }, [artistId]);
 
   const copyPixKey = () => {
-    navigator.clipboard.writeText(generatedPixKey);
+    navigator.clipboard.writeText(pixQrCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const qrCodeValue = `00020101021126580014br.gov.bcb.pix0136${generatedPixKey}5204000053039865802BR5913${artist?.artistic_name || 'Artista'}6008${artist?.city || 'São Paulo'}62610505TocaMais`;
+  const createPixPayment = async () => {
+    if (!artistId || tipAmount < 2 || !customerCpf || customerCpf.length < 11) return;
+    setPixLoading(true);
+    setPixError('');
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        'stripe-create-pix',
+        {
+          body: {
+            amount: tipAmount,
+            description: `Gorjeta para ${artist?.artistic_name || 'Artista'} - TocaMais`,
+            customerName: userName || 'Cliente TocaMais',
+            customerEmail: 'cliente@tocamais.com.br',
+            customerTaxId: customerCpf
+          }
+        }
+      );
+
+      if (fnError) throw new Error(fnError.message || 'Erro ao gerar PIX');
+
+      setPixQrCodeBase64(data.qrCodeBase64);
+      setPixQrCode(data.qrCode);
+      setPixPaymentId(data.paymentIntentId);
+      setPixCreated(true);
+      setStage(STAGE.PIX_PAYMENT);
+    } catch (err) {
+      console.error('PIX error:', err);
+      setPixError(err.message || 'Erro ao gerar PIX');
+    } finally {
+      setPixLoading(false);
+    }
+  };
 
   const submitRequest = async (includeTip = false) => {
     if (!artistId) return;
@@ -140,38 +204,97 @@ export default function ArtistTip() {
     setRequesting(false);
   };
 
-  const handleConfirmPix = async () => {
-    if (!artistId) return;
+  const processTipPayment = async (manualConfirm = false) => {
+    if (!artistId || !pixPaymentId) return;
     setRequesting(true);
-    
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        'stripe-process-tip',
+        {
+          body: {
+            payment_intent_id: pixPaymentId,
+            artist_id: artistId,
+            amount: tipAmount,
+            user_name: userName || 'Cliente',
+            message: message || null,
+            musica_id: selectedMusic?.id || null,
+            musica_titulo: selectedMusic?.titulo || 'Pedido com Gorjeta',
+            musica_artista: selectedMusic?.artista_nome || null,
+            rating: rating || null
+          }
+        }
+      );
+
+      if (fnError) {
+        if (manualConfirm) {
+          await insertRequestDirectly();
+          return;
+        }
+        console.error('Erro ao processar gorjeta:', fnError);
+        alert('Erro ao confirmar pagamento: ' + fnError.message);
+        return;
+      }
+
+      if (!data?.success) {
+        if (manualConfirm) {
+          await insertRequestDirectly();
+          return;
+        }
+        alert('Erro: ' + (data?.error || 'Falha ao processar'));
+        return;
+      }
+
+      setPixCreated(false);
+      setPixQrCodeBase64('');
+      setPixQrCode('');
+      setPixPaymentId(null);
+      setStage(STAGE.FINAL_THANKS);
+    } catch (e) {
+      console.error('Error processing tip:', e);
+      if (manualConfirm) {
+        await insertRequestDirectly();
+        return;
+      }
+      alert('Erro: ' + e.message);
+    }
+    setRequesting(false);
+  };
+
+  const insertRequestDirectly = async () => {
     try {
       const { error } = await supabase.from('music_requests').insert({
         artist_id: artistId,
         musica_id: selectedMusic?.id || null,
-        musica_titulo: selectedMusic?.titulo || null,
+        musica_titulo: selectedMusic?.titulo || 'Pedido com Gorjeta',
         musica_artista: selectedMusic?.artista_nome || null,
         user_name: userName || 'Cliente',
         message: message || null,
         status: 'pending',
+        amount: tipAmount,
+        pix_payment_id: pixPaymentId,
+        pix_status: 'pending',
         requested_at: new Date().toISOString(),
-        amount: tipAmount
+        rating: rating || null
       });
 
       if (error) {
         console.error('Erro ao criar pedido:', error);
-        alert('Erro: ' + error.message);
+        alert('Erro ao criar pedido: ' + error.message);
       } else {
+        setPixCreated(false);
+        setPixQrCodeBase64('');
+        setPixQrCode('');
+        setPixPaymentId(null);
         setStage(STAGE.FINAL_THANKS);
       }
     } catch (e) {
-      console.error('Error submitting request:', e);
+      console.error('Error inserting request:', e);
       alert('Erro: ' + e.message);
     }
-    
     setRequesting(false);
   };
 
-  const quickTipValues = [5, 10, 20];
+  const quickTipValues = [2, 5, 10];
 
   const renderStage = () => {
     switch (stage) {
@@ -293,6 +416,31 @@ export default function ArtistTip() {
               />
             </div>
 
+            {includeTip && (
+              <div className="mb-8">
+                <label className={`text-xs font-bold uppercase tracking-wider block mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Avalie o Artista
+                </label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(rating === star ? 0 : star)}
+                      className={`p-1 transition-all hover:scale-110 ${star <= rating ? 'text-yellow-400' : isDark ? 'text-gray-600' : 'text-gray-300'}`}
+                    >
+                      <Star className="w-7 h-7" fill={star <= rating ? 'currentColor' : 'none'} />
+                    </button>
+                  ))}
+                  {rating > 0 && (
+                    <span className={`ml-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {rating === 5 ? 'Excelente!' : rating === 4 ? 'Muito bom' : rating === 3 ? 'Bom' : rating === 2 ? 'Regular' : 'Ruim'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <button
                 onClick={() => submitRequest(includeTip)}
@@ -371,6 +519,22 @@ export default function ArtistTip() {
               </p>
             </div>
 
+            <div className="mb-6">
+              <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                CPF (obrigatório para PIX)
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={customerCpf}
+                onChange={e => setCustomerCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                placeholder="000.000.000-00"
+                className={`w-full p-3 rounded-xl border text-sm outline-none ${
+                  isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
+                }`}
+              />
+            </div>
+
             <div className="grid grid-cols-3 gap-3 mb-8">
               {quickTipValues.map(value => (
                 <button
@@ -387,16 +551,19 @@ export default function ArtistTip() {
               ))}
             </div>
 
+            {pixError && (
+              <p className="text-xs text-red-400 text-center mb-3">{pixError}</p>
+            )}
             <button
-              onClick={() => setStage(STAGE.PIX_PAYMENT)}
-              disabled={tipAmount < 2}
+              onClick={createPixPayment}
+              disabled={tipAmount < 2 || !customerCpf || customerCpf.length < 11 || pixLoading}
               className="w-full py-4 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-50"
               style={{ 
                 background: 'linear-gradient(135deg, #39FF6A, #2ECC40)',
                 boxShadow: '0 0 20px rgba(57,255,106,0.3)'
               }}
             >
-              Continuar para Pagamento
+              {pixLoading ? 'Gerando PIX...' : 'Continuar para Pagamento'}
             </button>
           </motion.div>
         );
@@ -420,11 +587,17 @@ export default function ArtistTip() {
 
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-white rounded-2xl">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeValue)}&bgcolor=ffffff&color=000000`}
-                    alt="QR Code PIX"
-                    className="w-40 h-40"
-                  />
+                  {pixQrCodeBase64 ? (
+                    <img
+                      src={`data:image/png;base64,${pixQrCodeBase64}`}
+                      alt="QR Code PIX"
+                      className="w-40 h-40"
+                    />
+                  ) : (
+                    <div className="w-40 h-40 flex items-center justify-center">
+                      <Loader className="w-8 h-8 animate-spin text-neon-purple" />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -435,18 +608,20 @@ export default function ArtistTip() {
               <div className="space-y-3">
                 <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                   <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Chave PIX (Gerada pelo App)
+                    Código PIX (Copiar e Colar)
                   </p>
                   <div className="flex items-center justify-between">
                     <p className={`font-mono text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                      {generatedPixKey}
+                      {pixQrCode}
                     </p>
-                    <button
-                      onClick={copyPixKey}
-                      className="p-2 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 transition-colors"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                    {pixQrCode && (
+                      <button
+                        onClick={copyPixKey}
+                        className="p-2 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 transition-colors ml-2 flex-shrink-0"
+                      >
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -455,20 +630,18 @@ export default function ArtistTip() {
                     Valor: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
+
+                <button
+                  onClick={() => processTipPayment(true)}
+                  disabled={requesting}
+                  className="w-full py-3 rounded-xl font-bold text-xs text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}
+                >
+                  {requesting ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Já paguei - Confirmar Pedido
+                </button>
               </div>
             </div>
-
-            <button
-              onClick={handleConfirmPix}
-              className="w-full mt-6 py-4 rounded-xl font-bold text-sm text-white transition-all"
-              style={{ 
-                background: 'linear-gradient(135deg, #39FF6A, #2ECC40)',
-                boxShadow: '0 0 20px rgba(57,255,106,0.3)'
-              }}
-            >
-              <Check className="w-5 h-5 inline mr-2" />
-              Confirmar já fiz o pix
-            </button>
           </motion.div>
         );
 
@@ -506,11 +679,11 @@ export default function ArtistTip() {
       <div className="relative z-10 flex flex-col items-center px-4 py-8">
         {stage !== STAGE.PRESENTATION && stage !== STAGE.FINAL_THANKS && (
           <button
-            onClick={() => {
-              if (stage === STAGE.FORM) setStage(STAGE.PRESENTATION);
-              else if (stage === STAGE.TIP_VALUE) setStage(STAGE.FORM);
-              else if (stage === STAGE.PIX_PAYMENT) setStage(STAGE.TIP_VALUE);
-            }}
+                onClick={() => {
+                  if (stage === STAGE.FORM) setStage(STAGE.PRESENTATION);
+                  else if (stage === STAGE.TIP_VALUE) { setStage(STAGE.FORM); setPixError(''); }
+                  else if (stage === STAGE.PIX_PAYMENT) setStage(STAGE.TIP_VALUE);
+                }}
             className={`self-start mb-6 p-2 rounded-xl ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}
           >
             <X className="w-5 h-5" />

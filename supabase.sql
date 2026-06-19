@@ -12,7 +12,8 @@ CREATE TABLE music_requests (
   requested_at TIMESTAMPTZ DEFAULT NOW(),
   played_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  message TEXT
+  message TEXT,
+  rating INTEGER
 );
 
 ALTER TABLE music_requests ENABLE ROW LEVEL SECURITY;

@@ -65,10 +65,10 @@ export default function ContractorSearch() {
           <label className="text-gray-400 text-xs mb-2 block">
             Cachê máximo: R$ {maxFee.toLocaleString()}
           </label>
-          <input type="range" min={500} max={10000} step={500} value={maxFee} onChange={e => setMaxFee(+e.target.value)}
+          <input type="range" min={0} max={10000} step={500} value={maxFee} onChange={e => setMaxFee(+e.target.value)}
             className="w-full accent-neon-purple" />
           <div className="flex justify-between text-gray-600 text-[10px] mt-1">
-            <span>R$ 500</span><span>R$ 10.000</span>
+            <span>R$ 0</span><span>R$ 10.000</span>
           </div>
         </div>
 

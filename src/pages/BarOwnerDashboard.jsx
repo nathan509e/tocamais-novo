@@ -172,14 +172,14 @@ export default function VenueDashboard() {
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { title: 'Cachês Pagos', value: 'R$ 7.560', icon: '💰', color: 'border-neon-purple/20' },
-                { title: 'Gorjetas Extras', value: 'R$ 1.240', icon: '💝', color: 'border-neon-green/20' },
-                { title: 'Total Eventos', value: '14 Shows', icon: '🎤', color: 'border-white/5' },
-                { title: 'Média de Público', value: '187 pessoas', icon: '👥', color: 'border-white/5' }
+                { title: 'Cachês Pagos', value: 'R$ 7.560', icon: DollarSign, color: 'border-neon-purple/20', iconColor: 'text-neon-purple' },
+                { title: 'Gorjetas Extras', value: 'R$ 1.240', icon: Star, color: 'border-neon-green/20', iconColor: 'text-neon-green' },
+                { title: 'Total Eventos', value: '14 Shows', icon: Music, color: 'border-white/5', iconColor: 'text-white' },
+                { title: 'Média de Público', value: '187 pessoas', icon: Users, color: 'border-white/5', iconColor: 'text-gray-400' }
               ].map((m, i) => (
                 <div key={i} className={`p-3.5 rounded-2xl bg-white/5 border ${m.color} backdrop-blur-sm`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base">{m.icon}</span>
+                    <m.icon className={`w-4 h-4 ${m.iconColor}`} />
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{m.title}</span>
                   </div>
                   <p className="text-sm md:text-base font-bold text-white">{m.value}</p>

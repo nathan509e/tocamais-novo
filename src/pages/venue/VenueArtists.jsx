@@ -158,7 +158,7 @@ export default function VenueArtists() {
               </div>
               <div>
                 <label className="text-gray-400 text-xs mb-2 block">Cachê máximo: R$ {maxFee.toLocaleString()}</label>
-                <input type="range" min={500} max={10000} step={500} value={maxFee} onChange={e => setMaxFee(+e.target.value)}
+                <input type="range" min={0} max={10000} step={500} value={maxFee} onChange={e => setMaxFee(+e.target.value)}
                   className="w-full accent-neon-purple" />
               </div>
             </motion.div>

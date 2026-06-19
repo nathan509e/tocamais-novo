@@ -63,6 +63,15 @@ export default function VenueDashboard() {
   const [signed, setSigned] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [createdEventId, setCreatedEventId] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentQrCode, setPaymentQrCode] = useState('');
+  const [paymentQrCodeBase64, setPaymentQrCodeBase64] = useState('');
+  const [paymentPixCode, setPaymentPixCode] = useState('');
+  const [paymentTicketUrl, setPaymentTicketUrl] = useState('');
+  const [mpPaymentId, setMpPaymentId] = useState(null);
+  const [paymentCreated, setPaymentCreated] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
   const [eventAddress, setEventAddress] = useState('');
   const [precisaEquipamento, setPrecisaEquipamento] = useState(false);
@@ -220,6 +229,16 @@ export default function VenueDashboard() {
     setQuantidadePessoas(100);
     setSigned(false);
     setPaymentDone(false);
+    setCreatedEventId(null);
+    setPaymentMethod('');
+    setPaymentLoading(false);
+    setPaymentError('');
+    setPaymentQrCode('');
+    setPaymentQrCodeBase64('');
+    setPaymentPixCode('');
+    setPaymentTicketUrl('');
+    setMpPaymentId(null);
+    setPaymentCreated(false);
     setEventMessage('');
   };
 
@@ -245,6 +264,10 @@ export default function VenueDashboard() {
         venue_id: userProfile.id
       }).select();
       console.log('events insert result:', { eventData, eventErr });
+
+      if (eventData && eventData[0]) {
+        setCreatedEventId(eventData[0].id);
+      }
 
       const senderName = user?.user_metadata?.name || user?.email || 'Casa de Show';
       const msg = eventMessage.trim() || `Olá! Proposta para show no dia ${eventDate} às ${eventTime}. Cachê: R$ ${proposalFee}.`;
@@ -501,14 +524,14 @@ export default function VenueDashboard() {
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { title: 'Cachês Pagos', value: 'R$ 0', icon: '💰', color: 'border-neon-purple/20' },
-                { title: 'Gorjetas Extras', value: 'R$ 0', icon: '💝', color: 'border-neon-green/20' },
-                { title: 'Total Eventos', value: '0 Shows', icon: '🎤', color: 'border-white/5' },
-                { title: 'Média de Público', value: '0 pessoas', icon: '👥', color: 'border-white/5' }
+                { title: 'Cachês Pagos', value: 'R$ 0', icon: DollarSign, color: 'border-neon-purple/20', iconColor: 'text-neon-purple' },
+                { title: 'Gorjetas Extras', value: 'R$ 0', icon: Star, color: 'border-neon-green/20', iconColor: 'text-neon-green' },
+                { title: 'Total Eventos', value: '0 Shows', icon: Music, color: 'border-white/5', iconColor: 'text-white' },
+                { title: 'Média de Público', value: '0 pessoas', icon: Users, color: 'border-white/5', iconColor: 'text-gray-400' }
               ].map((m, i) => (
                 <div key={i} className={`p-3.5 rounded-2xl bg-white/5 border ${m.color} backdrop-blur-sm`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base">{m.icon}</span>
+                    <m.icon className={`w-4 h-4 ${m.iconColor}`} />
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{m.title}</span>
                   </div>
                   <p className="text-sm md:text-base font-bold text-white">{m.value}</p>
@@ -1242,33 +1265,207 @@ export default function VenueDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      {['pix', 'credit', 'boleto', 'cash'].map(method => (
-                        <button key={method} onClick={() => setPaymentMethod(method)} className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
-                          paymentMethod === method 
-                            ? 'border-neon-purple bg-neon-purple/10 text-neon-purple' 
-                            : 'border-white/10 text-gray-400 hover:border-white/20'
-                        }`}>
-                          {method === 'pix' ? 'Pix' : method === 'credit' ? 'Cartão' : method === 'boleto' ? 'Boleto' : 'Dinheiro'}
-                        </button>
-                      ))}
-                    </div>
+                    {!paymentCreated ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          {['pix', 'credit', 'boleto'].map(method => (
+                            <button key={method} onClick={() => setPaymentMethod(method)} className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                              paymentMethod === method 
+                                ? 'border-neon-purple bg-neon-purple/10 text-neon-purple' 
+                                : 'border-white/10 text-gray-400 hover:border-white/20'
+                            }`}>
+                              {method === 'pix' ? 'Pix' : method === 'credit' ? 'Cartão' : 'Boleto'}
+                            </button>
+                          ))}
+                        </div>
 
-                    <div className="flex gap-2">
-                      <button onClick={() => setHireStep(3)} className="flex-1 py-2.5 border border-white/10 text-xs rounded-xl hover:bg-white/5">
-                        Voltar
-                      </button>
-                      <button 
-                        onClick={async () => {
-                          await handleConfirmBooking();
-                          setPaymentDone(true);
-                          setHireStep(5);
-                        }}
-                        className="flex-1 py-2.5 bg-neon-green text-black font-bold text-xs rounded-xl"
-                      >
-                        Confirmar Pagamento
-                      </button>
-                    </div>
+                        {paymentError && (
+                          <p className="text-xs text-red-400 text-center">{paymentError}</p>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button onClick={() => setHireStep(3)} className="flex-1 py-2.5 border border-white/10 text-xs rounded-xl hover:bg-white/5">
+                            Voltar
+                          </button>
+                          <button
+                            disabled={!paymentMethod || paymentLoading}
+                            onClick={async () => {
+                              if (!createdEventId) {
+                                setPaymentError('Evento ainda não foi criado. Volte e envie a proposta primeiro.');
+                                return;
+                              }
+                              setPaymentLoading(true);
+                              setPaymentError('');
+                              try {
+                                const { data: session } = await supabase.auth.getSession();
+                                const token = session?.access_token;
+
+                                const response = await fetch(
+                                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas-create-payment`,
+                                  {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({
+                                      event_id: createdEventId,
+                                      amount: Math.round(proposalFee * 1.1),
+                                      method: paymentMethod,
+                                      payer_email: user?.email,
+                                      description: `Show: ${hiringArtist?.artistic_name} - ${eventDate}`
+                                    })
+                                  }
+                                );
+
+                                const data = await response.json();
+
+                                if (!response.ok) {
+                                  throw new Error(data.error || 'Erro ao criar pagamento');
+                                }
+
+                                setPaymentQrCode(data.qrCode || '');
+                                setPaymentQrCodeBase64(data.qrCodeBase64 || '');
+                                setPaymentPixCode(data.qrCode || '');
+                                setPaymentTicketUrl(data.ticketUrl || '');
+                                setMpPaymentId(data.mpPaymentId);
+                                setPaymentCreated(true);
+                              } catch (err) {
+                                console.error('Payment error:', err);
+                                setPaymentError(err.message || 'Erro ao processar pagamento');
+                              } finally {
+                                setPaymentLoading(false);
+                              }
+                            }}
+                            className="flex-1 py-2.5 bg-neon-green text-black font-bold text-xs rounded-xl disabled:opacity-50"
+                          >
+                            {paymentLoading ? 'Processando...' : `Pagar R$ ${Math.round(proposalFee * 1.1).toLocaleString()}`}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-4 rounded-xl border border-neon-green/30 bg-neon-green/5 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-neon-green" />
+                            <span className="text-xs font-bold text-neon-green">Cobrança gerada com sucesso!</span>
+                          </div>
+
+                          {paymentMethod === 'pix' && paymentQrCodeBase64 && (
+                            <div className="flex flex-col items-center gap-3">
+                              <img
+                                src={`data:image/png;base64,${paymentQrCodeBase64}`}
+                                alt="QR Code PIX"
+                                className="w-48 h-48 rounded-xl bg-white p-2"
+                              />
+                              <div className="w-full">
+                                <label className="text-[10px] text-gray-500 font-bold block mb-1">Código PIX (Copiar e Colar)</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={paymentPixCode}
+                                    className="flex-1 p-2 bg-white/5 border border-white/10 rounded-xl text-[10px] text-gray-300 truncate"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(paymentPixCode);
+                                    }}
+                                    className="px-3 py-2 bg-neon-purple/20 border border-neon-purple/30 text-neon-purple text-[10px] font-bold rounded-xl whitespace-nowrap"
+                                  >
+                                    Copiar
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {paymentMethod === 'boleto' && paymentTicketUrl && (
+                            <div className="text-center">
+                              <p className="text-xs text-gray-400 mb-2">Clique no botão abaixo para visualizar o boleto:</p>
+                              <a
+                                href={paymentTicketUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block px-6 py-2.5 bg-neon-purple text-white font-bold text-xs rounded-xl"
+                              >
+                                Ver Boleto
+                              </a>
+                            </div>
+                          )}
+
+                          {paymentMethod === 'credit' && (
+                            <p className="text-xs text-gray-400 text-center">Pagamento com cartão será processado automaticamente.</p>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setPaymentCreated(false);
+                              setPaymentQrCode('');
+                              setPaymentQrCodeBase64('');
+                              setPaymentPixCode('');
+                              setPaymentTicketUrl('');
+                              setMpPaymentId(null);
+                              setPaymentError('');
+                            }}
+                            className="flex-1 py-2.5 border border-white/10 text-xs rounded-xl hover:bg-white/5"
+                          >
+                            Alterar Método
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const { data: session } = await supabase.auth.getSession();
+                                const token = session?.access_token;
+
+                                const response = await fetch(
+                                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas-check-payment`,
+                                  {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ payment_id: mpPaymentId })
+                                  }
+                                );
+
+                                const data = await response.json();
+
+                                if (data.mpStatus === 'approved') {
+                                  setPaymentDone(true);
+                                  setHireStep(5);
+                                } else {
+                                  setPaymentError('Pagamento ainda não foi confirmado. Após realizar o PIX, clique novamente.');
+                                }
+                              } catch (err) {
+                                console.error('Check payment error:', err);
+                                setPaymentError('Erro ao verificar pagamento');
+                              }
+                            }}
+                            className="flex-1 py-2.5 bg-neon-green text-black font-bold text-xs rounded-xl"
+                          >
+                            Já Realizei o Pagamento
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setPaymentDone(true);
+                            setHireStep(5);
+                          }}
+                          className="w-full py-2 border border-white/10 text-[10px] text-gray-500 rounded-xl hover:text-gray-300"
+                        >
+                          Pular verificação (pagamento confirmado manualmente)
+                        </button>
+
+                        {paymentError && (
+                          <p className="text-xs text-red-400 text-center">{paymentError}</p>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -1278,7 +1475,7 @@ export default function VenueDashboard() {
                     <h3 className="text-white font-bold text-lg">Contratação Concluída!</h3>
                     <p className="text-gray-400 text-xs">O contrato foi assinado e o pagamento processado com sucesso.</p>
                     <button 
-                      onClick={() => { setHiringArtist(null); setHireStep(1); setPaymentDone(false); setSigned(false); setChatHistory([]); }}
+                      onClick={() => { setHiringArtist(null); setHireStep(1); setPaymentDone(false); setSigned(false); setChatHistory([]); setCreatedEventId(null); setPaymentCreated(false); setPaymentMethod(''); setPaymentQrCode(''); setPaymentQrCodeBase64(''); setPaymentPixCode(''); setPaymentTicketUrl(''); setMpPaymentId(null); setPaymentError(''); }}
                       className="w-full py-3 bg-neon-green text-black font-bold text-xs rounded-xl hover:opacity-90 transition-opacity"
                     >
                       Voltar ao Painel
