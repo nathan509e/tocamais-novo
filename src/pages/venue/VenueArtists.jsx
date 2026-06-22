@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, Star, CheckCircle } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
@@ -14,6 +15,7 @@ const genres = ['Todos', 'Sertanejo', 'Pop', 'Rock', 'Forró', 'Samba', 'Jazz', 
 export default function VenueArtists() {
   const { user, userProfile } = useAuth();
   const { theme } = useTheme();
+  const location = useLocation();
   const isDark = theme === 'dark';
 
   const [allArtists, setAllArtists] = useState([]);
@@ -28,6 +30,14 @@ export default function VenueArtists() {
   const [hireForm, setHireForm] = useState({ date: '', time: '20:00', fee: 0, message: '', address: '', precisa_equipamento: false, quantidade_pessoas: 100 });
   const [hireSuccess, setHireSuccess] = useState(false);
   const [hiring, setHiring] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.hireArtist) {
+      setSelectedArtist(location.state.hireArtist);
+      setHireForm(f => ({ ...f, fee: location.state.hireArtist.base_fee || 0 }));
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     async function loadArtists() {
