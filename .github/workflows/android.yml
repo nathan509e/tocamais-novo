@@ -29,7 +29,12 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: Add Android platform
-        run: npx cap add android
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          else
+            echo "Android platform already exists"
+          fi
 
       - name: Sync Capacitor
         run: npx cap sync android
