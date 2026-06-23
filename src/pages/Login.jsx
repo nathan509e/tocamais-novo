@@ -69,16 +69,27 @@ export default function Login() {
   const handleQuickLogin = async (quickEmail) => {
     setErrorMsg('');
     setIsLoading(true);
+    
+    const timeout = setTimeout(() => {
+      setErrorMsg('Login demorando demais...');
+      setIsLoading(false);
+    }, 10000);
+    
     try {
-      const { error, user } = await loginWithRole(quickEmail, '123456');
+      const result = await loginWithRole(quickEmail, '123456');
+      clearTimeout(timeout);
+      const { error, user } = result;
       if (error) {
-        setErrorMsg(error.message);
+        setErrorMsg(error.message || 'Erro ao fazer login');
       } else if (user) {
         const role = (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
         navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
+      } else {
+        setErrorMsg('Resposta inválida do servidor');
       }
     } catch (err) {
-      setErrorMsg('Erro no login rápido');
+      clearTimeout(timeout);
+      setErrorMsg('Erro no login rápido: ' + (err?.message || err));
     } finally {
       setIsLoading(false);
     }

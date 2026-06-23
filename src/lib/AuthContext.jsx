@@ -38,14 +38,12 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
 
-      // Load specific user profile metadata from DB based on role
       const role = (currentUser.user_metadata?.role || currentUser.role || 'contractor').replace('bar_owner', 'venue');
       
-      // Ensure public.users entry exists
       let pubUser = null;
       try {
         const { data: existingUser } = await supabase.from('users').select('*').eq('id', currentUser.id).single();
-        pubUser = existingUser;
+        if (existingUser) pubUser = existingUser;
       } catch (e) {
         console.warn('Error loading public.users, will attempt insert:', e);
       }
@@ -151,21 +149,28 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
 
     try {
+      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('Login result:', { data, error });
       
       if (error) {
+        console.error('Login error:', error);
+        setIsLoadingAuth(false);
         return { error };
       }
 
       if (data?.user) {
+        console.log('User logged in, loading profile...');
         await loadUserProfile(data.user);
+        setIsLoadingAuth(false);
         return { user: data.user, error: null };
       }
+      setIsLoadingAuth(false);
       return { error: { message: 'Nenhum usuário encontrado.' } };
     } catch (err) {
-      return { error: { message: err.message || 'Falha ao autenticar.' } };
-    } finally {
+      console.error('Login exception:', err);
       setIsLoadingAuth(false);
+      return { error: { message: err.message || 'Falha ao autenticar.' } };
     }
   };
 

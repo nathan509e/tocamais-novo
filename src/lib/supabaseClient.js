@@ -261,6 +261,9 @@ class MockSupabaseQueryBuilder {
     }
 
     const output = this.isSingle ? (filtered[0] || null) : filtered;
+    if (this.isSingle && filtered.length === 0) {
+      return onfulfilled({ data: null, error: { message: 'Row not found' } });
+    }
     return onfulfilled({ data: output, error: null });
   }
 }
@@ -277,14 +280,14 @@ const mockSupabase = {
       const current = loadStorage('auth_session', null);
       return { data: { session: current ? { user: current } : null }, error: null };
     },
-    signInWithPassword: async ({ email }) => {
+    signInWithPassword: async ({ email, password }) => {
       const users = db.users;
       const user = users.find(u => u.email === email);
-      if (user) {
+      if (user && user.password === password) {
         saveStorage('auth_session', user);
         return { data: { user }, error: null };
       }
-      return { data: null, error: { message: 'Usuário não encontrado.' } };
+      return { data: null, error: { message: 'E-mail ou senha inválidos.' } };
     },
     signUp: async ({ email, password, options }) => {
       const users = db.users;
