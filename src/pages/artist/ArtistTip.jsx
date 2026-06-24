@@ -140,7 +140,12 @@ export default function ArtistTip() {
         }
       );
 
-      if (fnError) throw new Error(fnError.message || 'Erro ao gerar PIX');
+      if (fnError) {
+        // Supabase puts the edge function response body in data even on non-2xx
+        const serverMsg = data?.error || fnError.message || 'Erro ao gerar PIX';
+        const serverCode = data?.code || '';
+        throw new Error(serverCode ? `${serverCode}: ${serverMsg}` : serverMsg);
+      }
 
       setPixQrCodeBase64(data.qrCodeBase64);
       setPixQrCode(data.qrCode);
@@ -149,7 +154,16 @@ export default function ArtistTip() {
       setStage(STAGE.PIX_PAYMENT);
     } catch (err) {
       console.error('PIX error:', err);
-      setPixError(err.message || 'Erro ao gerar PIX');
+      const msg = err.message || 'Erro ao gerar PIX';
+      if (msg.includes('STRIPE_NOT_CONFIGURED') || msg.includes('não configurado') || msg.includes('not configured')) {
+        setPixError('Sistema de pagamento temporariamente indisponível. Tente novamente mais tarde.');
+      } else if (msg.includes('PIX_NOT_ACTIVATED') || msg.includes('não ativado') || msg.includes('not activated')) {
+        setPixError('Método PIX não ativado no Stripe. Ative o Método PIX como Pagamento no Stripe.');
+      } else if (msg.includes('non-2xx') || msg.includes('pix') || msg.includes('PIX')) {
+        setPixError(`${msg} (Ative o Método PIX como Pagamento no Stripe)`);
+      } else {
+        setPixError(msg);
+      }
     } finally {
       setPixLoading(false);
     }
