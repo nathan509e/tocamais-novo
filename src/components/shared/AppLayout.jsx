@@ -59,13 +59,13 @@ export default function AppLayout({ children, role = 'artist' }) {
   const username = user?.full_name || user?.name || 'Usuário';
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const mobileNav = role === 'artist'
+  // Bottom nav mobile: artist gets only 4 core items
+  const mobileBottomNav = role === 'artist'
     ? [
         { icon: Home, label: 'Painel', path: '/artist' },
-        { icon: Calendar, label: 'Agenda', path: '/artist/agenda' },
+        { icon: Mailbox, label: 'Propostas', path: '/artist/proposals' },
         { icon: Music, label: 'Pedidos', path: '/artist/requests' },
         { icon: Mail, label: 'Mensagens', path: '/artist/messages' },
-        { icon: UserIcon, label: 'Perfil', path: '/artist/profile' },
       ]
     : nav;
 
@@ -224,7 +224,7 @@ export default function AppLayout({ children, role = 'artist' }) {
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`p-2 rounded-xl border transition-colors relative ${
+                className={`p-2 rounded-xl border transition-colors ${
                   isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-200 hover:bg-gray-200'
                 }`}
               >
@@ -297,7 +297,7 @@ export default function AppLayout({ children, role = 'artist' }) {
       <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t px-4 py-2 flex items-center justify-around z-40 pb-5 ${
         isDark ? 'bg-[#0F0926] border-white/5' : 'bg-[#FFFFFF] border-gray-200 shadow-sm'
       }`}>
-        {nav.map((item) => {
+        {mobileBottomNav.map((item) => {
           const Icon = item.icon;
           const active = location.pathname === item.path;
           return (
@@ -355,7 +355,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               </div>
 
               <nav className="flex-1 space-y-2">
-        {mobileNav.map((item) => {
+                {nav.map((item) => {
                   const Icon = item.icon;
                   const active = location.pathname === item.path;
                   return (
@@ -383,7 +383,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
                 <div className="flex items-center gap-3 mb-3">
                   <img 
-              src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
+                    src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
                     alt="Avatar" 
                     className="w-9 h-9 rounded-lg object-cover"
                   />
