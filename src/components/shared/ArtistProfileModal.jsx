@@ -52,28 +52,41 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
           </button>
         </div>
 
-        {/* Profile Card Body */}
+        {/* Cover + Profile Card Body */}
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-center gap-5">
-            <img 
-              src={artist.photo_url} 
-              alt={artist.artistic_name} 
-              className="w-28 h-28 rounded-2xl object-cover border-2 border-neon-purple shadow-lg"
-            />
-            <div className="text-center sm:text-left flex-1 space-y-1">
-              <div className="flex items-center justify-center sm:justify-start gap-2">
-                <h4 className="font-black text-2xl">{artist.artistic_name}</h4>
-                {artist.verified && <CheckCircle className="w-5 h-5 text-neon-purple" />}
-              </div>
-              <p className="text-sm text-neon-green font-bold">{artist.genre} • {artist.city}</p>
-              <div className="flex items-center justify-center sm:justify-start gap-1.5 text-yellow-400 text-sm">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-bold">{artist.rating}</span>
-                <span className="text-gray-500 font-semibold">({artist.followers?.toLocaleString()} seguidores)</span>
-              </div>
+          {/* Cover banner — same proportions as ArtistProfile (h-56) */}
+          <div className="relative h-56 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 overflow-hidden rounded-t-2xl">
+            {artist.cover_url ? (
+              <img src={artist.cover_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-neon-purple/30 via-neon-purple/15 to-neon-green/15" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          </div>
+
+          {/* Profile photo — centered, overlapping cover (same -mt-14 as ArtistProfile) */}
+          <div className="flex justify-center -mt-14 relative z-10">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-white" style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
+              <img 
+                src={artist.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${artist.artistic_name}`} 
+                alt={artist.artistic_name} 
+                className="w-full h-full object-cover"
+              />
             </div>
-            
-            <div className="text-center sm:text-right">
+          </div>
+
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              <h4 className="font-black text-2xl">{artist.artistic_name}</h4>
+              {artist.verified && <CheckCircle className="w-5 h-5 text-neon-purple" />}
+            </div>
+            <p className="text-sm text-neon-green font-bold">{artist.genre} • {artist.city}</p>
+            <div className="flex items-center justify-center gap-1.5 text-yellow-400 text-sm">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="font-bold">{artist.rating}</span>
+              <span className="text-gray-500 font-semibold">({artist.followers?.toLocaleString()} seguidores)</span>
+            </div>
+            <div className="pt-2">
               <span className="text-[10px] text-gray-500 uppercase font-bold block">Cachê Base</span>
               <p className="text-xl font-bold text-neon-green">R$ {artist.base_fee?.toLocaleString()}</p>
             </div>

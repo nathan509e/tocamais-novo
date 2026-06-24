@@ -36,25 +36,22 @@ serve(async (req) => {
       amount: Math.round(Number(amount) * 100),
       currency: 'brl',
       payment_method_types: ['pix'],
-      payment_method_options: {
-        pix: { expires_after_seconds: 86400 }
-      },
-      description: description || 'Gorjeta TocaMais'
-    })
-
-    const confirmed = await stripe.paymentIntents.confirm(paymentIntent.id, {
+      description: description || 'Gorjeta TocaMais',
+      confirm: true,
       payment_method_data: {
         type: 'pix',
         billing_details: {
           name: customerName || 'Cliente TocaMais',
           email: customerEmail || 'cliente@tocamais.com.br',
           address: { country: 'BR' },
-          tax_id: customerTaxId || '15079592494'
         }
+      },
+      payment_method_options: {
+        pix: { expires_after_seconds: 86400 }
       }
     })
 
-    const pixDisplayQrCode = confirmed.next_action?.pix_display_qr_code
+    const pixDisplayQrCode = paymentIntent.next_action?.pix_display_qr_code
 
     const qrCodePayload = pixDisplayQrCode?.data || null
     const imageUrlPng = pixDisplayQrCode?.image_url_png || null
@@ -77,7 +74,7 @@ serve(async (req) => {
         success: true,
         paymentIntentId: paymentIntent.id,
         clientSecret: paymentIntent.client_secret,
-        status: confirmed.status,
+        status: paymentIntent.status,
         qrCode: qrCodePayload,
         qrCodeBase64,
         hostedInstructionsUrl: hostedUrl,

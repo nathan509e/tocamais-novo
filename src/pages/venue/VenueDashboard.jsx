@@ -245,9 +245,27 @@ export default function VenueDashboard() {
   const handleConfirmBooking = async () => {
     if (!hiringArtist || !user) {
       console.error('handleConfirmBooking: missing hiringArtist or user', { hiringArtist, user });
+      setPaymentError('Erro: dados do artista ou usuário não encontrados.');
       return;
     }
-    console.log('handleConfirmBooking: starting', { artistId: hiringArtist.id, userId: user.id, proposalFee, eventDate, eventMessage });
+    // Garantir que temos o venue_id
+    let venueId = userProfile?.id;
+    if (!venueId && user?.id) {
+      const { data: vData } = await supabase.from('venues').select('id').eq('user_id', user.id).maybeSingle();
+      venueId = vData?.id;
+      if (!venueId) {
+        const { data: newVenue } = await supabase.from('venues').insert({
+          user_id: user.id,
+          venue_name: user?.user_metadata?.name || 'Minha Casa de Show',
+          city: 'São Paulo',
+          address: 'Endereço não definido',
+          capacity: 100,
+          average_budget: 0
+        }).select('id').single();
+        venueId = newVenue?.id;
+      }
+    }
+    console.log('handleConfirmBooking: starting', { artistId: hiringArtist.id, userId: user.id, proposalFee, eventDate, eventMessage, venueId });
     try {
       const { data: eventData, error: eventErr } = await supabase.from('events').insert({
         title: `Show: ${hiringArtist.artistic_name}`,
@@ -261,9 +279,10 @@ export default function VenueDashboard() {
         precisa_equipamento: precisaEquipamento,
         quantidade_pessoas: quantidadePessoas,
         artist_id: hiringArtist.id,
-        venue_id: userProfile.id
+        venue_id: venueId
       }).select();
       console.log('events insert result:', { eventData, eventErr });
+      if (eventErr) throw new Error('Erro ao criar evento: ' + eventErr.message);
 
       if (eventData && eventData[0]) {
         setCreatedEventId(eventData[0].id);
@@ -279,6 +298,7 @@ export default function VenueDashboard() {
         type: 'proposal'
       }).select();
       console.log('notifications insert result:', { notifData, notifErr });
+      if (notifErr) throw new Error('Erro ao criar notificação: ' + notifErr.message);
 
       const { data: msgData, error: msgErr } = await supabase.from('messages').insert({
         sender_id: user.id,
@@ -286,8 +306,10 @@ export default function VenueDashboard() {
         text: msg
       }).select();
       console.log('messages insert result:', { msgData, msgErr });
+      if (msgErr) throw new Error('Erro ao criar mensagem: ' + msgErr.message);
     } catch (e) {
       console.error('Failed to book venue:', e);
+      setPaymentError(e.message);
     }
   };
 

@@ -1,23 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Copy, Check, Music, Search, X, Loader, Heart, Send, Sparkles, Star } from 'lucide-react';
+import { QrCode, Copy, Check, Music, Search, X, Loader, Heart, Send, Sparkles, Star, ChevronDown, DollarSign } from 'lucide-react';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
 
 const STAGE = {
-  PRESENTATION: 0,
-  FORM: 1,
-  ORDER_ONLY_THANKS: 2,
-  TIP_VALUE: 3,
-  PIX_PAYMENT: 4,
-  FINAL_THANKS: 5,
-  TIP_ONLY: 6,
-};
-
-const TIP_MODE = {
-  WITH_MUSIC: 'with_music',
-  TIP_ONLY: 'tip_only',
+  FORM: 0,
+  ORDER_ONLY_THANKS: 1,
+  TIP_VALUE: 2,
+  PIX_PAYMENT: 3,
+  FINAL_THANKS: 4,
 };
 
 export default function ArtistTip() {
@@ -25,7 +18,7 @@ export default function ArtistTip() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const [stage, setStage] = useState(STAGE.PRESENTATION);
+  const [stage, setStage] = useState(STAGE.FORM);
   const [artist, setArtist] = useState(null);
   const [repertorio, setRepertorio] = useState([]);
   const [searchRepertorio, setSearchRepertorio] = useState('');
@@ -36,7 +29,6 @@ export default function ArtistTip() {
   const [userName, setUserName] = useState('');
   const [message, setMessage] = useState('');
   const [tipAmount, setTipAmount] = useState(0);
-  const [includeTip, setIncludeTip] = useState(false);
   const [pixLoading, setPixLoading] = useState(false);
   const [pixError, setPixError] = useState('');
   const [pixQrCodeBase64, setPixQrCodeBase64] = useState('');
@@ -70,8 +62,6 @@ export default function ArtistTip() {
     checkPayment();
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [pixCreated, pixPaymentId]);
-
-  const generatedPixKey = `tocamais.${artistId?.slice(0, 8)}@tocamais.com.br`;
 
   useEffect(() => {
     async function loadArtist() {
@@ -165,18 +155,10 @@ export default function ArtistTip() {
     }
   };
 
-  const submitRequest = async (includeTip = false) => {
+  const submitRequest = async () => {
     if (!artistId) return;
     setRequesting(true);
-    
-    if (includeTip) {
-      setStage(STAGE.TIP_VALUE);
-      setRequesting(false);
-      return;
-    }
 
-    const finalAmount = 0;
-    
     try {
       const { error } = await supabase.from('music_requests').insert({
         artist_id: artistId,
@@ -187,7 +169,7 @@ export default function ArtistTip() {
         message: message || null,
         status: 'pending',
         requested_at: new Date().toISOString(),
-        amount: finalAmount
+        amount: 0
       });
 
       if (error) {
@@ -200,7 +182,7 @@ export default function ArtistTip() {
       console.error('Error submitting request:', e);
       alert('Erro: ' + e.message);
     }
-    
+
     setRequesting(false);
   };
 
@@ -298,167 +280,165 @@ export default function ArtistTip() {
 
   const renderStage = () => {
     switch (stage) {
-      case STAGE.PRESENTATION:
+      case STAGE.FORM:
         return (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-neon-purple/30 mx-auto mb-6"
-              style={{ boxShadow: '0 0 40px rgba(123,46,255,0.4)' }}>
-              <img 
-                src={artist?.photo_url || 'https://ui-avatars.com/api/?name=Artista&background=7B2EFF&color=fff&size=200'} 
-                alt={artist?.artistic_name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h1 className={`font-black text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {artist?.artistic_name || 'Artista'}
-            </h1>
-            {artist?.bio && (
-              <p className={`mt-2 text-sm max-w-xs mx-auto ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {artist.bio}
-              </p>
-            )}
-            
-            <div className="mt-8 space-y-3 max-w-sm mx-auto">
-              <button
-                onClick={() => {
-                  setIncludeTip(false);
-                  setStage(STAGE.FORM);
-                }}
-                className="w-full py-4 px-6 rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2"
-                style={{ 
-                  background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
-                  boxShadow: '0 0 20px rgba(123,46,255,0.4)'
-                }}
-              >
-                <Music className="w-5 h-5" />
-                Apenas Pedido
-              </button>
-              <button
-                onClick={() => {
-                  setIncludeTip(true);
-                  setStage(STAGE.FORM);
-                }}
-                className="w-full py-4 px-6 rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2"
-                style={{ 
-                  background: 'linear-gradient(135deg, #39FF6A, #2ECC40)',
-                  boxShadow: '0 0 20px rgba(57,255,106,0.3)'
-                }}
-              >
-                <Sparkles className="w-5 h-5" />
-                Pedido com Gorjeta
-              </button>
-            </div>
-          </motion.div>
-        );
-
-      case STAGE.FORM:
-        return (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
             className="w-full max-w-sm"
           >
-            <div className="mb-6">
-              <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Seu Nome
-              </label>
-              <input
-                type="text"
-                value={userName}
-                onChange={e => setUserName(e.target.value)}
-                placeholder="Digite seu nome"
-                className={`w-full p-3 rounded-xl border text-sm outline-none ${
-                  isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
-                }`}
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Escolha uma Música
-              </label>
-              <button
-                onClick={() => setShowMusicPicker(true)}
-                className={`w-full p-3 rounded-xl border text-sm text-left flex items-center gap-3 ${
-                  isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                }`}
-              >
-                <Music className="w-5 h-5 text-neon-purple" />
-                {selectedMusic ? (
-                  <span>{selectedMusic.titulo} - {selectedMusic.artista_nome}</span>
-                ) : (
-                  <span className="text-gray-400">Selecionar do repertório...</span>
-                )}
-              </button>
-              {repertorio.length > 0 && (
-                <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {repertorio.length} músicas disponíveis
-                </p>
+            {/* Banner */}
+            <div className="w-full h-36 rounded-2xl overflow-hidden relative">
+              {artist?.cover_url ? (
+                <img
+                  src={artist.cover_url}
+                  alt="Banner"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full h-full"
+                  style={{ background: 'linear-gradient(135deg, #7B2EFF 0%, #4A1A8A 50%, #2D1066 100%)' }}
+                />
               )}
             </div>
 
-            <div className="mb-8">
-              <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Dedicar para alguém (opcional)
-              </label>
-              <textarea
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                placeholder="Escreva uma mensagem para alguém especial..."
-                rows={3}
-                className={`w-full p-3 rounded-xl border text-sm outline-none resize-none ${
-                  isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
-                }`}
-              />
+            {/* Profile section */}
+            <div className="flex flex-col items-center -mt-12 relative z-10">
+              <div
+                className="w-24 h-24 rounded-full overflow-hidden border-4 border-white/20"
+                style={{ boxShadow: '0 0 30px rgba(123,46,255,0.4)' }}
+              >
+                <img
+                  src={artist?.photo_url || 'https://ui-avatars.com/api/?name=Artista&background=7B2EFF&color=fff&size=200'}
+                  alt={artist?.artistic_name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <h1 className={`mt-3 font-black text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {artist?.artistic_name || 'Artista'}
+              </h1>
+              {/* Star rating */}
+              <div className="flex items-center gap-1 mt-1">
+                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Avaliação</span>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <Star
+                    key={star}
+                    className="w-3.5 h-3.5 text-yellow-400"
+                    fill={star <= (artist?.rating || 4) ? 'currentColor' : 'none'}
+                  />
+                ))}
+                <span className={`text-xs ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                  ({artist?.rating?.toFixed(1) || '4.0'})
+                </span>
+              </div>
             </div>
 
-            {includeTip && (
-              <div className="mb-8">
-                <label className={`text-xs font-bold uppercase tracking-wider block mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Avalie o Artista
-                </label>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(rating === star ? 0 : star)}
-                      className={`p-1 transition-all hover:scale-110 ${star <= rating ? 'text-yellow-400' : isDark ? 'text-gray-600' : 'text-gray-300'}`}
-                    >
-                      <Star className="w-7 h-7" fill={star <= rating ? 'currentColor' : 'none'} />
-                    </button>
-                  ))}
-                  {rating > 0 && (
-                    <span className={`ml-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {rating === 5 ? 'Excelente!' : rating === 4 ? 'Muito bom' : rating === 3 ? 'Bom' : rating === 2 ? 'Regular' : 'Ruim'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Divider */}
+            <div className={`w-full h-px my-6 ${isDark ? 'bg-white/10' : 'bg-gray-200'}`} />
 
-            <div className="space-y-3">
+            {/* Form fields */}
+            <div className="space-y-5">
+              {/* Name field */}
+              <div>
+                <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Seu Nome
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={e => setUserName(e.target.value)}
+                  placeholder="DIGITE AQUI O SEU NOME"
+                  className={`w-full p-4 rounded-2xl border-2 text-sm font-medium outline-none transition-all focus:border-neon-purple ${
+                    isDark
+                      ? 'bg-white/5 border-white/15 text-white placeholder:text-gray-500 placeholder:uppercase'
+                      : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 placeholder:uppercase'
+                  }`}
+                />
+              </div>
+
+              {/* Music picker */}
+              <div>
+                <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Escolha uma Música
+                </label>
+                <button
+                  onClick={() => setShowMusicPicker(true)}
+                  className={`w-full p-4 rounded-2xl border-2 text-sm text-left flex items-center gap-3 transition-all focus:border-neon-purple ${
+                    isDark
+                      ? 'bg-white/5 border-white/15 text-white'
+                      : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                >
+                  <Music className="w-5 h-5 text-neon-purple flex-shrink-0" />
+                  <span className="flex-1 truncate">
+                    {selectedMusic ? (
+                      `${selectedMusic.titulo} - ${selectedMusic.artista_nome}`
+                    ) : (
+                      <span className="text-gray-400">Selecionar do repertório...</span>
+                    )}
+                  </span>
+                  <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </button>
+                {repertorio.length > 0 && (
+                  <p className={`text-xs mt-1.5 ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {repertorio.length} músicas disponíveis
+                  </p>
+                )}
+              </div>
+
+              {/* Dedication field */}
+              <div>
+                <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Dedicar para Alguém (Opcional)
+                </label>
+                <textarea
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  placeholder="Escreva uma mensagem para alguém especial..."
+                  rows={3}
+                  className={`w-full p-4 rounded-2xl border-2 text-sm outline-none resize-none transition-all focus:border-neon-purple ${
+                    isDark
+                      ? 'bg-white/5 border-white/15 text-white placeholder:text-gray-500'
+                      : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="mt-8 space-y-3">
               <button
-                onClick={() => submitRequest(includeTip)}
+                onClick={() => setStage(STAGE.TIP_VALUE)}
                 disabled={requesting}
-                className="w-full py-4 rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ 
-                  background: includeTip 
-                    ? 'linear-gradient(135deg, #39FF6A, #2ECC40)'
-                    : 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
-                  boxShadow: includeTip 
-                    ? '0 0 20px rgba(57,255,106,0.3)'
-                    : '0 0 20px rgba(123,46,255,0.4)'
+                className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
+                  boxShadow: '0 0 25px rgba(123,46,255,0.4)'
                 }}
               >
-                {requesting ? <Loader className="w-5 h-5 animate-spin" /> : includeTip ? <Sparkles className="w-5 h-5" /> : <Send className="w-5 h-5" />}
-                {includeTip ? 'Continuar para Gorjeta' : 'Fazer Pedido'}
+                <DollarSign className="w-5 h-5" />
+                Adicionar Gorjeta
+              </button>
+
+              <button
+                onClick={submitRequest}
+                disabled={requesting}
+                className={`w-full py-4 px-6 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
+                  isDark
+                    ? 'bg-white/10 text-white hover:bg-white/15'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {requesting ? <Loader className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                Fazer Apenas o Pedido sem Gorjeta
               </button>
             </div>
+
+            {/* Footer slogan */}
+            <p className={`mt-8 text-xs text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              Toca Mais — Música ao vivo, gorjeta com amor 💜
+            </p>
           </motion.div>
         );
 
@@ -478,15 +458,15 @@ export default function ArtistTip() {
             <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               Seu pedido foi enviado ao artista.
             </p>
-            
+
             <button
               onClick={() => {
                 setTipAmount(0);
                 setStage(STAGE.TIP_VALUE);
               }}
-              className="mt-8 text-sm text-gray-500 hover:text-neon-green transition-colors underline"
+              className="mt-8 text-sm text-neon-purple hover:underline"
             >
-              Clique Aqui! Se quiser você ainda pode abençoar esse artista com uma gorjeta.
+              Adicionar uma gorjeta agora →
             </button>
           </motion.div>
         );
@@ -509,8 +489,8 @@ export default function ArtistTip() {
                 step="1"
                 value={tipAmount}
                 onChange={e => setTipAmount(Math.max(0, Number(e.target.value)))}
-                className={`w-full p-4 rounded-xl border text-3xl font-bold text-center outline-none ${
-                  isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                className={`w-full p-4 rounded-2xl border-2 text-3xl font-bold text-center outline-none transition-all focus:border-neon-purple ${
+                  isDark ? 'bg-white/5 border-white/15 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
                 }`}
                 placeholder="R$ 0,00"
               />
@@ -529,8 +509,8 @@ export default function ArtistTip() {
                 value={customerCpf}
                 onChange={e => setCustomerCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
                 placeholder="000.000.000-00"
-                className={`w-full p-3 rounded-xl border text-sm outline-none ${
-                  isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
+                className={`w-full p-4 rounded-2xl border-2 text-sm outline-none transition-all focus:border-neon-purple ${
+                  isDark ? 'bg-white/5 border-white/15 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
                 }`}
               />
             </div>
@@ -540,7 +520,7 @@ export default function ArtistTip() {
                 <button
                   key={value}
                   onClick={() => setTipAmount(value)}
-                  className={`py-3 rounded-xl font-bold text-sm transition-all ${
+                  className={`py-3 rounded-2xl font-bold text-sm transition-all ${
                     tipAmount === value
                       ? 'bg-neon-green text-white'
                       : isDark ? 'bg-white/5 text-white' : 'bg-gray-100 text-gray-800'
@@ -557,8 +537,8 @@ export default function ArtistTip() {
             <button
               onClick={createPixPayment}
               disabled={tipAmount < 2 || !customerCpf || customerCpf.length < 11 || pixLoading}
-              className="w-full py-4 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-50"
-              style={{ 
+              className="w-full py-4 rounded-2xl font-bold text-sm text-white transition-all disabled:opacity-50"
+              style={{
                 background: 'linear-gradient(135deg, #39FF6A, #2ECC40)',
                 boxShadow: '0 0 20px rgba(57,255,106,0.3)'
               }}
@@ -576,7 +556,7 @@ export default function ArtistTip() {
             className="w-full max-w-sm"
           >
             <div className={`p-6 rounded-3xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-lg'}`}>
-              <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center gap-2 mb-4">
                 <div className={`p-2 rounded-xl ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                   <QrCode className="w-5 h-5 text-neon-purple" />
                 </div>
@@ -656,7 +636,7 @@ export default function ArtistTip() {
               <Check className="w-10 h-10 text-neon-green" />
             </div>
             <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Obrigado pela sua apoio!
+              Obrigado!
             </h2>
             <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               Seu pedido e gorjeta foram enviados com sucesso.
@@ -677,13 +657,12 @@ export default function ArtistTip() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center px-4 py-8">
-        {stage !== STAGE.PRESENTATION && stage !== STAGE.FINAL_THANKS && (
+        {stage !== STAGE.FORM && stage !== STAGE.FINAL_THANKS && (
           <button
-                onClick={() => {
-                  if (stage === STAGE.FORM) setStage(STAGE.PRESENTATION);
-                  else if (stage === STAGE.TIP_VALUE) { setStage(STAGE.FORM); setPixError(''); }
-                  else if (stage === STAGE.PIX_PAYMENT) setStage(STAGE.TIP_VALUE);
-                }}
+            onClick={() => {
+              if (stage === STAGE.TIP_VALUE) { setStage(STAGE.FORM); setPixError(''); }
+              else if (stage === STAGE.PIX_PAYMENT) setStage(STAGE.TIP_VALUE);
+            }}
             className={`self-start mb-6 p-2 rounded-xl ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}
           >
             <X className="w-5 h-5" />
@@ -691,10 +670,6 @@ export default function ArtistTip() {
         )}
 
         {renderStage()}
-
-        <p className={`mt-12 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Powered by TocaMais
-        </p>
       </div>
 
       <AnimatePresence>
@@ -746,7 +721,7 @@ export default function ArtistTip() {
 
               <div className="space-y-2 overflow-y-auto max-h-[50vh] pr-2">
                 {repertorio
-                  .filter(m => 
+                  .filter(m =>
                     searchRepertorio === '' ||
                     m.titulo?.toLowerCase().includes(searchRepertorio.toLowerCase()) ||
                     m.artista_nome?.toLowerCase().includes(searchRepertorio.toLowerCase())
@@ -779,7 +754,7 @@ export default function ArtistTip() {
                       <Heart className="w-5 h-5 text-gray-400" />
                     </motion.button>
                   ))}
-                {(repertorio.filter(m => 
+                {(repertorio.filter(m =>
                   searchRepertorio === '' ||
                   m.titulo?.toLowerCase().includes(searchRepertorio.toLowerCase()) ||
                   m.artista_nome?.toLowerCase().includes(searchRepertorio.toLowerCase())

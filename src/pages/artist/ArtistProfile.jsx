@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   Star, CheckCircle, MapPin, Music, Share2,
-  Play, Heart, Edit3, Mic, Sun, Moon, Video, Sparkles, Wallet,
-  Loader, AlertCircle, ExternalLink
+  Play, Heart, Edit3, Mic, Sun, Moon, Video, Wallet,
+  Loader, AlertCircle, ExternalLink, QrCode, X
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
 import WaveIcon from '../../components/shared/WaveIcon';
+import ImageCropModal from '../../components/shared/ImageCropModal';
 import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -25,13 +28,17 @@ export default function ArtistProfile() {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState(null);
   const [isEditingVideo, setIsEditingVideo] = useState(false);
-  const [selectedMusicas, setSelectedMusicas] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [coverPosition, setCoverPosition] = useState(50);
+  const [coverZoom, setCoverZoom] = useState(1);
   const [editForm, setEditForm] = useState({ photo_url: '', cover_url: '', artistic_name: '', bio: '', genre: '', city: '', base_fee: 0, pix_key: '' });
   const [saveStatus, setSaveStatus] = useState('');
   const [pixKey, setPixKey] = useState('');
+  const [cropState, setCropState] = useState(null); // { src, aspectRatio, type } | null
   const [stripeStatus, setStripeStatus] = useState(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleImageUpload = async (file, type) => {
     const fileExt = file.name.split('.').pop();
@@ -48,6 +55,47 @@ export default function ArtistProfile() {
         reader.onerror = (e) => reject(e);
         reader.readAsDataURL(file);
       });
+    }
+  };
+
+  // Abre o modal de crop quando o usuário seleciona uma imagem
+  const openCrop = (file, type) => {
+    const src = URL.createObjectURL(file);
+    const aspectRatio = type === 'avatar' ? 1 : 16 / 9;
+    setCropState({ src, aspectRatio, type, fileName: file.name });
+  };
+
+  // Quando o usuário confirma o crop
+  const handleCropConfirm = async (blob) => {
+    if (!cropState) return;
+    const { type, fileName } = cropState;
+    setCropState(null);
+
+    // Converte blob em File
+    const ext = fileName.split('.').pop() || 'jpg';
+    const croppedFile = new File([blob], `${type}_cropped_${Date.now()}.${ext}`, { type: 'image/jpeg' });
+
+    setSaveStatus(type === 'avatar' ? 'Enviando foto...' : 'Salvando capa...');
+    try {
+      const url = await handleImageUpload(croppedFile, type);
+
+      if (type === 'avatar') {
+        setEditForm(f => ({ ...f, photo_url: url }));
+        setArtistProfile(prev => ({ ...prev, photo_url: url }));
+        setSaveStatus('Salvando...');
+        const updResp = await supabase.from('artists').update({ photo_url: url }).eq('user_id', user.id);
+        if (updResp.error) { console.error('DB save error:', updResp.error); setSaveStatus('Erro ao salvar: ' + updResp.error.message); return; }
+      } else {
+        setEditForm(f => ({ ...f, cover_url: url }));
+        setArtistProfile(prev => ({ ...prev, cover_url: url }));
+        await saveProfileField('cover_url', url);
+      }
+
+      if (refreshProfile) refreshProfile();
+      setSaveStatus('');
+    } catch (err) {
+      console.error('Erro completo:', err);
+      setSaveStatus('Erro no upload: ' + (err.message || err));
     }
   };
 
@@ -86,7 +134,13 @@ export default function ArtistProfile() {
               city: 'São Paulo',
               bio: 'Adicione sua biografia aqui.',
               base_fee: 0,
+              rating: 0,
+              followers: 0,
+              verified: false,
+              live_now: false,
+              featured: false,
               cover_url: '',
+              cover_position: 50,
               photo_url: user.user_metadata?.avatar_url || ''
             }).select().single();
             if (newArtist) artistData = newArtist;
@@ -97,6 +151,8 @@ export default function ArtistProfile() {
 
         if (artistData) {
           setArtistProfile(artistData);
+          setCoverPosition(artistData.cover_position ?? 50);
+          setCoverZoom(artistData.cover_zoom ?? 1);
           setVideoUrl(artistData.presentation_video_url || '');
           setEditForm({ photo_url: artistData.photo_url || '', cover_url: artistData.cover_url || '', artistic_name: artistData.artistic_name || '', bio: artistData.bio || '', genre: artistData.genre || '', city: artistData.city || '', base_fee: artistData.base_fee || 0, pix_key: artistData.pix_key || '' });
           setPixKey(artistData.pix_key || '');
@@ -105,17 +161,6 @@ export default function ArtistProfile() {
     }
     loadProfile();
   }, [user]);
-
-  useEffect(() => {
-    if (!artistProfile?.selected_musicas_ids?.length) return;
-    async function loadRepertorio() {
-      const { data: allMusicas } = await supabase.from('musicas_repertorio').select('*');
-      if (allMusicas) {
-        setSelectedMusicas(allMusicas.filter(m => artistProfile.selected_musicas_ids.includes(m.id)));
-      }
-    }
-    loadRepertorio();
-  }, [artistProfile]);
 
   useEffect(() => {
     if (!isEditingVideo && artistProfile) {
@@ -191,7 +236,14 @@ export default function ArtistProfile() {
         }
       );
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        let errMsg = error.message;
+        try {
+          const errBody = await error.context?.json();
+          if (errBody?.error) errMsg = errBody.error;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       if (!data?.accountLinkUrl) throw new Error('No account link returned');
 
       window.location.href = data.accountLinkUrl;
@@ -229,7 +281,8 @@ export default function ArtistProfile() {
           <img
             src={artistProfile?.cover_url || 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=800&h=400&fit=crop'}
             alt="Cover"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-200"
+            style={{ objectPosition: `50% ${coverPosition}%`, transform: `scale(${coverZoom})` }}
           />
           <div className={`absolute inset-0 bg-gradient-to-t via-transparent to-transparent ${
             isDark ? 'from-[#08041A]' : 'from-[#F4F5FA]'
@@ -239,22 +292,51 @@ export default function ArtistProfile() {
               <Edit3 className="w-4 h-4 text-white" />
             </button>
             <input id="cover-input" type="file" accept="image/*" className="hidden"
-              onChange={async e => {
+              onChange={e => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                setSaveStatus('Salvando capa...');
-                try {
-                  const url = await handleImageUpload(file, 'cover');
-                  setEditForm(f => ({ ...f, cover_url: url }));
-                  setArtistProfile(prev => ({ ...prev, cover_url: url }));
-                  await saveProfileField('cover_url', url);
-                } catch (err) {
-                  console.error(err);
-                  setSaveStatus('Erro ao enviar capa');
-                }
+                openCrop(file, 'cover');
+                e.target.value = '';
               }}
             />
           </div>
+          {artistProfile?.cover_url && (
+            <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-white/60">⇅</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={coverPosition}
+                  onChange={async e => {
+                    const val = Number(e.target.value);
+                    setCoverPosition(val);
+                    await saveProfileField('cover_position', val);
+                  }}
+                  className="flex-1 h-1 appearance-none rounded-full bg-white/30 cursor-pointer"
+                  style={{ accentColor: '#7B2EFF' }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-white/60">🔍</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={coverZoom}
+                  onChange={async e => {
+                    const val = Number(e.target.value);
+                    setCoverZoom(val);
+                    await saveProfileField('cover_zoom', val);
+                  }}
+                  className="flex-1 h-1 appearance-none rounded-full bg-white/30 cursor-pointer"
+                  style={{ accentColor: '#7B2EFF' }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-4 -mt-14 relative z-10 space-y-5">
@@ -313,6 +395,20 @@ export default function ArtistProfile() {
             <span>Ver Mini Perfil</span>
           </button>
 
+          {/* QR Code Button */}
+          <button
+            onClick={() => setShowQrCode(true)}
+            className="w-full py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2"
+            style={{
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb',
+              color: isDark ? '#fff' : '#374151',
+              backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+            }}
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Meu QR Code</span>
+          </button>
+
           {/* Edit Profile Form */}
           {isEditing && (
             <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
@@ -325,23 +421,11 @@ export default function ArtistProfile() {
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  onChange={async e => {
+                  onChange={e => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    setSaveStatus('Enviando imagem...');
-                    try {
-                      const url = await handleImageUpload(file, 'avatar');
-                      setEditForm(f => ({ ...f, photo_url: url }));
-                      setArtistProfile(prev => ({ ...prev, photo_url: url }));
-                      setSaveStatus('Salvando...');
-                       const updResp = await supabase.from('artists').update({ photo_url: url }).eq('user_id', user.id);
-                      if (updResp.error) { console.error('DB save error:', updResp.error); setSaveStatus('Erro ao salvar: ' + updResp.error.message); return; }
-                      if (refreshProfile) refreshProfile();
-                      setSaveStatus('');
-                    } catch (err) {
-                      console.error('Erro completo:', err);
-                      setSaveStatus('Erro no upload: ' + (err.message || err));
-                    }
+                    openCrop(file, 'avatar');
+                    e.target.value = '';
                   }}
                   className="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-neon-purple file:text-white hover:file:opacity-90 cursor-pointer"
                 />
@@ -613,30 +697,6 @@ export default function ArtistProfile() {
             )}
           </div>
 
-          {/* Repertório */}
-          {selectedMusicas.length > 0 && (
-            <div className={`p-5 rounded-2xl border transition-all ${
-              isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
-            } space-y-3`}>
-              <div className="flex items-center gap-2">
-                <Music className="w-4 h-4 text-neon-green" />
-                <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>Repertório</h3>
-                <Sparkles className="w-3.5 h-3.5 text-neon-green" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {selectedMusicas.map(m => (
-                  <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
-                    <span className="text-neon-green text-sm">♪</span>
-                    <div className="min-w-0">
-                      <p className={`text-xs font-semibold truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{m.titulo}</p>
-                      <p className="text-[10px] text-gray-400">{m.artista_nome}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Stats */}
           <div className="grid grid-cols-4 gap-2">
             {[
@@ -779,6 +839,69 @@ export default function ArtistProfile() {
           )}
         </div>
       </div>
+
+      {/* Image Crop Modal */}
+      {cropState && (
+        <ImageCropModal
+          imageSrc={cropState.src}
+          aspectRatio={cropState.aspectRatio}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropState(null)}
+        />
+      )}
+
+      {/* QR Code Modal — portal para evitar conflito de z-index com sidebar */}
+      {showQrCode && createPortal(
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowQrCode(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className={`relative rounded-2xl p-6 max-w-sm w-full ${isDark ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-2xl`}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQrCode(false)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+            <div className="text-center">
+              <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Meu QR Code
+              </h3>
+              <div className="bg-white p-4 rounded-xl inline-block mb-4">
+                <QRCodeSVG
+                  value={`${window.location.origin}/artist/tip/${user?.id}`}
+                  size={200}
+                  level="H"
+                />
+              </div>
+              <p className={`text-xs mb-4 break-all ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {`${window.location.origin}/artist/tip/${user?.id}`}
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/artist/tip/${user?.id}`);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all"
+                style={{ backgroundColor: '#7B2EFF' }}
+              >
+                {copied ? '✓ Copiado!' : 'Copiar link'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>,
+        document.body
+      )}
     </AppLayout>
   );
 }

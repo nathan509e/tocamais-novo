@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, Star, CheckCircle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -30,6 +31,7 @@ export default function VenueArtists() {
   const [hireForm, setHireForm] = useState({ date: '', time: '20:00', fee: 0, message: '', address: '', precisa_equipamento: false, quantidade_pessoas: 100 });
   const [hireSuccess, setHireSuccess] = useState(false);
   const [hiring, setHiring] = useState(false);
+  const [hireError, setHireError] = useState('');
 
   useEffect(() => {
     if (location.state?.hireArtist) {
@@ -64,10 +66,30 @@ export default function VenueArtists() {
   const handleHireSubmit = async () => {
     if (!selectedArtist || !user) return;
     setHiring(true);
+    setHireError('');
     try {
       const msg = hireForm.message.trim() || `Olá! Proposta para show no dia ${hireForm.date}. Cachê: R$ ${hireForm.fee}.`;
 
-      await supabase.from('events').insert({
+      // Garantir que temos o venue_id
+      let venueId = userProfile?.id;
+      if (!venueId && user?.id) {
+        const { data: vData } = await supabase.from('venues').select('id').eq('user_id', user.id).maybeSingle();
+        venueId = vData?.id;
+        if (!venueId) {
+          const { data: newVenue } = await supabase.from('venues').insert({
+            user_id: user.id,
+            venue_name: user?.user_metadata?.name || 'Minha Casa de Show',
+            city: 'São Paulo',
+            address: 'Endereço não definido',
+            capacity: 100,
+            average_budget: 0
+          }).select('id').single();
+          venueId = newVenue?.id;
+        }
+      }
+      if (!venueId) { setHireError('Erro: perfil da casa de show não encontrado.'); setHiring(false); return; }
+
+      const { error: err1 } = await supabase.from('events').insert({
         title: `Show: ${selectedArtist.artistic_name}`,
         description: hireForm.message || `Evento no dia ${hireForm.date}`,
         date: hireForm.date,
@@ -79,27 +101,31 @@ export default function VenueArtists() {
         precisa_equipamento: hireForm.precisa_equipamento,
         quantidade_pessoas: hireForm.quantidade_pessoas,
         artist_id: selectedArtist.id,
-        venue_id: userProfile?.id
+        venue_id: venueId
       });
+      if (err1) throw new Error('Erro ao criar evento: ' + err1.message);
 
       const senderName = user?.user_metadata?.name || user?.email || 'Casa de Show';
 
-      await supabase.from('notifications').insert({
+      const { error: err2 } = await supabase.from('notifications').insert({
         user_id: selectedArtist.user_id,
         title: 'Nova Proposta de Show',
         content: `${senderName} enviou uma proposta para ${hireForm.date}.`,
         type: 'proposal'
       });
+      if (err2) throw new Error('Erro ao criar notificação: ' + err2.message);
 
-      await supabase.from('messages').insert({
+      const { error: err3 } = await supabase.from('messages').insert({
         sender_id: user.id,
         receiver_id: selectedArtist.user_id,
         text: msg
       });
+      if (err3) throw new Error('Erro ao criar mensagem: ' + err3.message);
 
       setHireSuccess(true);
     } catch (e) {
       console.error('Erro ao contratar:', e);
+      setHireError(e.message);
     } finally {
       setHiring(false);
     }
@@ -109,6 +135,7 @@ export default function VenueArtists() {
     setSelectedArtist(artist);
     setHireForm({ date: '', time: '20:00', fee: artist.base_fee || 0, message: '', address: userProfile?.address || '', precisa_equipamento: false, quantidade_pessoas: 100 });
     setHireSuccess(false);
+    setHireError('');
   };
 
   return (
@@ -162,7 +189,7 @@ export default function VenueArtists() {
               className="bg-white/5 border border-white/8 rounded-2xl p-4 space-y-4 overflow-hidden"
             >
               <div>
-                <label className="text-gray-400 text-xs mb-2 block">Avaliação mínima: {minRating}⭐</label>
+                <label className="text-gray-400 text-xs mb-2 block">Avaliação mínima: {minRating}⭐</label>
                 <input type="range" min={0} max={5} step={0.5} value={minRating} onChange={e => setMinRating(+e.target.value)}
                   className="w-full accent-neon-purple" />
               </div>
@@ -209,18 +236,19 @@ export default function VenueArtists() {
         />
 
         {/* Hire Modal */}
+        {createPortal(
         <AnimatePresence>
           {selectedArtist && (
             <>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setSelectedArtist(null)} />
+                className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999]" onClick={() => setSelectedArtist(null)} />
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-50%' }}
                 animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
                 exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-50%' }}
                 style={{ left: '50%', top: '50%' }}
                 transition={{ type: 'spring', damping: 25 }}
-                className={`fixed z-50 rounded-3xl border p-6 w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto shadow-2xl transition-all ${
+                className={`fixed z-[9999] rounded-3xl border p-6 w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto shadow-2xl transition-all ${
                   isDark ? 'bg-app-dark border-white/10' : 'bg-white border-gray-200'
                 }`}
               >
@@ -299,15 +327,21 @@ export default function VenueArtists() {
                       <button onClick={() => setSelectedArtist(null)} className="text-xs text-neon-purple font-bold">Fechar</button>
                     </div>
                   ) : (
-                    <NeonButton variant="gradient" size="lg" className="w-full" disabled={hiring} onClick={handleHireSubmit}>
-                      {hiring ? 'Enviando...' : 'Enviar Proposta'}
-                    </NeonButton>
+                    <>
+                      {hireError && (
+                        <p className="text-red-400 text-xs text-center">{hireError}</p>
+                      )}
+                      <NeonButton variant="gradient" size="lg" className="w-full" disabled={hiring} onClick={handleHireSubmit}>
+                        {hiring ? 'Enviando...' : 'Enviar Proposta'}
+                      </NeonButton>
+                    </>
                   )}
                 </div>
               </motion.div>
             </>
           )}
         </AnimatePresence>
+        , document.body)}
       </div>
     </AppLayout>
   );

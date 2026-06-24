@@ -81,6 +81,11 @@ export const AuthProvider = ({ children }) => {
             city: 'São Paulo',
             bio: 'Adicione sua biografia aqui.',
             base_fee: 0,
+            rating: 0,
+            followers: 0,
+            verified: false,
+            live_now: false,
+            featured: false,
             cover_url: '',
             photo_url: pubUser?.avatar_url || ''
           }).select().single();

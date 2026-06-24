@@ -59,6 +59,7 @@ serve(async (req) => {
         email: req.headers.get('x-user-email') || undefined,
         business_type: 'individual',
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
         metadata: {

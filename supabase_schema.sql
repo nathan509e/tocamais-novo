@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.artists (
     city TEXT NOT NULL,
     bio TEXT,
     base_fee NUMERIC(10, 2) DEFAULT 0.00,
-    rating NUMERIC(3, 2) DEFAULT 3.00,
+    rating NUMERIC(3, 2) DEFAULT 0.00,
     followers INTEGER DEFAULT 0,
     photo_url TEXT,
     verified BOOLEAN DEFAULT false,
@@ -181,6 +181,9 @@ ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS base_fee NUMERIC(10, 2) DEFA
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS rating NUMERIC(3, 2) DEFAULT 5.00;
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS followers INTEGER DEFAULT 0;
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS cover_url TEXT;
+ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS cover_position INTEGER DEFAULT 50;
+ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS cover_zoom NUMERIC(3,1) DEFAULT 1.0;
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS presentation_video_url TEXT;
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS selected_musicas_ids UUID[] DEFAULT '{}';

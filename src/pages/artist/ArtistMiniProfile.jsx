@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
-import { Play, Star, Heart, Music, Wallet } from 'lucide-react';
-import WaveIcon from '../../components/shared/WaveIcon';
+import { Star, Heart, Music, ChevronLeft } from 'lucide-react';
 
 const ArtistMiniProfile = ({ artist }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [artistProfile, setArtistProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showQrCode, setShowQrCode] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -97,6 +97,12 @@ const ArtistMiniProfile = ({ artist }) => {
                     <span>{currentArtist.city}</span>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => navigate('/artist/profile')} className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-lg border border-gray-200 transition-all duration-300 flex items-center gap-2">
+                    <ChevronLeft className="w-4 h-4" />
+                    Meu Perfil
+                  </button>
+                </div>
               </div>
 
               {/* Stats Row */}
@@ -163,27 +169,55 @@ const ArtistMiniProfile = ({ artist }) => {
                 </div>
               </div>
 
-              {/* Mini Player */}
-              <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4 border border-gray-100">
-                <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                  <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop" alt="" className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-900 truncate">Amor da Roça</p>
-                  <p className="text-gray-400 text-xs truncate">{currentArtist.name} • {currentArtist.genre}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <WaveIcon size={12} animated />
-                  </div>
-                </div>
-                <button className="w-10 h-10 rounded-full text-white flex items-center justify-center transition-all duration-300 shadow-lg hover:scale-105"
-                  style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)', boxShadow: '0 4px 15px rgba(123, 46, 255, 0.3)' }}>
-                  <Play className="w-4 h-4 text-white ml-0.5" />
-                </button>
-              </div>
+
             </div>
           </motion.div>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      {showQrCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full relative"
+          >
+            <button
+              onClick={() => setShowQrCode(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Meu QR Code</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Escaneie para acessar a página de pedidos e gorjetas
+              </p>
+              <div className="flex justify-center mb-6 p-4 bg-white rounded-xl border border-gray-100">
+                <QRCodeSVG
+                  value={`${window.location.origin}/artist/tip/${user?.id}`}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              <p className="text-xs text-gray-400 break-all">
+                {`${window.location.origin}/artist/tip/${user?.id}`}
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/artist/tip/${user?.id}`);
+                }}
+                className="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+              >
+                Copiar link
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
