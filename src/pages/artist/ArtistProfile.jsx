@@ -3,13 +3,12 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   Star, CheckCircle, MapPin, Music, Share2,
-  Play, Heart, Edit3, Mic, Sun, Moon, Video, Wallet,
+  Heart, Edit3, Mic, Sun, Moon, Video, Wallet,
   Loader, AlertCircle, ExternalLink, QrCode, X
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
 import NeonButton from '../../components/ui/NeonButton';
-import WaveIcon from '../../components/shared/WaveIcon';
 import ImageCropModal from '../../components/shared/ImageCropModal';
 import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
@@ -750,29 +749,6 @@ export default function ArtistProfile() {
               <div className="text-neon-green text-2xl">→</div>
             </a>
           )}
-
-          {/* Mini Player */}
-          <div className={`flex items-center gap-4 p-4 rounded-2xl border ${
-            isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'
-          }`}>
-            <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
-              <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop" alt="" className="w-full h-full object-cover" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>Amor da Roça</p>
-              <p className="text-gray-400 text-xs">{artistProfile?.artistic_name || user?.name || 'Artista'}{artistProfile?.genre ? ` • ${artistProfile.genre}` : ''}</p>
-              <div className="flex items-center gap-1 mt-2">
-                <WaveIcon size={16} animated />
-              </div>
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-neon-purple text-white"
-              style={{ boxShadow: '0 0 15px rgba(123,46,255,0.5)' }}
-            >
-              <Play className="w-4 h-4 text-white ml-0.5" />
-            </motion.button>
-          </div>
 
           {/* Tabs */}
           <div className={`flex gap-1 p-1 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
