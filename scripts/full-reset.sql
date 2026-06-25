@@ -202,6 +202,8 @@ ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS live_now BOOLEAN DEFAULT fal
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS video_portfolio_urls TEXT[] DEFAULT ARRAY[]::TEXT[];
 ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS music_playlist_urls TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS asaas_wallet_id TEXT;
+ALTER TABLE public.artists ADD COLUMN IF NOT EXISTS pix_key TEXT;
 
 ALTER TABLE public.venues ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.users(id) ON DELETE CASCADE;
 ALTER TABLE public.venues ADD COLUMN IF NOT EXISTS venue_name TEXT;

@@ -36,7 +36,6 @@ export default function ArtistTip() {
   const [pixPaymentId, setPixPaymentId] = useState(null);
   const [pixCreated, setPixCreated] = useState(false);
   const [rating, setRating] = useState(0);
-  const [customerCpf, setCustomerCpf] = useState('');
   const autoConfirmedRef = useRef(false);
   const pollingRef = useRef(null);
 
@@ -46,8 +45,8 @@ export default function ArtistTip() {
     const checkPayment = async () => {
       try {
         const { data, error: fnError } = await supabase.functions.invoke(
-          'stripe-check-payment',
-          { body: { payment_intent_id: pixPaymentId } }
+          'asaas-check-payment',
+          { body: { payment_id: pixPaymentId } }
         );
         if (!fnError && data?.mpStatus === 'approved' && !autoConfirmedRef.current) {
           autoConfirmedRef.current = true;
@@ -123,19 +122,19 @@ export default function ArtistTip() {
   };
 
   const createPixPayment = async () => {
-    if (!artistId || tipAmount < 2 || !customerCpf || customerCpf.length < 11) return;
+    if (!artistId || tipAmount < 2) return;
     setPixLoading(true);
     setPixError('');
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
-        'stripe-create-pix',
+        'asaas-create-pix',
         {
           body: {
             amount: tipAmount,
             description: `Gorjeta para ${artist?.artistic_name || 'Artista'} - TocaMais`,
             customerName: userName || 'Cliente TocaMais',
             customerEmail: 'cliente@tocamais.com.br',
-            customerTaxId: customerCpf
+            artistUserId: artistId
           }
         }
       );
@@ -149,7 +148,7 @@ export default function ArtistTip() {
 
       setPixQrCodeBase64(data.qrCodeBase64);
       setPixQrCode(data.qrCode);
-      setPixPaymentId(data.paymentIntentId);
+      setPixPaymentId(data.paymentId);
       setPixCreated(true);
       setStage(STAGE.PIX_PAYMENT);
     } catch (err) {
@@ -513,22 +512,6 @@ export default function ArtistTip() {
               </p>
             </div>
 
-            <div className="mb-6">
-              <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                CPF (obrigatório para PIX)
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={customerCpf}
-                onChange={e => setCustomerCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                placeholder="000.000.000-00"
-                className={`w-full p-4 rounded-2xl border-2 text-sm outline-none transition-all focus:border-neon-purple ${
-                  isDark ? 'bg-white/5 border-white/15 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
-                }`}
-              />
-            </div>
-
             <div className="grid grid-cols-3 gap-3 mb-8">
               {quickTipValues.map(value => (
                 <button
@@ -550,7 +533,7 @@ export default function ArtistTip() {
             )}
             <button
               onClick={createPixPayment}
-              disabled={tipAmount < 2 || !customerCpf || customerCpf.length < 11 || pixLoading}
+              disabled={tipAmount < 2 || pixLoading}
               className="w-full py-4 rounded-2xl font-bold text-sm text-white transition-all disabled:opacity-50"
               style={{
                 background: 'linear-gradient(135deg, #39FF6A, #2ECC40)',

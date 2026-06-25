@@ -58,6 +58,8 @@ CREATE TABLE public.artists (
     music_playlist_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
     presentation_video_url TEXT,
     selected_musicas_ids UUID[] DEFAULT '{}',
+    asaas_wallet_id TEXT,
+    pix_key TEXT,
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 

@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   Star, CheckCircle, MapPin, Music, Share2,
   Heart, Edit3, Mic, Sun, Moon, Video, Wallet,
-  Loader, AlertCircle, ExternalLink, QrCode, X
+  ExternalLink, QrCode, X
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -34,8 +34,8 @@ export default function ArtistProfile() {
   const [saveStatus, setSaveStatus] = useState('');
   const [pixKey, setPixKey] = useState('');
   const [cropState, setCropState] = useState(null); // { src, aspectRatio, type } | null
-  const [stripeStatus, setStripeStatus] = useState(null);
-  const [stripeLoading, setStripeLoading] = useState(false);
+  const [asaasWalletId, setAsaasWalletId] = useState('');
+  const [walletSaved, setWalletSaved] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -205,69 +205,27 @@ export default function ArtistProfile() {
     }
   };
 
-  const checkStripeStatus = useCallback(async () => {
-    if (!user) return;
+  const handleSaveWalletId = async () => {
+    if (!user || !asaasWalletId.trim()) return;
+    setWalletSaved(false);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        'stripe-connect-status',
-        { body: { user_id: user.id } }
-      );
-      if (!error && data) {
-        setStripeStatus(data);
-      }
+      const { error } = await supabase.from('artists').update({ asaas_wallet_id: asaasWalletId.trim() }).eq('user_id', user.id);
+      if (error) throw error;
+      setArtistProfile(prev => prev ? { ...prev, asaas_wallet_id: asaasWalletId.trim() } : prev);
+      setWalletSaved(true);
+      if (refreshProfile) refreshProfile();
+      setTimeout(() => setWalletSaved(false), 3000);
     } catch (e) {
-      console.error('Error checking stripe status:', e);
+      console.error('Error saving wallet ID:', e);
+      alert('Erro ao salvar Wallet ID: ' + e.message);
     }
-  }, [user]);
-
-  const handleConnectStripe = async () => {
-    if (!user) return;
-    setStripeLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        'stripe-create-connect-account',
-        {
-          body: {
-            user_id: user.id,
-            refresh_url: window.location.href,
-            return_url: window.location.href + '?stripe=success'
-          }
-        }
-      );
-
-      if (error) {
-        let errMsg = error.message;
-        try {
-          const errBody = await error.context?.json();
-          if (errBody?.error) errMsg = errBody.error;
-        } catch (_) {}
-        throw new Error(errMsg);
-      }
-      if (!data?.accountLinkUrl) throw new Error('No account link returned');
-
-      window.location.href = data.accountLinkUrl;
-    } catch (e) {
-      console.error('Error connecting stripe:', e);
-      alert('Erro ao conectar Stripe: ' + e.message);
-    }
-    setStripeLoading(false);
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('stripe') === 'success') {
-      checkStripeStatus();
-      const url = new URL(window.location.href);
-      url.searchParams.delete('stripe');
-      window.history.replaceState({}, '', url);
+    if (artistProfile) {
+      setAsaasWalletId(artistProfile.asaas_wallet_id || '');
     }
-  }, [checkStripeStatus]);
-
-  useEffect(() => {
-    if (user && artistProfile) {
-      checkStripeStatus();
-    }
-  }, [user, artistProfile, checkStripeStatus]);
+  }, [artistProfile]);
 
   const isDark = theme === 'dark';
 
@@ -535,7 +493,7 @@ export default function ArtistProfile() {
             </div>
           </div>
 
-          {/* Stripe Connect Card */}
+          {/* Asaas Connect Card */}
           <div className={`p-4 rounded-2xl border transition-all ${
             isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
           } space-y-3`}>
@@ -546,53 +504,72 @@ export default function ArtistProfile() {
               </h3>
             </div>
 
-            {stripeLoading ? (
-              <div className="flex items-center gap-2 py-2">
-                <Loader className="w-4 h-4 animate-spin text-neon-purple" />
-                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Conectando ao Stripe...
-                </span>
-              </div>
-            ) : stripeStatus?.connected ? (
+            {artistProfile?.asaas_wallet_id ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-neon-green" />
                   <span className="text-xs font-semibold text-neon-green">
-                    Stripe Conectado
+                    Asaas Conectado
                   </span>
                 </div>
                 <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Gorjetas: 5% plataforma | 95% sua conta Stripe
+                  Gorjetas: 30% TocaMais | 70% sua conta Asaas
+                </p>
+                <p className={`text-[10px] font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Wallet: {artistProfile.asaas_wallet_id}
                 </p>
                 <a
-                  href={`https://dashboard.stripe.com/connect/accounts/${stripeStatus.accountId || ''}`}
+                  href="https://www.asaas.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`inline-flex items-center gap-1 text-xs font-bold text-neon-purple hover:underline`}
                 >
                   <ExternalLink className="w-3 h-3" />
-                  Ver conta no Stripe
+                  Ver conta no Asaas
                 </a>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Conecte sua conta Stripe para receber gorjetas dos seus fãs automaticamente.
+                  Conecte sua conta Asaas para receber gorjetas dos seus fãs automaticamente via PIX.
                 </p>
                 <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Comissão: 5% TocaMais | 95% para você
+                  Comissão: 30% TocaMais | 70% para você
                 </p>
-                <button
-                  onClick={handleConnectStripe}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2"
-                  style={{
-                    background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
-                    boxShadow: '0 0 15px rgba(123,46,255,0.3)'
-                  }}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Conectar Conta Stripe
-                </button>
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-400 font-bold block">Wallet ID do Asaas</label>
+                  <input
+                    type="text"
+                    value={asaasWalletId}
+                    onChange={e => setAsaasWalletId(e.target.value)}
+                    placeholder="wal_xxxxxxxxxxxxxxxxxxxxxxxx"
+                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                      isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                    }`}
+                  />
+                  <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Crie sua conta em{' '}
+                    <a href="https://www.asaas.com" target="_blank" rel="noopener noreferrer" className="text-neon-purple font-bold hover:underline">
+                      asaas.com
+                    </a>
+                    {' '}e copie o Wallet ID em Integrações.
+                  </p>
+                  <button
+                    onClick={handleSaveWalletId}
+                    disabled={!asaasWalletId.trim() || !asaasWalletId.trim().startsWith('wal_')}
+                    className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
+                      boxShadow: '0 0 15px rgba(123,46,255,0.3)'
+                    }}
+                  >
+                    <Wallet className="w-4 h-4" />
+                    Conectar Conta Asaas
+                  </button>
+                  {walletSaved && (
+                    <p className="text-[10px] text-neon-green text-center font-bold">✓ Wallet ID salvo com sucesso!</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
