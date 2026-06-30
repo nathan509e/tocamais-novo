@@ -1,8 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"
-
 function getAsaasApiUrl(apiKey: string): string {
-  return apiKey.startsWith('$aact_hmlg') ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3'
+  if (apiKey.includes('aact_hmlg')) return 'https://sandbox.asaas.com/api/v3'
+  return 'https://api.asaas.com/v3'
 }
 
 const corsHeaders = {
@@ -22,7 +20,7 @@ const statusMap: Record<string, string> = {
   CANCELLED: 'cancelled'
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -36,10 +34,7 @@ serve(async (req) => {
       )
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     const apiKey = Deno.env.get('ASAAS_API_KEY')
-
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: 'Asaas not configured' }),
@@ -48,15 +43,6 @@ serve(async (req) => {
     }
 
     const baseUrl = getAsaasApiUrl(apiKey)
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-
-    const authHeader = req.headers.get('authorization') || ''
-    const token = authHeader.replace('Bearer ', '')
-    let userId: string | null = null
-    if (token) {
-      const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-      userId = user?.id || null
-    }
 
     const asaasResp = await fetch(`${baseUrl}/payments/${payment_id}`, {
       headers: { 'access_token': apiKey, 'User-Agent': 'TocaMais/1.0' }
@@ -69,16 +55,6 @@ serve(async (req) => {
 
     const asaasData = await asaasResp.json()
     const mpStatus = statusMap[asaasData.status] || asaasData.status.toLowerCase()
-
-    if (userId) {
-      await supabaseAdmin
-        .from('payments')
-        .update({
-          status: mpStatus === 'approved' ? 'paid' : mpStatus,
-          transaction_hash: String(payment_id)
-        })
-        .eq('transaction_hash', String(payment_id))
-    }
 
     return new Response(
       JSON.stringify({
@@ -95,7 +71,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

@@ -2,24 +2,20 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
-  Star, CheckCircle, MapPin, Music, Share2,
-  Heart, Edit3, Mic, Sun, Moon, Video, Wallet,
-  ExternalLink, QrCode, X
+  CheckCircle, MapPin, Music,
+  Edit3, Video, Wallet,
+  ExternalLink, QrCode, X, Sun, Moon,
+  Mic, Share2, Heart
 } from 'lucide-react';
+import NeonButton from '@/components/ui/NeonButton';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
-import NeonButton from '../../components/ui/NeonButton';
 import ImageCropModal from '../../components/shared/ImageCropModal';
 import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
-const portfolioData = [];
-
-const reviews = [];
-
 export default function ArtistProfile() {
-  const [activeTab, setActiveTab] = useState('portfolio');
   const { theme, setTheme } = useTheme();
   const { user, refreshProfile } = useAuth();
   
@@ -690,106 +686,9 @@ export default function ArtistProfile() {
             ))}
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex gap-2">
-            <NeonButton variant="gradient" size="md" className="flex-1">
-              <Mic className="w-4 h-4 inline mr-1" />
-              Contratar
-            </NeonButton>
-            <NeonButton variant="ghost" size="md">
-              <Share2 className="w-4 h-4 text-gray-500" />
-            </NeonButton>
-            <NeonButton variant="ghost" size="md">
-              <Heart className="w-4 h-4 text-gray-500" />
-            </NeonButton>
-          </div>
 
-          {/* Tip Card */}
-          {(artistProfile?.pix_key || user?.id === artistProfile?.user_id) && (
-            <a
-              href={user?.id === artistProfile?.user_id ? '/artist/tip/' + user.id : '/artist/tip/' + artistProfile?.user_id}
-              className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
-                isDark ? 'bg-white/5 border-white/5 hover:border-neon-green/30' : 'bg-white border-gray-200 hover:border-neon-green/30'
-              }`}
-            >
-              <div className="w-12 h-12 rounded-xl bg-neon-green/20 flex items-center justify-center">
-                <Wallet className="w-6 h-6 text-neon-green" />
-              </div>
-              <div className="flex-1">
-                <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Dar Gorjeta
-                </p>
-                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Acompanhe esse artista no seu.show
-                </p>
-              </div>
-              <div className="text-neon-green text-2xl">→</div>
-            </a>
-          )}
 
-          {/* Tabs */}
-          <div className={`flex gap-1 p-1 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-            {['portfolio', 'avaliações'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all ${
-                  activeTab === tab 
-                    ? 'bg-neon-purple text-white' 
-                    : isDark ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                {tab}
-              </button>
-            ))}
-          </div>
 
-          {activeTab === 'portfolio' && (
-            <div className="grid grid-cols-2 gap-3 pb-6">
-              {portfolioData.map((v, i) => (
-                <motion.div key={v.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.07 }}
-                  className="relative rounded-xl overflow-hidden cursor-pointer">
-                  <img src={v.thumbnail} alt={v.title} className="w-full aspect-video object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-2">
-                    <p className="text-white text-xs font-semibold line-clamp-1">{v.title}</p>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <span className="text-gray-300 text-[10px]">{v.views} views</span>
-                      <span className="text-gray-300 text-[10px]">{v.duration}</span>
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <Play className="w-4 h-4 text-white ml-0.5" />
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === 'avaliações' && (
-            <div className="space-y-3 pb-6">
-              {reviews.map((r, i) => (
-                <motion.div key={r.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                  className={`p-4 rounded-2xl border ${
-                    isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'
-                  }`}>
-                  <div className="flex items-start gap-3">
-                    <img src={r.avatar} alt={r.author} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{r.author}</p>
-                        <span className="text-gray-500 text-xs">{r.date}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5 my-1">
-                        {Array.from({ length: r.rating }).map((_, idx) => (
-                          <Star key={idx} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                        ))}
-                      </div>
-                      <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{r.text}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 

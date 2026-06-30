@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
-import { Star, CheckCircle, MapPin, Music, Zap } from 'lucide-react';
+import { Star, CheckCircle, MapPin, Music, Zap, Crown } from 'lucide-react';
 import NeonButton from '@/components/ui/NeonButton';
 
 export default function ArtistCard({ artist, onHire, onView, compact = false }) {
-  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured } = artist;
+  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured, is_pro } = artist;
 
   if (compact) {
     return (

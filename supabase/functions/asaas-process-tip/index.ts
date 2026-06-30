@@ -1,8 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"
-
 function getAsaasApiUrl(apiKey: string): string {
-  return apiKey.startsWith('$aact_hmlg') ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3'
+  if (apiKey.includes('aact_hmlg')) return 'https://sandbox.asaas.com/api/v3'
+  return 'https://api.asaas.com/v3'
 }
 
 const corsHeaders = {
@@ -21,7 +19,7 @@ function detectPixKeyType(key: string): string {
   return 'EVP'
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -40,11 +38,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     const apiKey = Deno.env.get('ASAAS_API_KEY') || ''
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
     const baseUrl = getAsaasApiUrl(apiKey)
-    const defaultCustomer = Deno.env.get('ASAAS_DEFAULT_CUSTOMER') || ''
     const authHeaders = { 'Content-Type': 'application/json', 'access_token': apiKey, 'User-Agent': 'TocaMais/1.0' }
 
+    // Verify payment status with Asaas
     const asaasCheck = await fetch(`${baseUrl}/payments/${payment_id}`, {
       headers: { 'access_token': apiKey, 'User-Agent': 'TocaMais/1.0' }
     })
@@ -60,14 +57,17 @@ serve(async (req) => {
       )
     }
 
-    const { data: artist, error: artistError } = await supabaseAdmin
-      .from('artists')
-      .select('pix_key, artistic_name, user_id')
-      .eq('user_id', artist_id)
-      .single()
-
-    if (artistError) {
-      console.error('Artist lookup error:', artistError)
+    // Fetch artist info
+    const artistResp = await fetch(
+      `${supabaseUrl}/rest/v1/artists?user_id=eq.${artist_id}&select=pix_key,artistic_name,user_id`,
+      { headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${supabaseServiceKey}` } }
+    )
+    if (!artistResp.ok) {
+      throw new Error('Artist not found')
+    }
+    const artists = await artistResp.json()
+    const artist = artists?.[0]
+    if (!artist) {
       throw new Error('Artist not found')
     }
 
@@ -113,9 +113,16 @@ serve(async (req) => {
       transferError = 'Artist has no PIX key registered'
     }
 
-    const { data: requestRecord, error: insertError } = await supabaseAdmin
-      .from('music_requests')
-      .insert({
+    // Insert music request
+    const insertResp = await fetch(`${supabaseUrl}/rest/v1/music_requests`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseServiceKey,
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
         artist_id,
         musica_id: musica_id || null,
         musica_titulo: musica_titulo || 'Pedido com Gorjeta',
@@ -129,36 +136,45 @@ serve(async (req) => {
         pix_status: transferStatus === 'completed' ? 'transferred' : 'paid',
         rating: rating || null
       })
-      .select('id')
-      .single()
+    })
 
-    if (insertError) {
-      console.error('Insert error:', insertError)
-      throw new Error(`Failed to create request: ${insertError.message}`)
+    if (!insertResp.ok) {
+      const errText = await insertResp.text()
+      console.error('Insert error:', errText)
+      throw new Error(`Failed to create request: ${errText}`)
     }
 
-    if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
-      const { data: ratingData } = await supabaseAdmin
-        .from('music_requests')
-        .select('rating')
-        .eq('artist_id', artist_id)
-        .not('rating', 'is', null)
-        .gte('rating', 1)
+    const inserted = await insertResp.json()
+    const requestId = inserted?.[0]?.id
 
-      if (ratingData && ratingData.length > 0) {
-        const total = ratingData.reduce((sum: number, r: { rating: number }) => sum + Number(r.rating), 0)
-        const average = Math.round((total / ratingData.length) * 100) / 100
-        await supabaseAdmin
-          .from('artists')
-          .update({ rating: average })
-          .eq('user_id', artist_id)
+    // Update artist rating if provided
+    if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+      const ratingResp = await fetch(
+        `${supabaseUrl}/rest/v1/music_requests?artist_id=eq.${artist_id}&rating=not.is.null&rating=gte.1&select=rating`,
+        { headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${supabaseServiceKey}` } }
+      )
+      if (ratingResp.ok) {
+        const ratingData = await ratingResp.json()
+        if (ratingData && ratingData.length > 0) {
+          const total = ratingData.reduce((sum: number, r: { rating: number }) => sum + Number(r.rating), 0)
+          const average = Math.round((total / ratingData.length) * 100) / 100
+          await fetch(`${supabaseUrl}/rest/v1/artists?user_id=eq.${artist_id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ rating: average })
+          })
+        }
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        requestId: requestRecord?.id,
+        requestId,
         amount: totalAmount,
         artistShare,
         platformFee,
@@ -171,7 +187,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

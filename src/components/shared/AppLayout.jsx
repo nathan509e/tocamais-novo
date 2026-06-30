@@ -5,8 +5,16 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { supabase } from '@/lib/supabaseClient';
 import { 
-  Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Sun, Moon, Mailbox
+  Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Sun, Moon, Mailbox,
+  Crown, CreditCard, Loader2, Check, Sparkles
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const navItems = {
   artist: [
@@ -42,6 +50,13 @@ export default function AppLayout({ children, role = 'artist' }) {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
   const [notifications, setNotifications] = useState([]);
+  const [showProModal, setShowProModal] = useState(false);
+  const [proLoading, setProLoading] = useState(false);
+  const [proError, setProError] = useState('');
+  const [proSuccess, setProSuccess] = useState(false);
+  const [proQrCode, setProQrCode] = useState(null);
+  const [proPixPayload, setProPixPayload] = useState(null);
+  const [proCpf, setProCpf] = useState('');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -59,6 +74,48 @@ export default function AppLayout({ children, role = 'artist' }) {
   const username = user?.full_name || user?.name || 'Usuário';
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const handleSubscribePro = async () => {
+    setProLoading(true);
+    setProError('');
+    setProQrCode(null);
+    setProPixPayload(null);
+    setProSuccess(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas-create-pix`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: 49.90,
+            customerName: username,
+            customerEmail: user?.email,
+            customerTaxId: proCpf.replace(/\D/g, ''),
+            billingType: 'PIX',
+            description: 'TocaMais Pro - Assinatura Mensal',
+            mode: 'subscription',
+          }),
+        }
+      );
+      const data = await resp.json();
+      if (!resp.ok || data.error) {
+        throw new Error(data.error || 'Erro ao criar assinatura');
+      }
+      setProQrCode(data.qrCodeBase64);
+      setProPixPayload(data.pixPayload);
+      setProSuccess(true);
+    } catch (err) {
+      setProError(err.message || 'Erro inesperado');
+    } finally {
+      setProLoading(false);
+    }
+  };
+
   // Bottom nav mobile: artist gets only 4 core items
   const mobileBottomNav = role === 'artist'
     ? [
@@ -70,6 +127,16 @@ export default function AppLayout({ children, role = 'artist' }) {
     : nav;
 
   const isDark = theme === 'dark';
+
+  const formatCpf = (value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
+  const isCpfValid = (cpf) => cpf.replace(/\D/g, '').length === 11;
 
   return (
     <div className={`min-h-screen font-poppins flex flex-col md:flex-row relative overflow-x-hidden transition-colors duration-300 ${
@@ -187,6 +254,15 @@ export default function AppLayout({ children, role = 'artist' }) {
 
           <div className="flex items-center gap-3 md:gap-4">
             
+            {/* Ser Pro Button */}
+            <button
+              onClick={() => setShowProModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] text-white shadow-[0_0_20px_rgba(123,46,255,0.3)] hover:shadow-[0_0_25px_rgba(123,46,255,0.5)] hover:scale-105 active:scale-95"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ser Pro</span>
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -406,6 +482,147 @@ export default function AppLayout({ children, role = 'artist' }) {
           </>
         )}
       </AnimatePresence>
+
+      {/* SER PRO MODAL */}
+      <Dialog open={showProModal} onOpenChange={setShowProModal}>
+        <DialogContent className={`sm:max-w-md border-0 overflow-hidden ${
+          isDark ? 'bg-[#0F0926] text-white' : 'bg-white text-gray-800'
+        }`}>
+          {/* Gradient top bar */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A]" />
+          
+          <DialogHeader className="pt-2">
+            <div className="flex items-center justify-center mb-3">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center shadow-[0_0_30px_rgba(123,46,255,0.4)]">
+                <Crown className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <DialogTitle className={`text-center text-xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              TocaMais Pro
+            </DialogTitle>
+            <DialogDescription className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              Desbloqueie recursos exclusivos para sua carreira musical
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Features list */}
+          <div className={`rounded-xl p-4 space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+              </div>
+              <span className="text-sm font-medium">Destaque nos resultados de busca</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                <Check className="w-4 h-4 text-[#39FF6A]" />
+              </div>
+              <span className="text-sm font-medium">Selo de verificação Pro</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+              </div>
+              <span className="text-sm font-medium">100% das gorjetas</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                <Check className="w-4 h-4 text-[#39FF6A]" />
+              </div>
+              <span className="text-sm font-medium">Suporte prioritário</span>
+            </div>
+          </div>
+
+          {/* Price */}
+          <div className="text-center py-2">
+            <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>R$ 49,90</span>
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
+          </div>
+
+          {/* CPF Input */}
+          {!proSuccess && !proQrCode && (
+            <div>
+              <label className={`text-xs font-semibold mb-1.5 block ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                CPF (obrigatório para assinatura)
+              </label>
+              <input
+                type="text"
+                value={proCpf}
+                onChange={(e) => setProCpf(formatCpf(e.target.value))}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium border outline-none transition-all ${
+                  isDark
+                    ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#7B2EFF]'
+                    : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-[#7B2EFF]'
+                }`}
+              />
+            </div>
+          )}
+
+          {/* Error */}
+          {proError && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+              <p className="text-xs text-red-400 font-medium">{proError}</p>
+            </div>
+          )}
+
+          {/* Success - Show QR Code */}
+          {proSuccess && proQrCode ? (
+            <div className="space-y-4">
+              <div className={`rounded-xl p-4 text-center space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                <p className="text-xs font-bold text-neon-green uppercase tracking-wider">Pague com PIX</p>
+                <div className="bg-white rounded-xl p-3 inline-block">
+                  <img 
+                    src={`data:image/png;base64,${proQrCode}`} 
+                    alt="QR Code PIX" 
+                    className="w-48 h-48 mx-auto"
+                  />
+                </div>
+                {proPixPayload && (
+                  <div>
+                    <p className={`text-[10px] mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Ou copie o código PIX:</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(proPixPayload)}
+                      className={`text-[10px] px-3 py-1.5 rounded-lg border transition-colors ${
+                        isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      Copiar código
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className={`text-[10px] text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                Após o pagamento, seu acesso Pro será ativado automaticamente.
+              </p>
+            </div>
+          ) : (
+            /* Subscribe Button */
+            <button
+              onClick={handleSubscribePro}
+              disabled={proLoading || !isCpfValid(proCpf)}
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-[0_0_25px_rgba(123,46,255,0.3)] hover:shadow-[0_0_35px_rgba(123,46,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {proLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Gerando cobrança...</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4" />
+                  <span>Assinar Agora</span>
+                </>
+              )}
+            </button>
+          )}
+
+          <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+            Cobrança recorrente. Cancele quando quiser.
+          </p>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

@@ -1,8 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"
-
 function getAsaasApiUrl(apiKey: string): string {
-  return apiKey.startsWith('$aact_hmlg') ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3'
+  if (apiKey.includes('aact_hmlg')) return 'https://sandbox.asaas.com/api/v3'
+  return 'https://api.asaas.com/v3'
 }
 
 const corsHeaders = {
@@ -17,7 +15,7 @@ const billingTypeMap: Record<string, string> = {
   credit: 'CREDIT_CARD'
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -36,8 +34,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     const apiKey = Deno.env.get('ASAAS_API_KEY') || ''
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-
     const authHeader = req.headers.get('authorization') || ''
     const token = authHeader.replace('Bearer ', '')
     if (!token) {
@@ -47,22 +43,33 @@ serve(async (req) => {
       )
     }
 
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    if (authError || !user) {
+    // Verify user via Supabase auth
+    const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${token}` }
+    })
+    if (!userResp.ok) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-    const payerId = user.id
+    const userData = await userResp.json()
+    const payerId = userData.id
 
-    const { data: eventData, error: eventError } = await supabaseAdmin
-      .from('events')
-      .select('*')
-      .eq('id', event_id)
-      .single()
-
-    if (eventError || !eventData) {
+    // Fetch event
+    const eventResp = await fetch(
+      `${supabaseUrl}/rest/v1/events?id=eq.${event_id}&select=*`,
+      { headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${supabaseServiceKey}` } }
+    )
+    if (!eventResp.ok) {
+      return new Response(
+        JSON.stringify({ error: 'Event not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const events = await eventResp.json()
+    const eventData = events?.[0]
+    if (!eventData) {
       return new Response(
         JSON.stringify({ error: 'Event not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -123,9 +130,16 @@ serve(async (req) => {
       ticketUrl = asaasData.bankSlipUrl || asaasData.invoiceUrl || null
     }
 
-    const { error: saveError } = await supabaseAdmin
-      .from('payments')
-      .insert({
+    // Save payment to DB
+    const insertResp = await fetch(`${supabaseUrl}/rest/v1/payments`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseServiceKey,
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
         event_id,
         payer_id: payerId,
         payee_id: payeeId,
@@ -134,9 +148,10 @@ serve(async (req) => {
         method,
         transaction_hash: String(paymentId)
       })
+    })
 
-    if (saveError) {
-      console.error('Save payment error:', saveError)
+    if (!insertResp.ok) {
+      console.error('Save payment error:', await insertResp.text())
     }
 
     return new Response(
@@ -156,7 +171,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

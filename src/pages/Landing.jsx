@@ -251,7 +251,7 @@ const Landing = () => {
         <div className="relative z-10 grid md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6">
           {[
             { name: "GRÁTIS", price: "R$ 0", features: ["QR Code Único", "Pedidos Ilimitados", "Dashboard Básico", "Taxa de 20%"] },
-            { name: "ARTISTA PRO", price: "R$ 49,90", popular: true, features: ["100% das Gorjetas", "Destaque no Mapa", "Métricas Avançadas", "Suporte VIP"] },
+            { name: "ARTISTA PRO", price: "R$ 49,90", popular: true, features: ["Destaque no Mapa", "100% das Gorjetas", "Suporte VIP"] },
             { name: "ESTABELECIMENTO", price: "R$ 149,90", features: ["Gestão Musical Completa", "Busca Inteligente por Artistas", "Contratação de Artistas", "Pagamento de Cache", "Curadoria Musical"] },
           ].map((plan, i) => {
             const isSelected = selectedPlan === plan.name;
