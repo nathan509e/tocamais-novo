@@ -27,6 +27,7 @@ export default function ArtistTip() {
   const [copied, setCopied] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userCpf, setUserCpf] = useState('');
   const [message, setMessage] = useState('');
   const [tipAmount, setTipAmount] = useState(0);
   const [pixLoading, setPixLoading] = useState(false);
@@ -134,6 +135,7 @@ export default function ArtistTip() {
             description: `Gorjeta para ${artist?.artistic_name || 'Artista'} - TocaMais`,
             customerName: userName || 'Cliente TocaMais',
             customerEmail: 'cliente@tocamais.com.br',
+            customerTaxId: userCpf.replace(/\D/g, '') || '',
             artistUserId: artistId
           }
         }
@@ -528,6 +530,32 @@ export default function ArtistTip() {
                   R$ {value}
                 </button>
               ))}
+            </div>
+
+            {/* CPF field */}
+            <div className="mb-6">
+              <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                CPF
+              </label>
+              <input
+                type="text"
+                value={userCpf}
+                onChange={e => {
+                  const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                  let formatted = raw;
+                  if (raw.length > 3) formatted = raw.slice(0, 3) + '.' + raw.slice(3);
+                  if (raw.length > 6) formatted = formatted.slice(0, 7) + '.' + raw.slice(6);
+                  if (raw.length > 9) formatted = formatted.slice(0, 11) + '-' + raw.slice(9);
+                  setUserCpf(formatted);
+                }}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                className={`w-full p-4 rounded-2xl border-2 text-sm font-medium outline-none transition-all focus:border-neon-purple ${
+                  isDark
+                    ? 'bg-white/5 border-white/15 text-white placeholder:text-gray-500'
+                    : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
+                }`}
+              />
             </div>
 
             {pixError && (

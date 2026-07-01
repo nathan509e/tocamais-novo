@@ -66,35 +66,41 @@ Deno.serve(async (req) => {
     }
 
     if (!customerId) {
+      // Try creating customer (with CPF if provided)
       const createCustomerBody: Record<string, string> = {
         name: customerName || 'Cliente TocaMais',
         email: customerEmail || `cliente+${Date.now()}@tocamais.com.br`
       }
-      // CPF optional for PIX payments in Brazil
+      if (customerTaxId) {
+        createCustomerBody.cpfCnpj = customerTaxId
+      }
       const createCustomerResp = await fetch(`${baseUrl}/customers`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify(createCustomerBody)
       })
-      if (!createCustomerResp.ok) {
-        const errText = await createCustomerResp.text()
-        console.error('Asaas create customer error:', errText)
-        // Try without email to avoid duplicate customer errors
-        const retryBody = { name: customerName || 'Cliente TocaMais' }
-        const retryResp = await fetch(`${baseUrl}/customers`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify(retryBody)
-        })
-        if (!retryResp.ok) {
-          const retryErr = await retryResp.text()
-          throw new Error(`Asaas customer creation failed: ${retryErr}`)
-        }
-        const customerData = await retryResp.json()
-        customerId = customerData.id
-      } else {
+      if (createCustomerResp.ok) {
         const customerData = await createCustomerResp.json()
         customerId = customerData.id
+      } else {
+        // CPF required — create generic customer as fallback
+        const genericResp = await fetch(`${baseUrl}/customers`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            name: 'Cliente TocaMais',
+            email: 'cliente@tocamais.com.br',
+            cpfCnpj: '00000000000'
+          })
+        })
+        if (genericResp.ok) {
+          const genericData = await genericResp.json()
+          customerId = genericData.id
+        } else {
+          const errText = await genericResp.text()
+          console.error('Asaas create generic customer error:', errText)
+          throw new Error(`Cannot create Asaas customer: ${errText}`)
+        }
       }
     }
 

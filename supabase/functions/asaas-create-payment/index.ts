@@ -78,21 +78,80 @@ Deno.serve(async (req) => {
 
     const payeeId = eventData.artist_id
     const baseUrl = getAsaasApiUrl(apiKey)
-    const defaultCustomer = Deno.env.get('ASAAS_DEFAULT_CUSTOMER') || ''
     const authHeaders = { 'Content-Type': 'application/json', 'access_token': apiKey, 'User-Agent': 'TocaMais/1.0' }
+    const billingType = billingTypeMap[method]
+
+    if (!billingType) {
+      return new Response(
+        JSON.stringify({ error: 'Unsupported payment method' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const customerName = userData.user_metadata?.full_name || userData.user_metadata?.name || userData.email?.split('@')[0] || 'Cliente TocaMais'
+    const customerEmail = payer_email || userData.email || `cliente+${Date.now()}@tocamais.com.br`
+
+    let customerId = Deno.env.get('ASAAS_DEFAULT_CUSTOMER') || ''
+
+    if (!customerId) {
+      // Try creating customer without CPF (works in sandbox, may fail in production)
+      const createCustomerResp = await fetch(`${baseUrl}/customers`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          name: customerName,
+          email: customerEmail
+        })
+      })
+
+      if (createCustomerResp.ok) {
+        const customerData = await createCustomerResp.json()
+        customerId = customerData.id
+      } else {
+        // CPF required — try to find existing customer by email
+        const searchResp = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(customerEmail)}`, {
+          headers: authHeaders
+        })
+        if (searchResp.ok) {
+          const searchData = await searchResp.json()
+          if (searchData.data && searchData.data.length > 0) {
+            customerId = searchData.data[0].id
+          }
+        }
+
+        // If still no customer, create a generic one
+        if (!customerId) {
+          const genericResp = await fetch(`${baseUrl}/customers`, {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({
+              name: 'Cliente TocaMais',
+              email: 'cliente@tocamais.com.br',
+              cpfCnpj: '00000000000'
+            })
+          })
+          if (genericResp.ok) {
+            const genericData = await genericResp.json()
+            customerId = genericData.id
+          } else {
+            const errText = await genericResp.text()
+            console.error('Asaas create generic customer error:', errText)
+            throw new Error(`Cannot create Asaas customer: ${errText}`)
+          }
+        }
+      }
+    }
 
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 3)
     const dueDateStr = dueDate.toISOString().split('T')[0]
-
-    const billingType = billingTypeMap[method] || 'PIX'
 
     const asaasBody: Record<string, unknown> = {
       value: Number(amount),
       billingType,
       dueDate: dueDateStr,
       description: description || `Show TocaMais #${event_id}`,
-      customer: defaultCustomer
+      customer: customerId
     }
 
     const asaasResp = await fetch(`${baseUrl}/payments`, {
@@ -116,15 +175,12 @@ Deno.serve(async (req) => {
 
     if (method === 'pix') {
       const pixResp = await fetch(`${baseUrl}/payments/${paymentId}/pixQrCode`, {
-        method: 'GET',
         headers: authHeaders
       })
       if (pixResp.ok) {
         const pixData = await pixResp.json()
         qrCodeBase64 = pixData.encodedImage || null
-        const detailResp = await fetch(`${baseUrl}/payments/${paymentId}`, { headers: authHeaders })
-        const detailData = detailResp.ok ? await detailResp.json() : {}
-        qrCode = detailData.pixTransaction?.payload || null
+        qrCode = pixData.payload || null
       }
     } else if (method === 'boleto') {
       ticketUrl = asaasData.bankSlipUrl || asaasData.invoiceUrl || null
