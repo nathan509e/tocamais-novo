@@ -60,14 +60,41 @@ export default function AppLayout({ children, role = 'artist' }) {
 
   useEffect(() => {
     if (!user?.id) return;
+
+    // Initial fetch
     supabase.from('notifications')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (data) setNotifications(data);
       });
+
+    // Realtime subscription for new notifications
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new, ...prev].slice(0, 20));
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const nav = navItems[role] || navItems.artist;
@@ -306,7 +333,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               >
                 <Bell className={`w-4 h-4 ${isDark ? 'text-white' : 'text-gray-700'}`} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-purple rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-pulse shadow-lg shadow-red-500/50">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -326,7 +353,15 @@ export default function AppLayout({ children, role = 'artist' }) {
                     >
                       <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
                         <h4 className="text-xs font-bold uppercase tracking-wider">Notificações</h4>
-                        <span className="text-[10px] text-neon-green font-semibold cursor-pointer">Limpar tudo</span>
+                        <span 
+                          onClick={async () => {
+                            if (!user) return;
+                            await supabase.from('notifications').delete().eq('user_id', user.id);
+                            setNotifications([]);
+                            setUnreadCount(0);
+                          }}
+                          className="text-[10px] text-neon-green font-semibold cursor-pointer hover:text-neon-green/80"
+                        >Limpar tudo</span>
                       </div>
                       <div className="space-y-3 max-h-60 overflow-y-auto">
                         {notifications.length === 0 && (
@@ -391,6 +426,72 @@ export default function AppLayout({ children, role = 'artist' }) {
             </Link>
           );
         })}
+
+        {/* Notification Bell - Mobile */}
+        <div className="relative flex flex-col items-center gap-1 py-1">
+          <motion.div whileTap={{ scale: 0.9 }}>
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative"
+            >
+              <Bell className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-pulse shadow-lg shadow-red-500/50">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          </motion.div>
+          <span className={`text-[9px] uppercase tracking-wider font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            Sino
+          </span>
+
+          {/* Mobile Notification Dropdown */}
+          <AnimatePresence>
+            {showNotifications && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className={`fixed bottom-20 left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 max-h-[60vh] overflow-y-auto ${
+                    isDark ? 'bg-[#0F0926] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                    <h4 className="text-sm font-bold uppercase tracking-wider">Notificações</h4>
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="text-xs text-neon-green font-semibold"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {notifications.length === 0 && (
+                      <p className="text-xs text-gray-500 text-center py-4">Nenhuma notificação</p>
+                    )}
+                    {notifications.map(n => (
+                      <div
+                        key={n.id}
+                        className={`p-3 rounded-xl transition-colors ${
+                          isDark ? 'bg-white/5' : 'bg-gray-50'
+                        } ${!n.read ? 'border-l-2 border-neon-purple' : ''}`}
+                      >
+                        <p className="text-sm font-bold">{n.title}</p>
+                        <p className="text-xs text-gray-400 mt-1">{n.content}</p>
+                        <span className="text-[10px] text-gray-500 mt-1.5 block">
+                          {new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
 
       {/* MOBILE SIDEBAR DRAWER */}

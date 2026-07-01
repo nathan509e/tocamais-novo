@@ -147,6 +147,37 @@ Deno.serve(async (req) => {
     const inserted = await insertResp.json()
     const requestId = inserted?.[0]?.id
 
+    // Create notification for the artist
+    // First, get the artist's user_id from the artists table
+    const artistResp = await fetch(`${supabaseUrl}/rest/v1/artists?user_id=eq.${artist_id}&select=user_id`, {
+      headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${supabaseServiceKey}` }
+    })
+    const artistData = await artistResp.json()
+    const artistUserId = artistData?.[0]?.user_id
+
+    if (artistUserId) {
+      const notifTitle = totalAmount > 0
+        ? `Novo pedido com gorjeta de R$ ${totalAmount.toFixed(2)}`
+        : 'Novo pedido de música'
+      const notifContent = `${user_name || 'Cliente'} pediu "${musica_titulo || 'uma música'}"${message ? `: ${message}` : ''}`
+
+      await fetch(`${supabaseUrl}/rest/v1/notifications`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseServiceKey,
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: artistUserId,
+          title: notifTitle,
+          content: notifContent,
+          type: 'music_request',
+          read: false
+        })
+      })
+    }
+
     // Update artist rating if provided
     if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
       const ratingResp = await fetch(

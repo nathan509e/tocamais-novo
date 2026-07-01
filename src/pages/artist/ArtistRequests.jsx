@@ -66,9 +66,8 @@ export default function ArtistRequests() {
       }
 
       if (lastCheckedIds.length > 0) {
-        const pendingWithTip = newData.filter(r => r.status === 'pending' && (Number(r.amount) || 0) > 0);
-        const newPendingWithTip = pendingWithTip.filter(r => !lastCheckedIds.includes(r.id));
-        if (newPendingWithTip.length > 0 && autoRefresh) {
+        const newPending = newData.filter(r => r.status === 'pending' && !lastCheckedIds.includes(r.id));
+        if (newPending.length > 0 && autoRefresh) {
           playNotificationSound();
         }
       }

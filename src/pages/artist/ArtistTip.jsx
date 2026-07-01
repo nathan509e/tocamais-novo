@@ -193,6 +193,23 @@ export default function ArtistTip() {
         console.error('Erro ao criar pedido:', error);
         alert('Erro: ' + error.message);
       } else {
+        // Create notification for the artist
+        const { data: artistData } = await supabase
+          .from('artists')
+          .select('user_id')
+          .eq('user_id', artistId)
+          .single();
+        
+        if (artistData?.user_id) {
+          await supabase.from('notifications').insert({
+            user_id: artistData.user_id,
+            title: 'Novo pedido de música',
+            content: `${userName || 'Cliente'} pediu "${selectedMusic?.titulo || 'uma música'}"${message ? `: ${message}` : ''}`,
+            type: 'music_request',
+            read: false
+          });
+        }
+
         setStage(STAGE.ORDER_ONLY_THANKS);
       }
     } catch (e) {
@@ -280,6 +297,25 @@ export default function ArtistTip() {
         console.error('Erro ao criar pedido:', error);
         alert('Erro ao criar pedido: ' + error.message);
       } else {
+        // Create notification for the artist
+        const { data: artistData } = await supabase
+          .from('artists')
+          .select('user_id')
+          .eq('user_id', artistId)
+          .single();
+        
+        if (artistData?.user_id) {
+          await supabase.from('notifications').insert({
+            user_id: artistData.user_id,
+            title: tipAmount > 0 
+              ? `Novo pedido com gorjeta de R$ ${tipAmount.toFixed(2)}`
+              : 'Novo pedido de música',
+            content: `${userName || 'Cliente'} pediu "${selectedMusic?.titulo || 'uma música'}"${message ? `: ${message}` : ''}`,
+            type: 'music_request',
+            read: false
+          });
+        }
+
         setPixCreated(false);
         setPixQrCodeBase64('');
         setPixQrCode('');
