@@ -22,6 +22,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
           <div className="flex items-center gap-1">
             <p className="text-gray-900 font-semibold text-sm truncate">{artistic_name}</p>
             {verified && <CheckCircle className="w-3.5 h-3.5 text-neon-purple flex-shrink-0" />}
+            {is_pro && <Crown className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
           </div>
           <p className="text-gray-500 text-xs">{genre} • {city}</p>
           <div className="flex items-center gap-1 mt-0.5">
@@ -85,6 +86,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
         <div className="flex items-center justify-center gap-1.5">
           <p className="text-gray-900 font-bold text-base">{artistic_name}</p>
           {verified && <CheckCircle className="w-4 h-4 text-neon-purple" />}
+          {is_pro && <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />}
         </div>
         <div className="flex items-center justify-center gap-1 text-gray-500 text-xs mt-0.5">
           <Music className="w-3 h-3" />

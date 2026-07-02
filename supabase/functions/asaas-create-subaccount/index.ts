@@ -1,0 +1,232 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  // ALL responses return 200 — Supabase client swallows body on non-2xx
+  const resp = (data: Record<string, unknown>) =>
+    new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization')!
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+    if (authError || !user) {
+      return resp({ success: false, error: 'Unauthorized' })
+    }
+
+    // Get artist data
+    const { data: artist, error: artistError } = await supabase
+      .from('artists')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (artistError || !artist) {
+      return resp({ success: false, error: 'Artist profile not found' })
+    }
+
+    // Check if already connected
+    if (artist.asaas_wallet_id) {
+      return resp({ 
+        success: false, 
+        error: 'Conta Asaas já conectada',
+        walletId: artist.asaas_wallet_id 
+      })
+    }
+
+    const apiKey = Deno.env.get('ASAAS_API_KEY')
+    if (!apiKey) {
+      return resp({ success: false, error: 'Asaas not configured — ASAAS_API_KEY missing' })
+    }
+
+    // Determine base URL from key prefix
+    const isSandbox = apiKey.startsWith('$aact_hmlg_')
+    const baseUrl = isSandbox ? 'https://sandbox.asaas.com/v3' : 'https://api.asaas.com/v3'
+    console.log('Using Asaas base URL:', baseUrl, 'isSandbox:', isSandbox)
+
+    // Parse request body
+    let cpfCnpj = ''
+    let birthDate = ''
+    let postalCode = ''
+    let address = ''
+    let addressNumber = ''
+    let complement = ''
+    let province = ''
+    let companyType = 'MEI'
+    let incomeValue = 0
+    try {
+      const body = await req.json()
+      cpfCnpj = body.cpfCnpj || ''
+      birthDate = body.birthDate || ''
+      postalCode = body.postalCode || ''
+      address = body.address || ''
+      addressNumber = body.addressNumber || ''
+      complement = body.complement || ''
+      province = body.province || ''
+      companyType = body.companyType || 'MEI'
+      incomeValue = body.incomeValue || 0
+    } catch (_) {
+      // No body or invalid JSON
+    }
+
+    // CPF/CNPJ is required
+    if (!cpfCnpj || cpfCnpj.replace(/\D/g, '').length < 11) {
+      return resp({
+        success: false,
+        error: 'CPF ou CNPJ é obrigatório para criar conta Asaas',
+        details: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.'
+      })
+    }
+
+    // Date of birth is required by Asaas (field name: birthDate, format: YYYY-MM-DD)
+    if (!birthDate) {
+      return resp({
+        success: false,
+        error: 'Data de nascimento é obrigatória',
+        details: 'Informe sua data de nascimento.'
+      })
+    }
+
+    // CEP (postalCode) is required by Asaas
+    if (!postalCode || postalCode.replace(/\D/g, '').length < 8) {
+      return resp({
+        success: false,
+        error: 'CEP é obrigatório para criar conta Asaas',
+        details: 'Informe um CEP válido (8 dígitos).'
+      })
+    }
+
+    // Clean CPF/CNPJ (digits only)
+    const cleanCpfCnpj = cpfCnpj.replace(/\D/g, '')
+    const isCpf = cleanCpfCnpj.length === 11
+    // Clean CEP (digits only)
+    const cleanPostalCode = postalCode.replace(/\D/g, '')
+
+    // Asaas expects birthDate as YYYY-MM-DD (no conversion needed, frontend sends this format)
+    // Build body for Asaas subaccount creation — per docs: https://docs.asaas.com/reference/criar-subconta
+    // IMPORTANT: companyType and incomeValue are ONLY for CNPJ (pessoa jurídica) — CPF accounts reject them
+    const subaccountBody: Record<string, unknown> = {
+      name: artist.artistic_name || user.user_metadata?.name || 'Artista TocaMais',
+      email: user.email,
+      cpfCnpj: cleanCpfCnpj,
+      birthDate: birthDate,
+      phone: user.user_metadata?.phone || '00000000000',
+      mobilePhone: user.user_metadata?.phone || '00000000000',
+      address: address || 'Rua não informada',
+      addressNumber: addressNumber || '0',
+      complement: complement || '',
+      province: province || '',
+      postalCode: cleanPostalCode,
+    }
+
+    // Only add companyType and incomeValue for CNPJ (pessoa jurídica)
+    if (!isCpf) {
+      subaccountBody.companyType = companyType || 'MEI'
+      subaccountBody.incomeValue = incomeValue || 1000
+    }
+
+    console.log('Creating subaccount for artist:', user.id)
+    console.log('Body sent to Asaas:', JSON.stringify(subaccountBody))
+
+    const subaccountResp = await fetch(`${baseUrl}/accounts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'access_token': apiKey,
+      },
+      body: JSON.stringify(subaccountBody)
+    })
+
+    const respText = await subaccountResp.text()
+    console.log('Asaas response status:', subaccountResp.status)
+    console.log('Asaas response body:', respText)
+
+    if (!subaccountResp.ok) {
+      return resp({
+        success: false,
+        error: `Asaas retornou status ${subaccountResp.status}`,
+        details: respText.substring(0, 1000),
+        sentBody: subaccountBody
+      })
+    }
+
+    let subaccountData: Record<string, unknown> = {}
+    try {
+      subaccountData = JSON.parse(respText)
+    } catch (_) {
+      return resp({
+        success: false,
+        error: 'Resposta inválida do Asaas (não é JSON)',
+        details: respText.substring(0, 500)
+      })
+    }
+
+    console.log('Subaccount created:', JSON.stringify(subaccountData))
+
+    const walletId = (subaccountData as any).id
+    const subaccountApiKey = (subaccountData as any).apiKey
+
+    if (!walletId) {
+      return resp({
+        success: false,
+        error: 'Resposta do Asaas não contém id',
+        details: JSON.stringify(subaccountData).substring(0, 500)
+      })
+    }
+
+    // Save to database
+    const updateData: Record<string, unknown> = {
+      asaas_wallet_id: walletId,
+    }
+    if (subaccountApiKey) updateData.asaas_api_key = subaccountApiKey
+    updateData.asaas_account_status = 'pending_verification'
+    updateData.cpf_cnpj = cleanCpfCnpj
+
+    const { error: updateError } = await supabase
+      .from('artists')
+      .update(updateData)
+      .eq('user_id', user.id)
+
+    if (updateError) {
+      console.error('Supabase update error:', updateError)
+      // Try without extra columns
+      const { error: retryError } = await supabase
+        .from('artists')
+        .update({ asaas_wallet_id: walletId })
+        .eq('user_id', user.id)
+
+      if (retryError) {
+        return resp({ success: false, error: 'Erro ao salvar dados da conta no banco' })
+      }
+    }
+
+    return resp({
+      success: true,
+      walletId,
+      message: 'Conta Asaas criada com sucesso! Verifique seu email para ativar a conta.',
+      accountStatus: 'pending_verification'
+    })
+
+  } catch (e) {
+    console.error('Error:', e)
+    return resp({ success: false, error: (e as Error).message || 'Internal server error' })
+  }
+})

@@ -123,6 +123,7 @@ export default function AppLayout({ children, role = 'artist' }) {
             customerName: username,
             customerEmail: user?.email,
             customerTaxId: proCpf.replace(/\D/g, ''),
+            artistUserId: user?.id,
             billingType: 'PIX',
             description: 'TocaMais Pro - Assinatura Mensal',
             mode: 'subscription',
@@ -133,7 +134,7 @@ export default function AppLayout({ children, role = 'artist' }) {
       if (!resp.ok || data.error) {
         throw new Error(data.error || 'Erro ao criar assinatura');
       }
-      setProQrCode(data.qrCodeBase64);
+      setProQrCode(data.pixQrCode);
       setProPixPayload(data.pixPayload);
       setProSuccess(true);
     } catch (err) {
@@ -230,7 +231,10 @@ export default function AppLayout({ children, role = 'artist' }) {
               className="w-10 h-10 rounded-xl object-cover border border-white/10"
             />
             <div className="min-w-0 flex-1">
-              <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{username}</p>
+              <div className="flex items-center gap-1">
+                <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{username}</p>
+                {role === 'artist' && userProfile?.is_pro && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
+              </div>
               <p className="text-[10px] text-neon-green uppercase font-bold tracking-wider">
                 {role === 'artist' ? 'Artista' : role === 'venue' ? 'Casa Show' : 'Contratante'}
               </p>
@@ -282,13 +286,15 @@ export default function AppLayout({ children, role = 'artist' }) {
           <div className="flex items-center gap-3 md:gap-4">
             
             {/* Ser Pro Button */}
-            <button
-              onClick={() => setShowProModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] text-white shadow-[0_0_20px_rgba(123,46,255,0.3)] hover:shadow-[0_0_25px_rgba(123,46,255,0.5)] hover:scale-105 active:scale-95"
-            >
-              <Crown className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Ser Pro</span>
-            </button>
+            {(!userProfile?.is_pro || role !== 'artist') && (
+              <button
+                onClick={() => setShowProModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] text-white shadow-[0_0_20px_rgba(123,46,255,0.3)] hover:shadow-[0_0_25px_rgba(123,46,255,0.5)] hover:scale-105 active:scale-95"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Ser Pro</span>
+              </button>
+            )}
 
             {/* Theme Toggle Button */}
             <button
@@ -565,7 +571,10 @@ export default function AppLayout({ children, role = 'artist' }) {
                     className="w-9 h-9 rounded-lg object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{username}</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-xs font-bold truncate">{username}</p>
+                      {role === 'artist' && userProfile?.is_pro && <Crown className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
+                    </div>
                     <p className="text-[9px] text-neon-green uppercase font-bold tracking-wider">
                       {role === 'artist' ? 'Artista' : role === 'venue' ? 'Casa Show' : 'Contratante'}
                     </p>
