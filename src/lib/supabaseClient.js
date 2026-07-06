@@ -150,6 +150,213 @@ if (!hasTestProposal && db.events) {
   }
 }
 
+const makeMockId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 11)}`;
+
+const upsertIntoTable = (tableName, rows, conflictColumns = ['id']) => {
+  const tableData = [...(db[tableName] || [])];
+  const insertedRows = [];
+
+  rows.forEach((row) => {
+    const newRow = {
+      id: row.id || makeMockId(tableName.substring(0, 3)),
+      created_at: row.created_at || new Date().toISOString(),
+      ...row
+    };
+
+    const matchIndex = tableData.findIndex((existing) =>
+      conflictColumns.every((column) => existing[column] === newRow[column])
+    );
+
+    if (matchIndex >= 0) {
+      tableData[matchIndex] = { ...tableData[matchIndex], ...newRow };
+      insertedRows.push(tableData[matchIndex]);
+    } else {
+      tableData.push(newRow);
+      insertedRows.push(newRow);
+    }
+  });
+
+  db[tableName] = tableData;
+  saveStorage(tableName, db[tableName]);
+  return insertedRows;
+};
+
+const createMockAccount = ({ email, password, name, role, avatar_url }) => {
+  const users = db.users;
+  if (users.some(u => u.email === email)) {
+    return { data: null, error: { message: 'E-mail já cadastrado.' } };
+  }
+
+  const newUser = {
+    id: makeMockId('usr'),
+    email,
+    password,
+    name: name || 'Novo Usuário',
+    role: role || 'contractor',
+    avatar_url: avatar_url || ''
+  };
+
+  db.users.push(newUser);
+  saveStorage('users', db.users);
+
+  if (newUser.role === 'artist') {
+    const newArtistId = makeMockId('art');
+    db.artist_profiles.push({
+      id: newArtistId,
+      user_id: newUser.id,
+      artistic_name: newUser.name,
+      genre: '',
+      city: '',
+      bio: '',
+      base_fee: 0,
+      rating: 0,
+      followers: 0,
+      photo_url: '',
+      verified: false,
+      selected_musicas_ids: []
+    });
+    db.artists.push({
+      id: newArtistId,
+      user_id: newUser.id,
+      artistic_name: newUser.name,
+      genre: '',
+      city: '',
+      bio: '',
+      base_fee: 0,
+      rating: 0,
+      followers: 0,
+      photo_url: '',
+      cover_url: '',
+      verified: false,
+      live_now: false,
+      featured: false,
+      video_portfolio_urls: [],
+      music_playlist_urls: [],
+      presentation_video_url: '',
+      selected_musicas_ids: []
+    });
+    saveStorage('artist_profiles', db.artist_profiles);
+    saveStorage('artists', db.artists);
+  } else if (newUser.role === 'venue') {
+    db.venues.push({
+      id: makeMockId('ven'),
+      user_id: newUser.id,
+      venue_name: '',
+      city: '',
+      address: '',
+      capacity: 0,
+      average_budget: 0
+    });
+    saveStorage('venues', db.venues);
+  } else {
+    db.contractors.push({
+      id: makeMockId('con'),
+      user_id: newUser.id,
+      phone: '',
+      preferences: {}
+    });
+    saveStorage('contractors', db.contractors);
+  }
+
+  saveStorage('auth_session', newUser);
+  return { data: { user: newUser }, error: null };
+};
+
+const buildAdminOrders = () => {
+  const requests = [...(db.music_requests || [])].sort((a, b) => new Date(b.requested_at || 0) - new Date(a.requested_at || 0));
+  const artistsByUserId = new Map((db.artists || []).map(a => [a.user_id, a]));
+
+  return requests.map((request) => ({
+    ...request,
+    artist: artistsByUserId.get(request.artist_id) || null
+  }));
+};
+
+const createMockPixResponse = (body = {}) => {
+  const amount = Number(body.amount) || 0;
+  const pendingTip = {
+    artist_id: body.artistUserId || null,
+    user_name: body.userName || body.customerName || 'Cliente',
+    user_message: body.userMessage || null,
+    amount,
+    status: 'pending',
+    musica_id: body.musicaId || null,
+    musica_titulo: body.musicaTitulo || null,
+    musica_artista: body.musicaArtista || null,
+    rating: body.rating || null
+  };
+
+  const inserted = upsertIntoTable('pending_tips', [pendingTip]);
+  const pendingTipId = inserted[0]?.id || null;
+  const pixPayload = `mock-pix-${pendingTipId || makeMockId('pix')}`;
+  const pixQrCode = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8F8iUAAAAASUVORK5CYII=';
+
+  return {
+    success: true,
+    mode: 'static',
+    pixQrCode,
+    pixKey: pixPayload,
+    pixPayload,
+    pendingTipId
+  };
+};
+
+const createMockPaymentResponse = (body = {}) => {
+  const amount = Number(body.amount) || 0;
+  const eventId = body.event_id || body.eventId || null;
+  const event = (db.events || []).find(e => e.id === eventId) || null;
+  const paymentId = makeMockId('pay');
+  const paymentRow = {
+    id: paymentId,
+    event_id: eventId,
+    payer_id: body.payer_id || body.payerId || 'usr-mock',
+    payee_id: event?.artist_id || null,
+    amount,
+    status: 'paid',
+    method: body.method || 'pix',
+    transaction_hash: paymentId,
+    created_at: new Date().toISOString()
+  };
+
+  db.payments.push(paymentRow);
+  saveStorage('payments', db.payments);
+
+  return {
+    success: true,
+    paymentId,
+    mpPaymentId: paymentId,
+    status: 'RECEIVED',
+    qrCode: `mock-pix-${paymentId}`,
+    qrCodeBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8F8iUAAAAASUVORK5CYII=',
+    ticketUrl: 'https://example.com/mock-boleto.pdf',
+    bankSlipUrl: 'https://example.com/mock-boleto.pdf'
+  };
+};
+
+const createMockSubaccountResponse = (body = {}) => {
+  const artistUserId = body.artistUserId || null;
+  const artist = (db.artists || []).find(a => a.user_id === artistUserId) || null;
+  const walletId = makeMockId('wallet');
+
+  if (artist) {
+    const updatedArtist = {
+      ...artist,
+      asaas_wallet_id: walletId,
+      asaas_account_status: 'pending_verification',
+      cpf_cnpj: (body.cpfCnpj || '').replace(/\D/g, '')
+    };
+    db.artists = db.artists.map(a => (a.user_id === artistUserId ? updatedArtist : a));
+    saveStorage('artists', db.artists);
+  }
+
+  return {
+    success: true,
+    walletId,
+    message: 'Conta Asaas criada com sucesso! Verifique seu email para ativar a conta.',
+    accountStatus: 'pending_verification'
+  };
+};
+
 // A robust mock chain builder to emulate Supabase's fluent API
 class MockSupabaseQueryBuilder {
   constructor(tableName) {
@@ -157,6 +364,8 @@ class MockSupabaseQueryBuilder {
     this.filters = [];
     this.orderByVal = null;
     this.isSingle = false;
+    this.maybeSingleMode = false;
+    this.limitVal = null;
     this.pendingOp = null;
   }
 
@@ -189,8 +398,28 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
+  maybeSingle() {
+    this.maybeSingleMode = true;
+    return this;
+  }
+
+  limit(count) {
+    this.limitVal = count;
+    return this;
+  }
+
   update(data) {
     this.pendingOp = { type: 'update', data };
+    return this;
+  }
+
+  upsert(data, options = {}) {
+    this.pendingOp = { type: 'upsert', data, options };
+    return this;
+  }
+
+  insert(data) {
+    this.pendingOp = { type: 'insert', data };
     return this;
   }
 
@@ -199,78 +428,117 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
-  async insert(data) {
-    const tableData = db[this.tableName] || [];
-    const rows = Array.isArray(data) ? data : [data];
-    const newRows = rows.map(r => ({
-      id: r.id || `${this.tableName.substring(0,3)}-${Math.random().toString(36).substr(2, 9)}`,
-      created_at: new Date().toISOString(),
-      ...r
-    }));
+  async then(onfulfilled, onrejected) {
+    try {
+      let filtered = [...(db[this.tableName] || [])];
 
-    db[this.tableName] = [...tableData, ...newRows];
-    saveStorage(this.tableName, db[this.tableName]);
-
-    return { data: Array.isArray(data) ? newRows : newRows[0], error: null };
-  }
-
-  async then(onfulfilled) {
-    let filtered = [...(db[this.tableName] || [])];
-
-    this.filters.forEach(f => {
-      if (f.type === 'eq') {
-        filtered = filtered.filter(row => row[f.column] === f.value);
-      } else if (f.type === 'neq') {
-        filtered = filtered.filter(row => row[f.column] !== f.value);
-      } else if (f.type === 'in') {
-        const set = new Set(f.value || []);
-        filtered = filtered.filter(row => set.has(row[f.column]));
-      }
-    });
-
-    if (this.pendingOp?.type === 'update') {
-      const updatedRows = [];
-      const ids = new Set(filtered.map(r => r.id));
-      db[this.tableName] = db[this.tableName].map(row => {
-        if (ids.has(row.id)) {
-          const updated = { ...row, ...this.pendingOp.data };
-          updatedRows.push(updated);
-          return updated;
+      this.filters.forEach(f => {
+        if (f.type === 'eq') {
+          filtered = filtered.filter(row => row[f.column] === f.value);
+        } else if (f.type === 'neq') {
+          filtered = filtered.filter(row => row[f.column] !== f.value);
+        } else if (f.type === 'in') {
+          const set = new Set(f.value || []);
+          filtered = filtered.filter(row => set.has(row[f.column]));
         }
-        return row;
       });
-      saveStorage(this.tableName, db[this.tableName]);
-      const output = this.isSingle ? (updatedRows[0] || null) : updatedRows;
+
+      if (this.pendingOp?.type === 'update') {
+        const updatedRows = [];
+        const ids = new Set(filtered.map(r => r.id));
+        db[this.tableName] = db[this.tableName].map(row => {
+          if (ids.has(row.id)) {
+            const updated = { ...row, ...this.pendingOp.data };
+            updatedRows.push(updated);
+            return updated;
+          }
+          return row;
+        });
+        saveStorage(this.tableName, db[this.tableName]);
+        const output = this.isSingle ? (updatedRows[0] || null) : updatedRows;
+        return onfulfilled({ data: output, error: null });
+      }
+
+      if (this.pendingOp?.type === 'upsert') {
+        const rows = Array.isArray(this.pendingOp.data) ? this.pendingOp.data : [this.pendingOp.data];
+        const conflictColumns = String(this.pendingOp.options?.onConflict || 'id')
+          .split(',')
+          .map(column => column.trim())
+          .filter(Boolean);
+        const upsertedRows = upsertIntoTable(this.tableName, rows, conflictColumns);
+        const output = this.isSingle ? (upsertedRows[0] || null) : upsertedRows;
+        return onfulfilled({ data: output, error: null });
+      }
+
+      if (this.pendingOp?.type === 'insert') {
+        const rows = Array.isArray(this.pendingOp.data) ? this.pendingOp.data : [this.pendingOp.data];
+        const insertedRows = rows.map(r => ({
+          id: r.id || makeMockId(this.tableName.substring(0, 3)),
+          created_at: new Date().toISOString(),
+          ...r
+        }));
+
+        db[this.tableName] = [...(db[this.tableName] || []), ...insertedRows];
+        saveStorage(this.tableName, db[this.tableName]);
+
+        const output = this.isSingle ? (insertedRows[0] || null) : insertedRows;
+        return onfulfilled({ data: output, error: null });
+      }
+
+      if (this.pendingOp?.type === 'delete') {
+        const ids = new Set(filtered.map(r => r.id));
+        db[this.tableName] = db[this.tableName].filter(row => !ids.has(row.id));
+        saveStorage(this.tableName, db[this.tableName]);
+        return onfulfilled({ error: null, data: null });
+      }
+
+      if (this.orderByVal) {
+        const { column, ascending } = this.orderByVal;
+        filtered.sort((a, b) => {
+          if (a[column] < b[column]) return ascending ? -1 : 1;
+          if (a[column] > b[column]) return ascending ? 1 : -1;
+          return 0;
+        });
+      }
+
+      if (this.limitVal !== null) {
+        filtered = filtered.slice(0, this.limitVal);
+      }
+
+      const output = this.isSingle || this.maybeSingleMode ? (filtered[0] || null) : filtered;
+      if (this.isSingle && filtered.length === 0) {
+        return onfulfilled({ data: null, error: { message: 'Row not found' } });
+      }
       return onfulfilled({ data: output, error: null });
+    } catch (error) {
+      if (onrejected) {
+        return onrejected(error);
+      }
+      throw error;
     }
-
-    if (this.pendingOp?.type === 'delete') {
-      const ids = new Set(filtered.map(r => r.id));
-      db[this.tableName] = db[this.tableName].filter(row => !ids.has(row.id));
-      saveStorage(this.tableName, db[this.tableName]);
-      return onfulfilled({ error: null });
-    }
-
-    if (this.orderByVal) {
-      const { column, ascending } = this.orderByVal;
-      filtered.sort((a, b) => {
-        if (a[column] < b[column]) return ascending ? -1 : 1;
-        if (a[column] > b[column]) return ascending ? 1 : -1;
-        return 0;
-      });
-    }
-
-    const output = this.isSingle ? (filtered[0] || null) : filtered;
-    if (this.isSingle && filtered.length === 0) {
-      return onfulfilled({ data: null, error: { message: 'Row not found' } });
-    }
-    return onfulfilled({ data: output, error: null });
   }
 }
 
 // Build mock client instance matching Supabase JS structure
 const mockSupabase = {
   from: (tableName) => new MockSupabaseQueryBuilder(tableName),
+  rpc: async (functionName, args = {}) => {
+    if (functionName === 'create_user_direct') {
+      return createMockAccount({
+        email: args.user_email,
+        password: args.user_password,
+        name: args.user_name,
+        role: args.user_role,
+        avatar_url: ''
+      });
+    }
+
+    if (functionName === 'increment_sync_count') {
+      return { data: 1, error: null };
+    }
+
+    return { data: null, error: null };
+  },
   auth: {
     getUser: async () => {
       const current = loadStorage('auth_session', null);
@@ -278,101 +546,82 @@ const mockSupabase = {
     },
     getSession: async () => {
       const current = loadStorage('auth_session', null);
-      return { data: { session: current ? { user: current } : null }, error: null };
+      return { data: { session: current ? { user: current, access_token: 'mock-access-token' } : null }, error: null };
     },
     signInWithPassword: async ({ email, password }) => {
       const users = db.users;
       const user = users.find(u => u.email === email);
       if (user && user.password === password) {
         saveStorage('auth_session', user);
-        return { data: { user }, error: null };
+        return { data: { user, session: { user, access_token: 'mock-access-token' } }, error: null };
       }
       return { data: null, error: { message: 'E-mail ou senha inválidos.' } };
     },
     signUp: async ({ email, password, options }) => {
-      const users = db.users;
-      if (users.some(u => u.email === email)) {
-        return { data: null, error: { message: 'E-mail já cadastrado.' } };
-      }
-      const newUser = {
-        id: `usr-${Math.random().toString(36).substr(2, 9)}`,
+      return createMockAccount({
         email,
         password,
-        name: options?.data?.name || 'Novo Usuário',
-        role: options?.data?.role || 'contractor',
+        name: options?.data?.name,
+        role: options?.data?.role,
         avatar_url: options?.data?.avatar_url || ''
-      };
-      
-      // Save user to lists
-      db.users.push(newUser);
-      saveStorage('users', db.users);
-
-      // Create profile table entry based on role
-      if (newUser.role === 'artist') {
-        const newArtistId = `art-${Math.random().toString(36).substr(2, 9)}`;
-        db.artist_profiles.push({
-          id: newArtistId,
-          user_id: newUser.id,
-          artistic_name: newUser.name,
-          genre: '',
-          city: '',
-          bio: '',
-          base_fee: 0,
-          rating: 0,
-          followers: 0,
-          photo_url: '',
-          verified: false,
-          selected_musicas_ids: []
-        });
-        saveStorage('artist_profiles', db.artist_profiles);
-        db.artists.push({
-          id: newArtistId,
-          user_id: newUser.id,
-          artistic_name: newUser.name,
-          genre: '',
-          city: '',
-          bio: '',
-          base_fee: 0,
-          rating: 0,
-          followers: 0,
-          photo_url: '',
-          cover_url: '',
-          verified: false,
-          live_now: false,
-          featured: false,
-          video_portfolio_urls: [],
-          music_playlist_urls: [],
-          presentation_video_url: '',
-          selected_musicas_ids: []
-        });
-        saveStorage('artists', db.artists);
-      } else if (newUser.role === 'venue') {
-        db.venues.push({
-          id: `ven-${Math.random().toString(36).substr(2, 9)}`,
-          user_id: newUser.id,
-          venue_name: '',
-          city: '',
-          address: '',
-          capacity: 0,
-          average_budget: 0
-        });
-        saveStorage('venues', db.venues);
-      } else {
-        db.contractors.push({
-          id: `con-${Math.random().toString(36).substr(2, 9)}`,
-          user_id: newUser.id,
-          phone: '',
-          preferences: {}
-        });
-        saveStorage('contractors', db.contractors);
-      }
-
-      saveStorage('auth_session', newUser);
-      return { data: { user: newUser }, error: null };
+      });
     },
     signOut: async () => {
       saveStorage('auth_session', null);
       return { error: null };
+    }
+  },
+  channel: () => ({
+    on: () => ({
+      on: () => ({
+        subscribe: () => ({})
+      }),
+      subscribe: () => ({})
+    }),
+    subscribe: () => ({})
+  }),
+  removeChannel: async () => ({ error: null }),
+  functions: {
+    invoke: async (functionName, { body } = {}) => {
+      if (functionName === 'get-admin-orders') {
+        return { data: { success: true, data: buildAdminOrders() }, error: null };
+      }
+
+      if (functionName === 'asaas-create-pix') {
+        return { data: createMockPixResponse(body), error: null };
+      }
+
+      if (functionName === 'asaas-create-payment') {
+        return { data: createMockPaymentResponse(body), error: null };
+      }
+
+      if (functionName === 'asaas-check-payment') {
+        return {
+          data: {
+            success: true,
+            mpPaymentId: body?.payment_id || null,
+            mpStatus: 'approved',
+            asaasStatus: 'RECEIVED',
+            statusDetail: 'RECEIVED',
+            paidAt: new Date().toISOString()
+          },
+          error: null
+        };
+      }
+
+      if (functionName === 'asaas-create-subaccount') {
+        return { data: createMockSubaccountResponse(body), error: null };
+      }
+
+      if (functionName === 'asaas-process-tip') {
+        return { data: createMockPixResponse(body), error: null };
+      }
+
+      if (functionName === 'stripe-process-tip') {
+        return { data: { success: true }, error: null };
+      }
+
+      return { data: { success: true }, error: null };
     }
   },
   storage: {
@@ -386,7 +635,7 @@ const mockSupabase = {
             reader.readAsDataURL(file);
           });
           const base64Data = await base64Promise;
-          
+
           let mockStorage = {};
           try {
             mockStorage = JSON.parse(localStorage.getItem('tocamais_mock_storage') || '{}');
@@ -400,7 +649,7 @@ const mockSupabase = {
           } catch(e) {
             console.warn('Storage limit reached, keeping mock file in memory only');
           }
-          
+
           return { data: { path }, error: null };
         } catch (e) {
           return { data: null, error: e };
@@ -422,6 +671,6 @@ const mockSupabase = {
 
 // Check if credentials are set to choose either real Supabase or Local Simulator
 // Use VITE_USE_MOCK=true env var to force mock mode (for demo accounts)
-export const supabase = (supabaseUrl && supabaseAnonKey && !import.meta.env.VITE_USE_MOCK) 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
+export const supabase = (supabaseUrl && supabaseAnonKey && !import.meta.env.VITE_USE_MOCK)
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : mockSupabase;

@@ -276,13 +276,13 @@ export class GoogleTokenService {
       if (error) throw error;
 
       // Atualizar last_sync_at no token
+      await supabase.rpc('increment_sync_count', { token_id: tokenId });
       await supabase
         .from('google_calendar_tokens')
         .update({
           last_sync_at: new Date().toISOString(),
           last_sync_status: syncInfo.status,
-          last_sync_error: syncInfo.error,
-          total_syncs_count: supabase.rpc('increment_sync_count', { token_id: tokenId })
+          last_sync_error: syncInfo.error
         })
         .eq('id', tokenId);
 

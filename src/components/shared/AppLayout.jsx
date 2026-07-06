@@ -108,31 +108,20 @@ export default function AppLayout({ children, role = 'artist' }) {
     setProPixPayload(null);
     setProSuccess(false);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas-create-pix`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            amount: 49.90,
-            customerName: username,
-            customerEmail: user?.email,
-            customerTaxId: proCpf.replace(/\D/g, ''),
-            artistUserId: user?.id,
-            billingType: 'PIX',
-            description: 'TocaMais Pro - Assinatura Mensal',
-            mode: 'subscription',
-          }),
+      const { data, error } = await supabase.functions.invoke('asaas-create-pix', {
+        body: {
+          amount: 49.90,
+          customerName: username,
+          customerEmail: user?.email,
+          customerTaxId: proCpf.replace(/\D/g, ''),
+          artistUserId: user?.id,
+          billingType: 'PIX',
+          description: 'TocaMais Pro - Assinatura Mensal',
+          mode: 'subscription',
         }
-      );
-      const data = await resp.json();
-      if (!resp.ok || data.error) {
-        throw new Error(data.error || 'Erro ao criar assinatura');
+      });
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Erro ao criar assinatura');
       }
       setProQrCode(data.pixQrCode);
       setProPixPayload(data.pixPayload);
@@ -364,7 +353,6 @@ export default function AppLayout({ children, role = 'artist' }) {
                             if (!user) return;
                             await supabase.from('notifications').delete().eq('user_id', user.id);
                             setNotifications([]);
-                            setUnreadCount(0);
                           }}
                           className="text-[10px] text-neon-green font-semibold cursor-pointer hover:text-neon-green/80"
                         >Limpar tudo</span>

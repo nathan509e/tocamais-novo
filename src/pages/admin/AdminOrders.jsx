@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Search, ChevronLeft, ChevronRight, RefreshCw, DollarSign, Copy, Check, AlertTriangle, Ban, Loader, User } from 'lucide-react';
+import { ShoppingBag, Search, ChevronLeft, ChevronRight, RefreshCw, Copy, Check, AlertTriangle, Loader, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';

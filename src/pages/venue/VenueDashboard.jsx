@@ -1319,31 +1319,18 @@ export default function VenueDashboard() {
                               setPaymentLoading(true);
                               setPaymentError('');
                               try {
-                                const { data: session } = await supabase.auth.getSession();
-                                const token = session?.access_token;
-
-                                const response = await fetch(
-                                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas-create-payment`,
-                                  {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'Authorization': `Bearer ${token}`
-                                    },
-                                    body: JSON.stringify({
-                                      event_id: createdEventId,
-                                      amount: Math.round(proposalFee * 1.1),
-                                      method: paymentMethod,
-                                      payer_email: user?.email,
-                                      description: `Show: ${hiringArtist?.artistic_name} - ${eventDate}`
-                                    })
+                                const { data, error } = await supabase.functions.invoke('asaas-create-payment', {
+                                  body: {
+                                    event_id: createdEventId,
+                                    amount: Math.round(proposalFee * 1.1),
+                                    method: paymentMethod,
+                                    payer_email: user?.email,
+                                    description: `Show: ${hiringArtist?.artistic_name} - ${eventDate}`
                                   }
-                                );
+                                });
 
-                                const data = await response.json();
-
-                                if (!response.ok) {
-                                  throw new Error(data.error || 'Erro ao criar pagamento');
+                                if (error || data?.error) {
+                                  throw new Error(data?.error || error?.message || 'Erro ao criar pagamento');
                                 }
 
                                 setPaymentQrCode(data.qrCode || '');
@@ -1439,24 +1426,11 @@ export default function VenueDashboard() {
                           <button
                             onClick={async () => {
                               try {
-                                const { data: session } = await supabase.auth.getSession();
-                                const token = session?.access_token;
+                                const { data, error } = await supabase.functions.invoke('asaas-check-payment', {
+                                  body: { payment_id: mpPaymentId }
+                                });
 
-                                const response = await fetch(
-                                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas-check-payment`,
-                                  {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'Authorization': `Bearer ${token}`
-                                    },
-                                    body: JSON.stringify({ payment_id: mpPaymentId })
-                                  }
-                                );
-
-                                const data = await response.json();
-
-                                if (data.mpStatus === 'approved') {
+                                if (!error && data?.mpStatus === 'approved') {
                                   setPaymentDone(true);
                                   setHireStep(5);
                                 } else {

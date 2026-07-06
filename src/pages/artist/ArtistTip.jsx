@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Copy, Check, Music, Search, X, Loader, Heart, Send, Sparkles, Star, ChevronDown, DollarSign } from 'lucide-react';
+import { QrCode, Copy, Check, Music, Search, X, Loader, Heart, Send, Star, ChevronDown, DollarSign } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';

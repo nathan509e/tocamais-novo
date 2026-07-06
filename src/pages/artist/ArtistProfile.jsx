@@ -5,9 +5,7 @@ import {
   Crown, CheckCircle, MapPin, Music,
   Edit3, Video, Wallet,
   ExternalLink, QrCode, X, Sun, Moon,
-  Mic, Share2, Heart
 } from 'lucide-react';
-import NeonButton from '@/components/ui/NeonButton';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
 import ImageCropModal from '../../components/shared/ImageCropModal';
@@ -574,132 +572,168 @@ export default function ArtistProfile() {
             </div>
           </div>
 
-          {/* Asaas Connect Card */}
-          <div className={`p-4 rounded-2xl border transition-all ${
-            isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
-          } space-y-3`}>
-            <div className="flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-neon-green" />
-              <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                Receber Pagamentos
-              </h3>
-            </div>
-
-            {artistProfile?.asaas_wallet_id ? (
-              <div className="space-y-2">
+          {/* Pro: PIX Key Card */}
+          {artistProfile?.is_pro ? (
+            <div className={`p-4 rounded-2xl border transition-all ${
+              isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+            } space-y-3`}>
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-5 text-amber-400 fill-amber-400" />
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  Sua Chave PIX
+                </h3>
+              </div>
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                Esta chave PIX será usada para receber o valor integral das gorjetas dos seus fãs.
+              </p>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold block mb-1">Chave PIX</label>
+                <input
+                  type="text"
+                  value={pixKey}
+                  onChange={e => setPixKey(e.target.value)}
+                  onBlur={e => saveProfileField('pix_key', e.target.value)}
+                  placeholder="CPF, email, telefone ou chave aleatória"
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                    isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                />
+              </div>
+              {pixKey && (
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-neon-green" />
-                  <span className="text-xs font-semibold text-neon-green">
-                    {artistProfile.asaas_account_status === 'pending_verification' 
-                      ? 'Conta Criada — Aguardando Ativação' 
-                      : 'Asaas Conectado'}
-                  </span>
+                  <span className="text-xs font-semibold text-neon-green">Chave salva</span>
                 </div>
-                <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Gorjetas: 30% TocaMais | 70% sua conta Asaas
-                </p>
-                <p className={`text-[10px] font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Wallet: {artistProfile.asaas_wallet_id}
-                </p>
-                {artistProfile.asaas_account_status === 'pending_verification' && (
-                  <p className={`text-[10px] ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                    ⚠️ Verifique seu email para ativar a conta Asaas.
-                  </p>
-                )}
-                <a
-                  href="https://www.asaas.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-1 text-xs font-bold text-neon-purple hover:underline`}
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Ver conta no Asaas
-                </a>
+              )}
+            </div>
+          ) : (
+            /* Non-Pro: Asaas Connect Card */
+            <div className={`p-4 rounded-2xl border transition-all ${
+              isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+            } space-y-3`}>
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-neon-green" />
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  Receber Pagamentos
+                </h3>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Conecte sua conta Asaas para receber pagamentos. A plataforma criará uma subconta para você automaticamente.
-                </p>
-                <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Comissão: 30% TocaMais | 70% para você
-                </p>
-                <div>
-                  <label className="text-[10px] text-gray-400 font-bold block mb-1">CPF ou CNPJ (obrigatório)</label>
-                  <input
-                    type="text"
-                    value={cpfCnpj}
-                    onChange={e => {
-                      const formatted = formatCpfCnpj(e.target.value);
-                      setCpfCnpj(formatted);
-                      setCpfError('');
-                    }}
-                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                    maxLength={18}
-                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                      cpfError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
-                    }`}
-                  />
-                  {cpfError && (
-                    <p className="text-[10px] text-red-400 mt-1 font-bold">{cpfError}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-[10px] text-gray-400 font-bold block mb-1">Data de Nascimento (obrigatório)</label>
-                  <input
-                    type="date"
-                    value={birthDate}
-                    onChange={e => {
-                      setBirthDate(e.target.value);
-                      setBirthDateError('');
-                    }}
-                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                      birthDateError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
-                    }`}
-                  />
-                  {birthDateError && (
-                    <p className="text-[10px] text-red-400 mt-1 font-bold">{birthDateError}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-[10px] text-gray-400 font-bold block mb-1">CEP (obrigatório)</label>
-                  <input
-                    type="text"
-                    value={postalCode}
-                    onChange={e => {
-                      setPostalCode(formatCep(e.target.value));
-                      setPostalCodeError('');
-                    }}
-                    placeholder="00000-000"
-                    maxLength={9}
-                    className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                      postalCodeError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
-                    }`}
-                  />
-                  {postalCodeError && (
-                    <p className="text-[10px] text-red-400 mt-1 font-bold">{postalCodeError}</p>
-                  )}
-                </div>
+
+              {artistProfile?.asaas_wallet_id ? (
                 <div className="space-y-2">
-                  <button
-                    onClick={handleConnectAsaas}
-                    disabled={connectingAsaas || !cpfCnpj || !isValidCpfCnpj(cpfCnpj) || !birthDate || postalCode.replace(/\D/g, '').length < 8}
-                    className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    style={{
-                      background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
-                      boxShadow: '0 0 15px rgba(123,46,255,0.3)'
-                    }}
-                  >
-                    <Wallet className="w-4 h-4" />
-                  {connectingAsaas ? 'Conectando...' : 'Conectar Conta Asaas'}
-                  </button>
-                  {walletSaved && (
-                    <p className="text-[10px] text-neon-green text-center font-bold">✓ Conta Asaas conectada com sucesso!</p>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-neon-green" />
+                    <span className="text-xs font-semibold text-neon-green">
+                      {artistProfile.asaas_account_status === 'pending_verification' 
+                        ? 'Conta Criada — Aguardando Ativação' 
+                        : 'Asaas Conectado'}
+                    </span>
+                  </div>
+                  <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Gorjetas: 30% TocaMais | 70% sua conta Asaas
+                  </p>
+                  <p className={`text-[10px] font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Wallet: {artistProfile.asaas_wallet_id}
+                  </p>
+                  {artistProfile.asaas_account_status === 'pending_verification' && (
+                    <p className={`text-[10px] ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                      ⚠️ Verifique seu email para ativar a conta Asaas.
+                    </p>
                   )}
+                  <a
+                    href="https://www.asaas.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-1 text-xs font-bold text-neon-purple hover:underline`}
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Ver conta no Asaas
+                  </a>
                 </div>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Conecte sua conta Asaas para receber pagamentos. A plataforma criará uma subconta para você automaticamente.
+                  </p>
+                  <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Comissão: 30% TocaMais | 70% para você
+                  </p>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-bold block mb-1">CPF ou CNPJ (obrigatório)</label>
+                    <input
+                      type="text"
+                      value={cpfCnpj}
+                      onChange={e => {
+                        const formatted = formatCpfCnpj(e.target.value);
+                        setCpfCnpj(formatted);
+                        setCpfError('');
+                      }}
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                      maxLength={18}
+                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                        cpfError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
+                      }`}
+                    />
+                    {cpfError && (
+                      <p className="text-[10px] text-red-400 mt-1 font-bold">{cpfError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-bold block mb-1">Data de Nascimento (obrigatório)</label>
+                    <input
+                      type="date"
+                      value={birthDate}
+                      onChange={e => {
+                        setBirthDate(e.target.value);
+                        setBirthDateError('');
+                      }}
+                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                        birthDateError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
+                      }`}
+                    />
+                    {birthDateError && (
+                      <p className="text-[10px] text-red-400 mt-1 font-bold">{birthDateError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-bold block mb-1">CEP (obrigatório)</label>
+                    <input
+                      type="text"
+                      value={postalCode}
+                      onChange={e => {
+                        setPostalCode(formatCep(e.target.value));
+                        setPostalCodeError('');
+                      }}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                        postalCodeError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
+                      }`}
+                    />
+                    {postalCodeError && (
+                      <p className="text-[10px] text-red-400 mt-1 font-bold">{postalCodeError}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleConnectAsaas}
+                      disabled={connectingAsaas || !cpfCnpj || !isValidCpfCnpj(cpfCnpj) || !birthDate || postalCode.replace(/\D/g, '').length < 8}
+                      className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{
+                        background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
+                        boxShadow: '0 0 15px rgba(123,46,255,0.3)'
+                      }}
+                    >
+                      <Wallet className="w-4 h-4" />
+                    {connectingAsaas ? 'Conectando...' : 'Conectar Conta Asaas'}
+                    </button>
+                    {walletSaved && (
+                      <p className="text-[10px] text-neon-green text-center font-bold">✓ Conta Asaas conectada com sucesso!</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Bio */}
           <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>

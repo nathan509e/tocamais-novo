@@ -67,19 +67,37 @@ export function GoogleOAuthProvider({ children }) {
     const loadTokenFromStorage = async () => {
       try {
         const savedTokenId = localStorage.getItem('tocamais_google_token_id');
+        const savedToken = localStorage.getItem('tocamais_google_token');
         const savedUser = localStorage.getItem('tocamais_google_user');
+        const savedExpiresAt = Number(localStorage.getItem('tocamais_google_expires_at') || '0');
 
         if (savedTokenId && savedUser) {
           setTokenId(savedTokenId);
           setGoogleUser(JSON.parse(savedUser));
-          
+
           const validToken = await GoogleTokenService.getValidAccessToken(savedTokenId);
           setAccessToken(validToken);
+          setIsGoogleConnected(true);
+          return;
+        }
+
+        if (savedToken && savedUser) {
+          if (savedExpiresAt && savedExpiresAt <= Date.now()) {
+            localStorage.removeItem('tocamais_google_token');
+            localStorage.removeItem('tocamais_google_user');
+            localStorage.removeItem('tocamais_google_expires_in');
+            localStorage.removeItem('tocamais_google_expires_at');
+            return;
+          }
+
+          setGoogleUser(JSON.parse(savedUser));
+          setAccessToken(savedToken);
           setIsGoogleConnected(true);
         }
       } catch (err) {
         console.error('Erro ao carregar token do Supabase:', err);
         localStorage.removeItem('tocamais_google_token_id');
+        localStorage.removeItem('tocamais_google_token');
         localStorage.removeItem('tocamais_google_user');
       }
     };

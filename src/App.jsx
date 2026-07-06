@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { GoogleOAuthProvider } from '@/lib/GoogleOAuthContext';
+import { ThemeProvider } from '@/lib/ThemeContext';
 import Login from './pages/Login';
 
 // Page imports
@@ -47,15 +48,15 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Redirect to Login if not authenticated
+  // Redirect to Landing if not authenticated
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -84,8 +85,6 @@ const AuthenticatedApp = () => {
       <Route path="/artist/messages" element={<MessagesPage role="artist" />} />
       <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
       <Route path="/artist/requests" element={<ArtistRequests />} />
-      <Route path="/artist/mini-profile" element={<ArtistMiniProfile />} />
-      <Route path="/admin/orders" element={<AdminOrders />} />
 
       {/* Venue Routes */}
       <Route path="/venue" element={<VenueDashboard />} />
@@ -97,36 +96,40 @@ const AuthenticatedApp = () => {
       <Route path="/contractor" element={<ContractorDashboard />} />
       <Route path="/contractor/search" element={<ContractorSearch />} />
       <Route path="/contractor/favorites" element={<ContractorFavorites />} />
-      <Route path="/contractor/messages" element={<MessagesPage role="contractor" />} />
       <Route path="/contractor/profile" element={<ContractorProfile />} />
+      <Route path="/contractor/messages" element={<MessagesPage role="contractor" />} />
 
-      {/* General Shared Views */}
+      {/* Shared Routes */}
       <Route path="/search" element={<Search />} />
       <Route path="/live" element={<Live />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/messages" element={<Messages />} />
+      <Route path="/admin/orders" element={<AdminOrders />} />
+
+      {/* Mini profile */}
+      <Route path="/artist/mini-profile" element={<ArtistMiniProfile />} />
+
+      {/* Catch all */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
 
-import { ThemeProvider } from '@/lib/ThemeContext';
-
-function App() {
+const App = () => {
   return (
-    <ThemeProvider>
+    <Router>
       <GoogleOAuthProvider>
-        <AuthProvider>
-          <QueryClientProvider client={queryClientInstance}>
-            <Router>
+        <ThemeProvider>
+          <AuthProvider>
+            <QueryClientProvider client={queryClientInstance}>
               <AuthenticatedApp />
-            </Router>
-            <Toaster />
-          </QueryClientProvider>
-        </AuthProvider>
+              <Toaster />
+            </QueryClientProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </GoogleOAuthProvider>
-    </ThemeProvider>
+    </Router>
   );
-}
+};
 
 export default App;
