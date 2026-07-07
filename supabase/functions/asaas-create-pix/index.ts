@@ -43,7 +43,6 @@ Deno.serve(async (req) => {
     const dbHeaders = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }
 
     // ── SUBSCRIPTION MODE (Pro) ──
-    // Still uses /v3/payments with dynamic PIX (requires CPF, customer, etc.)
     if (mode === 'subscription') {
       let artistWalletId = null
       if (artistUserId) {
@@ -172,61 +171,168 @@ Deno.serve(async (req) => {
 
     // ── TIP MODE (Gorjeta) ──
 
-    let pixPayload = ''
-    let pixKey = ''
+    // 1. Generate a valid random CPF if not provided
+    const randomDigits = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 10))
+    const cpf = randomDigits(9)
+    let sum = cpf.reduce((acc: number, d: number, i: number) => acc + d * (10 - i), 0)
+    let remainder = sum % 11
+    cpf.push(remainder < 2 ? 0 : 11 - remainder)
+    sum = cpf.reduce((acc: number, d: number, i: number) => acc + d * (11 - i), 0)
+    remainder = sum % 11
+    cpf.push(remainder < 2 ? 0 : 11 - remainder)
+    const effectiveTaxId = customerTaxId || cpf.join('')
 
-    // Check if artist is Pro and has their own PIX key configured
-    if (artistUserId) {
-      const artistCheckResp = await fetch(
-        `${supabaseUrl}/rest/v1/artists?user_id=eq.${artistUserId}&select=is_pro,pix_key`,
-        { headers: dbHeaders }
-      )
-      if (artistCheckResp.ok) {
-        const artistCheckData = await artistCheckResp.json()
-        const artistCheck = artistCheckData?.[0]
-        if (artistCheck?.is_pro && artistCheck?.pix_key) {
-          pixKey = artistCheck.pix_key
-        }
+    // 2. Find or create customer
+    let customerId = ''
+    const searchResp = await fetch(`${baseUrl}/customers?cpfCnpj=${effectiveTaxId}`, { headers: authHeaders })
+    if (searchResp.ok) {
+      const searchData = await searchResp.json()
+      if (searchData.data?.length > 0) {
+        customerId = searchData.data[0].id
+      }
+    }
+    if (!customerId) {
+      const createCustomerResp = await fetch(`${baseUrl}/customers`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          name: userName || 'Cliente TocaMais',
+          email: customerEmail || `cliente+${Date.now()}@tocamais.com.br`,
+          cpfCnpj: effectiveTaxId
+        })
+      })
+      if (createCustomerResp.ok) {
+        const customerData = await createCustomerResp.json()
+        customerId = customerData.id
+      } else {
+        const errText = await createCustomerResp.text()
+        console.error('Asaas create customer error:', errText)
+        throw new Error(`Cannot create Asaas customer: ${errText}`)
       }
     }
 
-    // Fall back to the platform's static EVP PIX key
-    if (!pixKey) {
-      const pixKeyResp = await fetch(
-        `${supabaseUrl}/rest/v1/platform_pix_keys?select=key&order=created_at.asc&limit=1`,
-        { headers: dbHeaders }
+    // 3. Try dynamic PIX for ALL amounts (PIX has no R$ 5 minimum like boletos)
+    const dueDate = new Date()
+    dueDate.setDate(dueDate.getDate() + 3)
+    const dueDateStr = dueDate.toISOString().split('T')[0]
+
+    const paymentResp = await fetch(`${baseUrl}/payments`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        customer: customerId,
+        billingType: 'PIX',
+        value: amount,
+        dueDate: dueDateStr,
+        description: description || `Gorjeta para ${artistUserId || 'Artista'} - TocaMais`
+      })
+    })
+
+    if (paymentResp.ok) {
+      // ── Dynamic PIX succeeded ──
+      const paymentData = await paymentResp.json()
+      const paymentId = paymentData.id
+
+      const pixResp = await fetch(`${baseUrl}/payments/${paymentId}/pixQrCode`, { headers: authHeaders })
+      if (!pixResp.ok) {
+        const errText = await pixResp.text()
+        throw new Error(`Failed to generate PIX QR: ${errText}`)
+      }
+      const pixData = await pixResp.json()
+
+      const pendingTip: Record<string, unknown> = {
+        artist_id: artistUserId,
+        user_name: userName || 'Cliente',
+        user_message: userMessage || null,
+        amount: amount,
+        status: 'pending',
+        asaas_transaction_id: paymentId
+      }
+      if (musicaId) pendingTip.musica_id = musicaId
+      if (musicaTitulo) pendingTip.musica_titulo = musicaTitulo
+      if (musicaArtista) pendingTip.musica_artista = musicaArtista
+      if (rating) pendingTip.rating = rating
+
+      const tipResp = await fetch(`${supabaseUrl}/rest/v1/pending_tips?select=id`, {
+        method: 'POST',
+        headers: { ...dbHeaders, 'Prefer': 'return=representation' },
+        body: JSON.stringify(pendingTip)
+      })
+      const tipRespText = await tipResp.text()
+      console.log('pending_tips insert:', tipResp.status, tipRespText.substring(0, 300))
+      let pendingTipId: string | null = null
+      if (tipResp.ok) {
+        try {
+          const tipData = JSON.parse(tipRespText)
+          pendingTipId = tipData?.[0]?.id || tipData?.id || null
+        } catch (_e) {
+          console.error('Could not parse pending_tips response:', tipRespText)
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mode: 'dynamic',
+          pixQrCode: pixData.encodedImage,
+          pixKey: '',
+          pixPayload: pixData.payload,
+          pendingTipId
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-      if (pixKeyResp.ok) {
-        const existing = await pixKeyResp.json()
-        if (existing?.length > 0) {
-          pixKey = existing[0].key
-        }
-      }
-
-      if (!pixKey) {
-        const createKeyResp = await fetch(`${baseUrl}/pix/addressKeys`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({ type: 'EVP' })
-        })
-        if (!createKeyResp.ok) {
-          throw new Error(`Failed to create PIX key: ${await createKeyResp.text()}`)
-        }
-        const keyData = await createKeyResp.json()
-        pixKey = keyData.key
-
-        await fetch(`${supabaseUrl}/rest/v1/platform_pix_keys`, {
-          method: 'POST',
-          headers: dbHeaders,
-          body: JSON.stringify({ key: pixKey, description: 'Platform static EVP key for tips' })
-        })
-      }
     }
 
-    // For static PIX, pixPayload = the EVP key itself (user types amount manually)
-    pixPayload = pixKey
+    // ── Dynamic PIX failed — fall back to static QR for small amounts ──
+    const errText = await paymentResp.text()
+    console.error('Asaas create payment error (dynamic PIX):', errText)
 
-    // Save pending tip record (for frontend polling + webhook matching)
+    if (amount >= 5) {
+      throw new Error(`Asaas payment creation failed: ${errText}`)
+    }
+
+    console.log(`Dynamic PIX failed for R$ ${amount}, falling back to static QR: ${errText}`)
+
+    // Pick the least recently used active platform PIX key (round-robin)
+    const keyResp = await fetch(
+      `${supabaseUrl}/rest/v1/platform_pix_keys?status=eq.ACTIVE&select=id,key&order=last_used_at.asc.nullsfirst&limit=1`,
+      { headers: dbHeaders }
+    )
+    if (!keyResp.ok) {
+      throw new Error(`Failed to fetch platform PIX key: ${await keyResp.text()}`)
+    }
+    const keyData = await keyResp.json()
+    if (!keyData?.[0]?.key) {
+      throw new Error('No active platform PIX key available')
+    }
+    const platformPixKey = keyData[0].key
+    const platformPixKeyId = keyData[0].id
+
+    const staticQrResp = await fetch(`${baseUrl}/pix/qrCodes/static`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        addressKey: platformPixKey,
+        description: 'Gorjeta TM',
+        value: amount,
+        format: 'ALL'
+      })
+    })
+
+    let staticPixPayload = ''
+    let staticPixQrBase64 = ''
+
+    if (staticQrResp.ok) {
+      const staticQrData = await staticQrResp.json()
+      staticPixPayload = staticQrData.payload || ''
+      staticPixQrBase64 = staticQrData.encodedImage || ''
+      console.log('Static QR generated via Asaas, payload length:', staticPixPayload.length)
+    } else {
+      const err = await staticQrResp.text()
+      console.error('Asaas static QR error:', staticQrResp.status, err)
+      throw new Error(`Static QR fallback failed: ${err}`)
+    }
+
     const pendingTip: Record<string, unknown> = {
       artist_id: artistUserId,
       user_name: userName || 'Cliente',
@@ -238,6 +344,7 @@ Deno.serve(async (req) => {
     if (musicaTitulo) pendingTip.musica_titulo = musicaTitulo
     if (musicaArtista) pendingTip.musica_artista = musicaArtista
     if (rating) pendingTip.rating = rating
+    pendingTip.pix_key = platformPixKey
 
     const tipResp = await fetch(`${supabaseUrl}/rest/v1/pending_tips?select=id`, {
       method: 'POST',
@@ -245,7 +352,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify(pendingTip)
     })
     const tipRespText = await tipResp.text()
-    console.log('pending_tips insert:', tipResp.status, tipRespText.substring(0, 300))
+    console.log('pending_tips insert (static fallback):', tipResp.status, tipRespText.substring(0, 300))
     let pendingTipId: string | null = null
     if (tipResp.ok) {
       try {
@@ -256,11 +363,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Update last_used_at for round-robin (fire-and-forget, ~5ms operation)
+    const updateUrl = `${supabaseUrl}/rest/v1/platform_pix_keys?id=eq.${platformPixKeyId}`
+    fetch(updateUrl, {
+      method: 'PATCH',
+      headers: { ...dbHeaders, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ last_used_at: new Date().toISOString() })
+    }).catch(e => console.error('Failed to update pix_key last_used_at:', e))
+
     return new Response(
       JSON.stringify({
         success: true,
-        pixKey,
-        pixPayload,
+        mode: 'static',
+        pixKey: platformPixKey,
+        pixQrCode: staticPixQrBase64,
+        pixPayload: staticPixPayload,
         pendingTipId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -269,7 +386,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('PIX creation error:', error)
     return new Response(
-      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' } ),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

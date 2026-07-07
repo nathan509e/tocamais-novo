@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>TocaMais - Relatório de Alterações</title>
+  <style>
+    @page {
+      margin: 20mm 15mm;
+      size: A4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #1a1a2e;
+      line-height: 1.6;
+      background: #fff;
+      padding: 0;
+    }
+
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: white;
+      text-align: center;
+      padding: 60px 40px;
+      page-break-after: always;
+    }
+
+    .cover h1 {
+      font-size: 48px;
+      font-weight: 900;
+      margin-bottom: 10px;
+      letter-spacing: -1px;
+    }
+
+    .cover h1 span {
+      background: linear-gradient(90deg, #7B2EDB, #39FF14);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cover .subtitle {
+      font-size: 20px;
+      color: #aaa;
+      margin-bottom: 40px;
+    }
+
+    .cover .date {
+      font-size: 14px;
+      color: #666;
+      margin-top: 40px;
+    }
+
+    .cover .badge {
+      background: rgba(57, 255, 20, 0.15);
+      border: 1px solid rgba(57, 255, 20, 0.3);
+      padding: 8px 24px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #39FF14;
+      font-weight: 600;
+      margin-top: 20px;
+    }
+
+    .toc {
+      padding: 40px;
+      page-break-after: always;
+    }
+
+    .toc h2 {
+      font-size: 28px;
+      margin-bottom: 30px;
+      color: #1a1a2e;
+      border-bottom: 3px solid #7B2EDB;
+      padding-bottom: 10px;
+    }
+
+    .toc ul {
+      list-style: none;
+    }
+
+    .toc li {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 15px;
+    }
+
+    .toc li span.num {
+      display: inline-block;
+      width: 30px;
+      font-weight: 800;
+      color: #7B2EDB;
+    }
+
+    .section {
+      padding: 30px 40px;
+      page-break-inside: avoid;
+    }
+
+    .section+.section {
+      border-top: 1px solid #e0e0e0;
+    }
+
+    h2.section-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2.section-title .emoji {
+      font-size: 26px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 18px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #333;
+      margin: 18px 0 8px 0;
+    }
+
+    p,
+    li {
+      font-size: 13.5px;
+      color: #333;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin: 6px 0;
+    }
+
+    li {
+      margin-bottom: 4px;
+    }
+
+    strong {
+      color: #1a1a2e;
+    }
+
+    .card {
+      background: #f8f8fc;
+      border: 1px solid #e8e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 12px 0;
+    }
+
+    .card.green {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .card.purple {
+      background: #f5f0ff;
+      border-color: #ddd6fe;
+    }
+
+    .card.red {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    .card.yellow {
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+
+    .card.blue {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+
+    .card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .card p,
+    .card li {
+      font-size: 12.5px;
+    }
+
+    code {
+      background: #e8e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      color: #7B2EDB;
+    }
+
+    pre {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: 'Consolas', monospace;
+      font-size: 11.5px;
+      overflow-x: auto;
+      margin: 10px 0;
+      line-height: 1.5;
+    }
+
+    pre .kw {
+      color: #c792ea;
+    }
+
+    pre .str {
+      color: #c3e88d;
+    }
+
+    pre .fn {
+      color: #82aaff;
+    }
+
+    pre .cm {
+      color: #676e95;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 12.5px;
+    }
+
+    th {
+      background: #f0f0f5;
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 700;
+      border-bottom: 2px solid #ddd;
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+      vertical-align: top;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .tag.new {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .tag.fix {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+
+    .tag.change {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .tag.critical {
+      background: #fecaca;
+      color: #991b1b;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .summary-box {
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+
+    .summary-box .num {
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .summary-box .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ==================== COVER ==================== -->
+  <div class="cover">
+    <div style="font-size:64px; margin-bottom:20px;">🎵</div>
+    <h1><span>TocaMais</span></h1>
+    <div class="subtitle">Relatório Completo de Alterações do Sistema</div>
+    <div class="badge">v2.0 — Junho/Julho 2026</div>
+    <div class="date">
+      Gerado em: 06 de Julho de 2026<br>
+      Desenvolvedor: Nathan Maximiano
+    </div>
+  </div>
+
+  <!-- ==================== TOC ==================== -->
+  <div class="toc">
+    <h2>📑 Sumário</h2>
+    <ul>
+      <li><span class="num">01</span> Visão Geral das Alterações</li>
+      <li><span class="num">02</span> Sistema de Gorjetas (PIX)</li>
+      <li><span class="num">03</span> Assinatura Pro</li>
+      <li><span class="num">04</span> Marketplace Asaas (Subcontas)</li>
+      <li><span class="num">05</span> Sistema de Notificações</li>
+      <li><span class="num">06</span> Webhook Asaas</li>
+      <li><span class="num">07</span> Split de Pagamentos</li>
+      <li><span class="num">08</span> Página de Login e Reset de Senha</li>
+      <li><span class="num">09</span> Landing Page e Roteamento</li>
+      <li><span class="num">10</span> Migrções de Banco de Dados</li>
+      <li><span class="num">11</span> Bugs Corrigidos</li>
+      <li><span class="num">12</span> Arquitetura Técnica</li>
+      <li><span class="num">13</span> Resumo Estatístico</li>
+    </ul>
+  </div>
+
+  <!-- ==================== 01 VISÃO GERAL ==================== -->
+  <div class="section">
+    <h2 class="section-title"><span class="emoji">📋</span> 01 — Visão Geral das Alterações</h2>
+    <p class="section-desc">Resumo de tudo que foi implementado, corrigido ou melhorado.</p>
+
+    <div class="summary-grid">
+      <div class="summary-box" style="background:#f0fdf4;">
+        <div class="num" style="color:#16a34a;">12+</div>
+        <div class="label" style="color:#16a34a;">Features Implementadas</div>
+      </div>
+      <div class="summary-box" style="background:#fef2f2;">
+        <div class="num" style="color:#dc2626;">5</div>
+        <div class="label" style="color:#dc2626;">Bugs Críticos Corrigidos</div>
+      </div>
+      <div class="summary-box" style="background:#f5f0ff;">
+        <div class="num" style="color:#7B2EDB;">8+</div>
+        <div class="label" style="color:#7B2EDB;">Edge Functions</div>
+      </div>
+      <div class="summary-box" style="background:#eff6ff;">
+        <div class="num" style="color:#2563eb;">7+</div>
+        <div class="label" style="color:#2563eb;">Migrações SQL</div>
+      </div>
+    </div>
+
+    <h3>Principais Entregas</h3>
+    <table>
+      <tr>
+        <th>Feature</th>
+        <th>Status</th>
+        <th>Descrição</th>
+      </tr>
+      <tr>
+        <td><strong>Gorjetas via PIX</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>Fans enviam gorjetas + pedidos musicais via PIX com QR Code dinâmico</td>
+      </tr>
+      <tr>
+        <td><strong>Assinatura Pro (R$ 49,90/mês)</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>Artistas assinam plano Pro com PIX, auto-ativação e expiração</td>
+      </tr>
+      <tr>
+        <td><strong>Split de Pagamentos</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>70% artista / 30% plataforma — via Asaas split no momento do pagamento</td>
+      </tr>
+      <tr>
+        <td><strong>Webhook Asaas</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>Recebe eventos PIX_RECEIVED, processa gorjetas e ativação Pro automaticamente</td>
+      </tr>
+      <tr>
+        <td><strong>Marketplace Subcontas</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>Artistas criam subconta Asaas via CPF/CNPJ no perfil</td>
+      </tr>
+      <tr>
+        <td><strong>Notificações Realtime</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>Supabase Realtime + som de notificação para novos pedidos</td>
+      </tr>
+      <tr>
+        <td><strong>Reset de Senha</strong></td>
+        <td><span class="tag new">✅ Pronto</span></td>
+        <td>Fluxo completo de recuperação via e-mail</td>
+      </tr>
+      <tr>
+        <td><strong>Landing como Home</strong></td>
+        <td><span class="tag change">🔄 Alterado</span></td>
+        <td>('/') agora mostra Landing; '/login' acessível diretamente</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ==================== 02 SISTEMA DE GORJETAS ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">💸</span> 02 — Sistema de Gorjetas (PIX)</h2>
+    <p class="section-desc">Fluxo completo de gorjetas via PIX, desde o até a confirmação.</p>
+
+    <h3>Arquivo Principal</h3>
+    <p><code>src/pages/artist/ArtistTip.jsx</code> — Página pública onde o fã envia o pedido + gorjeta.</p>
+
+    <h3>Fluxo do Usuário</h3>
+    <div class="card">
+      <ol style="padding-left:18px;">
+        <li>Fan acessa a página do artista via link público (<code>/artist/:artistId/tip</code>)</li>
+        <li>Preenche o formulário: nome, música desejada (opcional), mensagem</li>
+        <li>Escolhe o valor da gorjeta: <strong>R$ 5, R$ 10, R$ 20, R$ 30, R$ 50</strong> ou
+          <strong>personalizado</strong></li>
+        <li>Clica em <strong>"Adicionar Gorjeta"</strong> (envia pedido + gorjeta) ou <strong>"Fazer Pedido sem
+            Gorjeta"</strong></li>
+        <li>Sistema gera QR Code PIX dinâmico com o valor embutido + código copia-e-cola</li>
+        <li>Fan paga o PIX (app do banco)</li>
+        <li>Frontend faz polling na tabela <code>pending_tips</code> a cada 3 segundos</li>
+        <li>Quando o webhook do Asaas confirma o pagamento → status atualiza para "confirmed"</li>
+        <li>Tela de agradecimento com estrelas para avaliar o artista</li>
+      </ol>
+    </div>
+
+    <h3>Detalhes Técnicos</h3>
+    <div class="card purple">
+      <h4>Edge Function: <code>asaas-create-pix</code></h4>
+      <ul>
+        <li><strong>Endpoint:</strong> <code>POST /asaas-create-pix</code></li>
+        <li><strong>Modo gorjeta:</strong> Cria cliente Asaas (com CPF aleatório válido), cria pagamento via
+          <code>/v3/payments</code> com <code>billingType: 'PIX'</code> e <code>split</code> (70/30)</li>
+        <li><strong>Resposta:</strong> Retorna <code>paymentId</code>, <code>pixPayload</code> (copia-e-cola),
+          <code>pixQrCode</code> (base64)</li>
+        <li>Salva registro em <code>pending_tips</code> com status "pending"</li>
+        <li>Cria registro em <code>music_requests</code> para o pedido musical</li>
+      </ul>
+    </div>
+
+    <div class="card purple">
+      <h4>Tabela <code>pending_tips</code></h4>
+      <table>
+        <tr>
+          <th>Coluna</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+        </tr>
+        <tr>
+          <td><code>id</code></td>
+          <td>UUID</td>
+          <td>ID único</td>
+        </tr>
+        <tr>
+          <td><code>user_id</code></td>
+          <td>UUID</td>
+          <td>Fan que enviou a gorjeta</td>
+        </tr>
+        <tr>
+          <td><code>artist_id</code></td>
+          <td>UUID</td>
+          <td>Artista destinatário</td>
+        </tr>
+        <tr>
+          <td><code>amount</code></td>
+          <td>DECIMAL</td>
+          <td>Valor da gorjeta em reais</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td>
+          <td>TEXT</td>
+          <td><code>pending</code> → <code>confirmed</code> → <code>transferred</code></td>
+        </tr>
+        <tr>
+          <td><code>asaas_transaction_id</code></td>
+          <td>TEXT</td>
+          <td>ID do pagamento no Asaas</td>
+        </tr>
+        <tr>
+          <td><code>music_request_id</code></td>
+          <td>UUID</td>
+          <td>Pedido musical vinculado</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Etapas da Tela (STAGE)</h3>
+    <table>
+      <tr>
+        <th>Estágio</th>
+        <th>Constante</th>
+        <th>Descrição</th>
+      </tr>
+      <tr>
+        <td>FORM</td>
+        <td><code>STAGE.FORM = 0</code></td>
+        <td>Formulário de preenchimento</td>
+      </tr>
+      <tr>
+        <td>ORDER_ONLY_THANKS</td>
+        <td><code>STAGE.ORDER_ONLY_THANKS = 1</code></td>
+        <td>Obrigado sem gorjeta</td>
+      </tr>
+      <tr>
+        <td>TIP_VALUE</td>
+        <td><code>STAGE.TIP_VALUE = 2</code></td>
+        <td>Escolha do valor</td>
+      </tr>
+      <tr>
+        <td>PIX_PAYMENT</td>
+        <td><code>STAGE.PIX_PAYMENT = 3</code></td>
+        <td>QR Code PIX + polling</td>
+      </tr>
+      <tr>
+        <td>FINAL_THANKS</td>
+        <td><code>STAGE.FINAL_THANKS = 4</code></td>
+        <td>Agradecimento + avaliação</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ==================== 03 ASSINATURA PRO ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">👑</span> 03 — Assinatura Pro</h2>
+    <p class="section-desc">Plano de assinatura mensal para artistas com benefícios exclusivos.</p>
+
+    <h3>Recursos do Plano Pro</h3>
+    <div class="card green">
+      <ul>
+        <li>💰 <strong>100% das gorjetas</strong> (sem taxa da plataforma)</li>
+        <li>✨ <strong>Badge Pro</strong> (coroa dourada) no perfil e nas buscas</li>
+        <li>📊 <strong>Artistas Pro aparecem primeiro</strong> nas buscas</li>
+      </ul>
+    </div>
+
+    <h3>Preço</h3>
+    <p><strong>R$ 49,90/mês</strong> — pagamento via PIX com QR Code.</p>
+
+    <h3>Fluxo de Assinatura</h3>
+    <div class="card">
+      <ol style="padding-left:18px;">
+        <li>Artista clica no botão <strong>"Ser Pro"</strong> (ícone Crown) no header</li>
+        <li>Abre modal com lista de benefícios + preço + botão "Assinar Agora"</li>
+        <li>Artista informa CPF/CNPJ para cadastro no Asaas</li>
+        <li>Edge function <code>asaas-create-pix</code> (<code>mode: 'subscription'</code>) cria a assinatura recorrente
+        </li>
+        <li>Retorna QR Code do <strong>primeiro pagamento</strong></li>
+        <li>Artista paga → webhook <code>PAYMENT_RECEIVED</code> ativa o <code>is_pro = true</code></li>
+        <li>Frontend também faz polling a cada 5s → auto-ativa ao detectar pagamento aprovado</li>
+      </ol>
+    </div>
+
+    <h3>Detalhes Técnicos</h3>
+    <div class="card purple">
+      <h4>Ciclo de Vida da Assinatura</h4>
+      <ul>
+        <li><strong>Criação:</strong> <code>POST /v3/subscriptions</code> via Asaas API → salva
+          <code>asaas_subscription_id</code> + <code>pro_expires_at</code> (now + 30 dias)</li>
+        <li><strong>Ativação:</strong> Via webhook <code>PAYMENT_RECEIVED</code> ou polling do frontend</li>
+        <li><strong>Expiração:</strong> <code>AuthContext.jsx</code> verifica no login se
+          <code>pro_expires_at < now</code> → <code>is_pro = false</code></li>
+        <li><strong>Revogação via webhook:</strong> Evento <code>SUBSCRIPTION_INACTIVATED</code> também reverte
+          <code>is_pro</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>Arquivos Envolvidos</h4>
+      <table>
+        <tr>
+          <th>Arquivo</th>
+          <th>Função</th>
+        </tr>
+        <tr>
+          <td><code>AppLayout.jsx</code></td>
+          <td>Botão "Ser Pro", modal de assinatura, polling, QR Code</td>
+        </tr>
+        <tr>
+          <td><code>asaas-create-pix/index.ts</code></td>
+          <td>Cria assinatura Asaas, retorna primeiro pagamento PIX</td>
+        </tr>
+        <tr>
+          <td><code>asaas-webhook/index.ts</code></td>
+          <td>Ativa Pro via <code>PAYMENT_RECEIVED</code> (assinatura)</td>
+        </tr>
+        <tr>
+          <td><code>AuthContext.jsx</code></td>
+          <td>Verifica expiração Pro no login</td>
+        </tr>
+        <tr>
+          <td><code>ArtistCard.jsx</code></td>
+          <td>Badge Pro no card do artista</td>
+        </tr>
+        <tr>
+          <td><code>ArtistProfile.jsx</code></td>
+          <td>Badge Pro no perfil + status da assinatura</td>
+        </tr>
+        <tr>
+          <td><code>ContractorSearch.jsx</code></td>
+          <td>Ordena artistas Pro primeiro + modal reposicionado fora do filtro</td>
+        </tr>
+        <tr>
+          <td><code>VenueArtists.jsx</code></td>
+          <td>Ordena artistas Pro primeiro na listagem</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== 04 MARKETPLACE ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🏪</span> 04 — Marketplace Asaas (Subcontas)</h2>
+    <p class="section-desc">Sistema de criação automática de subcontas Asaas para artistas.</p>
+
+    <h3>O que é</h3>
+    <div class="card">
+      <p>Em vez de o artista manualmente inserir o ID da carteira Asaas, o <strong>plataforma cria uma subconta
+          automaticamente</strong> via API do Asaas. O artista recebe um e-mail de ativação do Asaas.</p>
+    </div>
+
+    <h3>Fluxo</h3>
+    <div class="card">
+      <ol style="padding-left:18px;">
+        <li>Artista acessa <strong>Perfil → "Conectar Conta Asaas"</strong></li>
+        <li>Informa CPF/CNPJ</li>
+        <li>Edge function <code>asaas-create-subaccount</code> chama <code>POST /v3/accounts</code></li>
+        <li>Retorna <code>walletId</code> + <code>apiKey</code> → salvos no banco</li>
+        <li>UI mostra: "Conta Criada — Aguardando Ativação"</li>
+        <li>Artista recebe e-mail do Asaas e ativa a conta</li>
+      </ol>
+    </div>
+
+    <h3>Detalhes Técnicos</h3>
+    <div class="card purple">
+      <h4>Edge Function: <code>asaas-create-subaccount</code></h4>
+      <ul>
+        <li><strong>Requer:</strong> <code>cpfCnpj</code> no body da requisição</li>
+        <li><strong>Cria:</strong> Subconta via <code>POST /v3/accounts</code> com dados do artista</li>
+        <li><strong>Retorna:</strong> <code>walletId</code> (wal_xxx) + <code>apiKey</code></li>
+        <li><strong>Salva:</strong> <code>asaas_wallet_id</code>, <code>asaas_api_key</code>,
+          <code>asaas_account_status = 'pending'</code></li>
+        <li><strong>⚠️ Restrição:</strong> Apenas contas CNPJ podem criar subcontas no Asaas</li>
+      </ul>
+    </div>
+
+    <h3>Colunas Adicionadas ao Banco</h3>
+    <table>
+      <tr>
+        <th>Coluna</th>
+        <th>Tabela</th>
+        <th>Descrição</th>
+      </tr>
+      <tr>
+        <td><code>asaas_wallet_id</code></td>
+        <td>artists</td>
+        <td>ID da carteira Asaas (wal_xxx)</td>
+      </tr>
+      <tr>
+        <td><code>asaas_api_key</code></td>
+        <td>artists</td>
+        <td>Chave de API da subconta</td>
+      </tr>
+      <tr>
+        <td><code>asaas_account_status</code></td>
+        <td>artists</td>
+        <td>Status: pending / active</td>
+      </tr>
+      <tr>
+        <td><code>pix_key</code></td>
+        <td>artists</td>
+        <td>Chave PIX para fallback</td>
+      </tr>
+      <tr>
+        <td><code>cpf_cnpj</code></td>
+        <td>artists</td>
+        <td>CPF/CNPJ do artista</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ==================== 05 NOTIFICAÇÕES ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🔔</span> 05 — Sistema de Notificações</h2>
+    <p class="section-desc">Notificações em tempo real via Supabase Realtime.</p>
+
+    <h3>Funcionamento</h3>
+    <div class="card">
+      <ul>
+        <li><strong>Realtime:</strong> Supabase Realtime escuta a tabela <code>notifications</code> para o
+          <code>user_id</code> logado</li>
+        <li><strong>Badge:</strong> Contador de não-lidas no ícone 🔔 no header</li>
+        <li><strong>Sound:</strong> Som de notificação ao receber novos pedidos (<code>ArtistRequests.jsx</code>)</li>
+        <li><strong>Limpar:</strong> Botão para deletar todas as notificações</li>
+      </ul>
+    </div>
+
+    <h3>Implementação no Frontend</h3>
+    <div class="card purple">
+      <h4><code>AppLayout.jsx</code></h4>
+      <ul>
+        <li><code>useEffect</code> busca notificações iniciais (últimas 20)</li>
+        <li>Inscreve-se no canal <code>notifications-realtime</code></li>
+        <li>Escuta eventos <code>INSERT</code> e <code>UPDATE</code> filtrados por <code>user_id</code></li>
+        <li>Notificações são adicionadas em tempo real ao estado local</li>
+        <li>Badge mostra <code>unreadCount</code> = notificações sem <code>read: true</code></li>
+      </ul>
+    </div>
+
+    <div class="card purple">
+      <h4><code>ArtistRequests.jsx</code> — Som de Notificação</h4>
+      <ul>
+        <li>Quando um novo pedido pendente é detectado no polling → toca som</li>
+        <li>Som em Base64 (WAV), volume 30%</li>
+        <li>Compara IDs anteriores vs atuais para detectar novos pedidos</li>
+      </ul>
+    </div>
+
+    <h3>Insere Notificações em</h3>
+    <table>
+      <tr>
+        <th>Arquivo</th>
+        <th>Evento</th>
+      </tr>
+      <tr>
+        <td><code>ArtistTip.jsx</code></td>
+        <td>Fan envia gorjeta/pedido ao artista</td>
+      </tr>
+      <tr>
+        <td><code>ArtistProposals.jsx</code></td>
+        <td>Artista envia proposta ao contratante</td>
+      </tr>
+      <tr>
+        <td><code>VenueArtists.jsx</code></td>
+        <td>Casa adiciona artista ao cardápio</td>
+      </tr>
+      <tr>
+        <td><code>VenueDashboard.jsx</code></td>
+        <td>Eventos e atualizações da casa</td>
+      </tr>
+      <tr>
+        <td><code>ContractorDashboard.jsx</code></td>
+        <td>Contratante recebe atualização</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ==================== 06 WEBHOOK ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🔗</span> 06 — Webhook Asaas</h2>
+    <p class="section-desc">Endpoint que recebe e processa eventos do Asaas automaticamente.</p>
+
+    <h3>Detalhes da Edge Function</h3>
+    <div class="card purple">
+      <h4><code>asaas-webhook/index.ts</code></h4>
+      <ul>
+        <li><strong>Autenticação:</strong> Token via header <code>asaas-access-token</code> ou query string
+          <code>?token=</code></li>
+        <li><strong>Health Check:</strong> <code>GET /</code> retorna <code>{"status": "alive"}</code></li>
+        <li><strong>Webhook ID:</strong> <code>1b8aa9b9-a29e-4b3a-ba60-f69c10dee1ac</code></li>
+        <li><strong>Status:</strong> enabled, não interrompido, 12 eventos configurados</li>
+      </ul>
+    </div>
+
+    <h3>Eventos Processados</h3>
+    <table>
+      <tr>
+        <th>Evento</th>
+        <th>Ação</th>
+      </tr>
+      <tr>
+        <td><code>PAYMENT_RECEIVED</code> / <code>PIX_RECEIVED</code></td>
+        <td>
+          1. Verifica se é pagamento de assinatura (ativa Pro)<br>
+          2. Busca <code>pending_tips</code> por <code>asaas_transaction_id</code><br>
+          3. Fallback: busca por valor (FIFO)<br>
+          4. Atualiza status para "confirmed"<br>
+          5. Atualiza rating do artista<br>
+          6. Cria notificação ao artista
+        </td>
+      </tr>
+      <tr>
+        <td><code>SUBSCRIPTION_INACTIVATED</code></td>
+        <td>Busca artista por <code>asaas_subscription_id</code> → reverte <code>is_pro = false</code></td>
+      </tr>
+      <tr>
+        <td><code>SUBSCRIPTION_REACTIVATED</code></td>
+        <td>Ativa novamente <code>is_pro = true</code></td>
+      </tr>
+      <tr>
+        <td><code>CHARGE_RECEIVED</code></td>
+        <td>Processa cobrança recorrente (mesmo fluxo de pagamento)</td>
+      </tr>
+    </table>
+
+    <h3>Transferência Automática (Split)</h3>
+    <div class="card">
+      <p>Após confirmar o pagamento, o webhook transfere a parte do artista:</p>
+      <ul>
+        <li><strong>1ª tentativa:</strong> Transferência wallet-to-wallet via <code>/v3/transfers</code> com
+          <code>walletId</code></li>
+        <li><strong>2ª tentativa (fallback):</strong> Transferência PIX para a <code>pix_key</code> do artista</li>
+        <li><strong>Se falhar:</strong> Registra como <code>failed</code> para reconciliação manual</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>⚠️ Nota:</strong> Transferências wallet-to-wallet do Asaas requerem contas
+        vinculadas (mesma raiz/subconta).</p>
+    </div>
+  </div>
+
+  <!-- ==================== 07 SPLIT ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">⚖️</span> 07 — Split de Pagamentos</h2>
+    <p class="section-desc">Divisão automática entre artista e plataforma.</p>
+
+    <h3>Proporção</h3>
+    <div class="card green">
+      <table>
+        <tr>
+          <th>Destinatário</th>
+          <th>Porcentagem</th>
+          <th>Exemplo (R$ 10,00)</th>
+        </tr>
+        <tr>
+          <td><strong>Artista</strong></td>
+          <td>70%</td>
+          <td>R$ 7,00</td>
+        </tr>
+        <tr>
+          <td><strong>TocaMais (Plataforma)</strong></td>
+          <td>30%</td>
+          <td>R$ 3,00</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Como funciona</h3>
+    <div class="card">
+      <ol style="padding-left:18px;">
+        <li>No momento da criação do pagamento PIX, o <code>asaas-create-pix</code> envia o parâmetro <code>split</code>
+          ao Asaas</li>
+        <li>O split é configurado no próprio pagamento — não precisa de transferência separada</li>
+        <li><strong>Webhook como backup:</strong> Se o artista tem <code>asaas_wallet_id</code>, o webhook também tenta
+          transferir via <code>/v3/transfers</code></li>
+      </ol>
+    </div>
+
+    <h3>Casos Especiais</h3>
+    <div class="card yellow">
+      <h4>Artista Pro (100%)</h4>
+      <p>Artistas com <code>is_pro = true</code> recebem <strong>100% da gorjeta</strong> (sem taxa da plataforma). O
+        split não é aplicado nesse caso.</p>
+    </div>
+
+    <div class="card yellow">
+      <h4>Sem Conta Asaas</h4>
+      <p>Se o artista não tem <code>asaas_wallet_id</code>, o valor fica retido na conta da plataforma até que o artista
+        conecte sua carteira.</p>
+    </div>
+  </div>
+
+  <!-- ==================== 08 LOGIN/RESET ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🔐</span> 08 — Página de Login e Reset de Senha</h2>
+    <p class="section-desc">Autenticação completa com recuperação de senha.</p>
+
+    <h3>Tela de Login</h3>
+    <div class="card">
+      <ul>
+        <li>Modo <strong>Login</strong> (email + senha) e <strong>Cadastro</strong> (nome + telefone + email + senha +
+          tipo de perfil)</li>
+        <li>3 botões de <strong>login rápido (Demo)</strong>: Artista / Casa Show / Particular</li>
+        <li>Seleção de perfil no cadastro com ícones visuais</li>
+        <li>Validação de campos obrigatórios</li>
+      </ul>
+    </div>
+
+    <h3>Reset de Senha</h3>
+    <div class="card">
+      <ol style="padding-left:18px;">
+        <li>Link <strong>"Esqueci minha senha"</strong> abaixo do campo de senha (apenas no modo login)</li>
+        <li>Clique abre tela com campo de e-mail (pré-preenchido)</li>
+        <li>Chama <code>supabase.auth.resetPasswordForEmail(email, { redirectTo })</code></li>
+        <li>Tela de confirmação: <strong>"E-mail enviado!"</strong> com ícone verde ✅</li>
+        <li>Botão "← Voltar ao login"</li>
+      </ol>
+    </div>
+
+    <h3>3 Visões do Componente</h3>
+    <table>
+      <tr>
+        <th>View</th>
+        <th>Estado</th>
+        <th>Descrição</th>
+      </tr>
+      <tr>
+        <td><code>'login'</code></td>
+        <td>Padrão</td>
+        <td>Login ou cadastro com formulário</td>
+      </tr>
+      <tr>
+        <td><code>'forgot'</code></td>
+        <td>Esqueci senha</td>
+        <td>Campo de e-mail + enviar link</td>
+      </tr>
+      <tr>
+        <td><code>'forgot_sent'</code></td>
+        <td>Enviado</td>
+        <td>Confirmação de envio do e-mail</td>
+      </tr>
+    </table>
+
+    <h3>Detalhes Técnicos</h3>
+    <div class="card purple">
+      <ul>
+        <li>Campos: <code>view</code> ('login' | 'forgot' | 'forgot_sent'), <code>resetEmail</code></li>
+        <li>Importações: <code>KeyRound</code>, <code>CheckCircle</code> do lucide-react</li>
+        <li><code>handleForgotPassword</code>: valida e-mail, chama Supabase, alterna view</li>
+        <li>Redireciona para <code>/login</code> via <code>redirectTo</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ==================== 09 LANDING/ROTEAMENTO ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🏠</span> 09 — Landing Page e Roteamento</h2>
+    <p class="section-desc">Alterações no roteamento da aplicação.</p>
+
+    <h3>Alteração Principal</h3>
+    <div class="card">
+      <table>
+        <tr>
+          <th>Rota</th>
+          <th>Antes</th>
+          <th>Depois</th>
+        </tr>
+        <tr>
+          <td><code>/</code> (não autenticado)</td>
+          <td><code>&lt;Login /&gt;</code></td>
+          <td><code>&lt;Landing /&gt;</code></td>
+        </tr>
+        <tr>
+          <td><code>/login</code></td>
+          <td>—</td>
+          <td><code>&lt;Login /&gt;</code></td>
+        </tr>
+        <tr>
+          <td>Catch-all (não autenticado)</td>
+          <td>→ <code>/login</code></td>
+          <td>→ <code>/</code></td>
+        </tr>
+      </table>
+      <p style="margin-top:8px;"><strong>Resultado:</strong> Usuário abre o app → vê a Landing Page. Login acessível via
+        <code>/login</code>.</p>
+    </div>
+
+    <h3>Badge Pro na Landing</h3>
+    <div class="card">
+      <p><code>Landing.jsx</code> (pricing card): removida feature "Métricas Avançadas", mantida <strong>"100% das
+          Gorjetas"</strong> como benefício Pro.</p>
+    </div>
+  </div>
+
+  <!-- ==================== 10 MIGRAÇÕES ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🗄️</span> 10 — Migrações de Banco de Dados</h2>
+    <p class="section-desc">Scripts SQL para atualização do schema.</p>
+
+    <table>
+      <tr>
+        <th>Script</th>
+        <th>Descrição</th>
+      </tr>
+      <tr>
+        <td><code>migration-add-asaas-wallet.sql</code></td>
+        <td>Adiciona <code>asaas_wallet_id</code> e <code>pix_key</code> à tabela <code>artists</code></td>
+      </tr>
+      <tr>
+        <td><code>migration-add-is-pro.sql</code></td>
+        <td>Adiciona <code>is_pro BOOLEAN DEFAULT false</code></td>
+      </tr>
+      <tr>
+        <td><code>migration-add-pro-expires-at.sql</code></td>
+        <td>Adiciona <code>pro_expires_at TIMESTAMP</code></td>
+      </tr>
+      <tr>
+        <td><code>migration-add-subscription-id.sql</code></td>
+        <td>Adiciona <code>asaas_subscription_id TEXT</code> + índice</td>
+      </tr>
+      <tr>
+        <td><code>migration-pending-tips-and-platform-pix.sql</code></td>
+        <td>Cria tabelas <code>platform_pix_keys</code> + <code>pending_tips</code></td>
+      </tr>
+      <tr>
+        <td><code>migration-add-subaccount-columns.sql</code></td>
+        <td>Adiciona <code>asaas_api_key</code> + <code>asaas_account_status</code></td>
+      </tr>
+      <tr>
+        <td><code>migration-add-cpf-cnpj.sql</code></td>
+        <td>Adiciona <code>cpf_cnpj</code> à tabela <code>artists</code></td>
+      </tr>
+      <tr>
+        <td><code>full-reset.sql</code></td>
+        <td>Schema completo atualizado (inclui <code>is_pro</code>)</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ==================== 11 ARQUITETURA ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">🏗️</span> 11 — Arquitetura Técnica</h2>
+    <p class="section-desc">Stack tecnológica e organização do projeto.</p>
+
+    <h3>Stack</h3>
+    <div class="card blue">
+      <table>
+        <tr>
+          <th>Camada</th>
+          <th>Tecnologia</th>
+        </tr>
+        <tr>
+          <td>Frontend</td>
+          <td>React 18 + Vite + Tailwind CSS</td>
+        </tr>
+        <tr>
+          <td>Animações</td>
+          <td>Framer Motion</td>
+        </tr>
+        <tr>
+          <td>Ícones</td>
+          <td>Lucide React</td>
+        </tr>
+        <tr>
+          <td>QR Code</td>
+          <td>qrcode.react</td>
+        </tr>
+        <tr>
+          <td>Backend</td>
+          <td>Supabase (Auth + PostgreSQL + Edge Functions)</td>
+        </tr>
+        <tr>
+          <td>Pagamentos</td>
+          <td>Asaas API v3</td>
+        </tr>
+        <tr>
+          <td>Realtime</td>
+          <td>Supabase Realtime (WebSocket)</td>
+        </tr>
+        <tr>
+          <td>Deploy Web</td>
+          <td>Vercel / Netlify</td>
+        </tr>
+        <tr>
+          <td>Deploy Mobile</td>
+          <td>Capacitor (Android)</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Edge Functions (Supabase)</h3>
+    <table>
+      <tr>
+        <th>Function</th>
+        <th>Função</th>
+        <th>Status</th>
+      </tr>
+      <tr>
+        <td><code>asaas-create-pix</code></td>
+        <td>Cria pagamento PIX / assinatura</td>
+        <td><span class="tag new">Deployed</span></td>
+      </tr>
+      <tr>
+        <td><code>asaas-webhook</code></td>
+        <td>Recebe eventos do Asaas</td>
+        <td><span class="tag new">Deployed</span></td>
+      </tr>
+      <tr>
+        <td><code>asaas-check-payment</code></td>
+        <td>Verifica status do pagamento (legado)</td>
+        <td><span class="tag change">Legado</span></td>
+      </tr>
+      <tr>
+        <td><code>asaas-create-subaccount</code></td>
+        <td>Cria subconta Asaas para artista</td>
+        <td><span class="tag new">Deployed</span></td>
+      </tr>
+      <tr>
+        <td><code>asaas-process-tip</code></td>
+        <td>Processa gorjeta (legado, agora via webhook)</td>
+        <td><span class="tag change">Legado</span></td>
+      </tr>
+      <tr>
+        <td><code>asaas-register-webhook</code></td>
+        <td>Registra webhook no Asaas</td>
+        <td><span class="tag new">Deployed</span></td>
+      </tr>
+    </table>
+
+    <h3>Estrutura de Pastas Relevante</h3>
+    <pre>
+src/
+├── pages/
+│   ├── Login.jsx          <span class="cm">← Login + Reset de Senha</span>
+│   ├── Landing.jsx         <span class="cm">← Página inicial</span>
+│   ├── artist/
+│   │   ├── ArtistTip.jsx   <span class="cm">← Página de gorjeta</span>
+│   │   ├── ArtistProfile.jsx <span class="cm">← Perfil + Conectar Asaas</span>
+│   │   ├── ArtistRequests.jsx <span class="cm">← Pedidos + som notificação</span>
+│   │   └── ArtistProposals.jsx <span class="cm">← Propostas</span>
+│   ├── venue/
+│   └── contractor/
+├── components/
+│   ├── shared/
+│   │   ├── AppLayout.jsx   <span class="cm">← Header + Bell + Ser Pro</span>
+│   │   ├── ArtistCard.jsx  <span class="cm">← Card com badge Pro</span>
+│   └── ui/
+├── lib/
+│   ├── AuthContext.jsx     <span class="cm">← Auth + verificação Pro</span>
+│   └── supabaseClient.js
+supabase/
+└── functions/
+    ├── asaas-create-pix/
+    ├── asaas-webhook/
+    ├── asaas-create-subaccount/
+    └── asaas-register-webhook/
+scripts/
+├── migration-add-asaas-wallet.sql
+├── migration-add-is-pro.sql
+├── migration-add-pro-expires-at.sql
+├── migration-add-subscription-id.sql
+├── migration-add-subaccount-columns.sql
+├── migration-add-cpf-cnpj.sql
+├── migration-pending-tips-and-platform-pix.sql
+└── full-reset.sql
+  </pre>
+  </div>
+
+  <!-- ==================== 12 RESUMO ESTATÍSTICO ==================== -->
+  <div class="section page-break">
+    <h2 class="section-title"><span class="emoji">📊</span> 12 — Resumo Estatístico</h2>
+    <p class="section-desc">Números gerais das alterações implementadas.</p>
+
+    <div class="summary-grid">
+      <div class="summary-box" style="background:#f0fdf4;">
+        <div class="num" style="color:#16a34a;">15+</div>
+        <div class="label" style="color:#16a34a;">Arquivos Modificados/Criados</div>
+      </div>
+      <div class="summary-box" style="background:#f5f0ff;">
+        <div class="num" style="color:#7B2EDB;">6</div>
+        <div class="label" style="color:#7B2EDB;">Edge Functions</div>
+      </div>
+      <div class="summary-box" style="background:#eff6ff;">
+        <div class="num" style="color:#2563eb;">7</div>
+        <div class="label" style="color:#2563eb;">Migrações SQL</div>
+      </div>
+      <div class="summary-box" style="background:#fef2f2;">
+        <div class="num" style="color:#dc2626;">5</div>
+        <div class="label" style="color:#dc2626;">Bugs Críticos Corrigidos</div>
+      </div>
+    </div>
+
+    <h3>Linhas de Código (estimativa)</h3>
+    <table>
+      <tr>
+        <th>Área</th>
+        <th>Arquivos</th>
+        <th>Linhas</th>
+      </tr>
+      <tr>
+        <td>Frontend (JSX)</td>
+        <td>~10</td>
+        <td>~3.000+</td>
+      </tr>
+      <tr>
+        <td>Edge Functions (TS)</td>
+        <td>~6</td>
+        <td>~1.500+</td>
+      </tr>
+      <tr>
+        <td>Migrations (SQL)</td>
+        <td>7</td>
+        <td>~200</td>
+      </tr>
+      <tr>
+        <td><strong>Total estimado</strong></td>
+        <td><strong>~23</strong></td>
+        <td><strong>~4.700+</strong></td>
+      </tr>
+    </table>
+
+    <h3>Timeline</h3>
+    <table>
+      <tr>
+        <th>Data</th>
+        <th>Entrega</th>
+      </tr>
+      <tr>
+        <td>24 Jun 2026</td>
+        <td>ArtistTip redesign, Stripe → Asaas migration</td>
+      </tr>
+      <tr>
+        <td>30 Jun 2026</td>
+        <td>Assinatura Pro, badge Pro, landing update</td>
+      </tr>
+      <tr>
+        <td>01 Jul 2026</td>
+        <td>Polling Pro, auto-expiry, static EVP PIX, bugs críticos</td>
+      </tr>
+      <tr>
+        <td>02 Jul 2026</td>
+        <td>Marketplace subcontas, split reativado, webhook, reset senha</td>
+      </tr>
+      <tr>
+        <td>06 Jul 2026</td>
+        <td>Landing como home, login/reset senha, Pro sort em ContractorSearch + VenueArtists</td>
+      </tr>
+    </table>
+
+    <div
+      style="text-align:center; margin-top:40px; padding:30px; background:linear-gradient(135deg, #1a1a2e, #0f3460); border-radius:16px; color:white;">
+      <div style="font-size:36px; margin-bottom:10px;">🎵</div>
+      <div style="font-size:20px; font-weight:800;">TocaMais</div>
+      <div style="font-size:13px; color:#aaa; margin-top:5px;">Relatório gerado em 06/07/2026</div>
+      <div style="font-size:12px; color:#39FF14; margin-top:8px; font-weight:600;">Sistema completo de gorjetas,
+        assinaturas e marketplace</div>
+    </div>
+  </div>
+
+</body>
+
+</html>

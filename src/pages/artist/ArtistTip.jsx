@@ -41,12 +41,19 @@ export default function ArtistTip() {
   const [rating, setRating] = useState(0);
   const autoConfirmedRef = useRef(false);
   const pollingRef = useRef(null);
+  const pollCountRef = useRef(0);
+  const [pollExpired, setPollExpired] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_POLLS = 40;
 
   useEffect(() => {
     if (!pixCreated || !pendingTipId) return;
     autoConfirmedRef.current = false;
+    pollCountRef.current = 0;
+    setPollExpired(false);
     const checkTip = async () => {
       try {
+        pollCountRef.current += 1;
         const { data, error } = await supabase
           .from('pending_tips')
           .select('status')
@@ -56,6 +63,11 @@ export default function ArtistTip() {
           autoConfirmedRef.current = true;
           if (pollingRef.current) clearInterval(pollingRef.current);
           setStage(STAGE.FINAL_THANKS);
+          return;
+        }
+        if (pollCountRef.current >= MAX_POLLS) {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setPollExpired(true);
         }
       } catch (e) {
         console.error('Polling error:', e);
@@ -64,7 +76,7 @@ export default function ArtistTip() {
     pollingRef.current = setInterval(checkTip, 3000);
     checkTip();
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [pixCreated, pendingTipId]);
+  }, [pixCreated, pendingTipId, retryCount]);
 
   useEffect(() => {
     async function loadArtist() {
@@ -120,7 +132,7 @@ export default function ArtistTip() {
   }, [artistId]);
 
   const copyPixPayload = () => {
-    navigator.clipboard.writeText(pixPayload);
+    navigator.clipboard.writeText(pixPayload || pixKey);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -218,7 +230,7 @@ export default function ArtistTip() {
     setRequesting(false);
   };
 
-  const quickTipValues = [1, 2, 5, 10];
+  const quickTipValues = [2, 5, 10, 20];
 
   const renderStage = () => {
     switch (stage) {
@@ -348,6 +360,10 @@ export default function ArtistTip() {
         );
 
       case STAGE.PIX_PAYMENT:
+        // For static mode, show the pixKey as the "code" to copy
+        const copyValue = pixPayload || pixKey;
+        const copyPreview = copyValue ? (copyValue.length > 30 ? copyValue.substring(0, 30) + '...' : copyValue) : '';
+
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-sm">
             <div className={`p-6 rounded-3xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-lg'}`}>
@@ -361,10 +377,10 @@ export default function ArtistTip() {
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-white rounded-2xl">
                   {pixMode === 'dynamic' && pixQrCodeImage ? (
-                    // Dynamic: QR code from Asaas (amount embedded)
+                    <img src={`data:image/png;base64,${pixQrCodeImage}`} alt="QR Code PIX" width={160} height={160} style={{ imageRendering: 'pixelated' }} />
+                  ) : pixMode === 'static' && pixQrCodeImage ? (
                     <img src={`data:image/png;base64,${pixQrCodeImage}`} alt="QR Code PIX" width={160} height={160} style={{ imageRendering: 'pixelated' }} />
                   ) : pixMode === 'static' && pixKey ? (
-                    // Static: QR code generated locally with EVP key
                     <QRCodeSVG value={pixKey} size={160} level="M" />
                   ) : (
                     <div className="w-40 h-40 flex items-center justify-center">
@@ -389,22 +405,22 @@ export default function ArtistTip() {
               )}
 
               <div className="space-y-3">
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
-                  <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Código PIX (Copiar e Colar)
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className={`font-mono text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                      {pixPayload ? pixPayload.substring(0, 30) + '...' : ''}
+                {copyValue && (
+                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                    <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {pixMode === 'static' ? 'Chave PIX (Copiar e Colar)' : 'Código PIX (Copiar e Colar)'}
                     </p>
-                    {pixPayload && (
+                    <div className="flex items-center justify-between">
+                      <p className={`font-mono text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                        {copyPreview}
+                      </p>
                       <button onClick={copyPixPayload}
                         className="p-2 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 transition-colors ml-2 flex-shrink-0">
                         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className={`p-3 rounded-xl bg-neon-green/10 border border-neon-green/30 text-center`}>
                   <p className={`text-neon-green font-bold text-sm`}>
@@ -412,11 +428,25 @@ export default function ArtistTip() {
                   </p>
                 </div>
 
-                <div className="w-full py-3 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
-                  <Loader className="w-4 h-4 animate-spin" />
-                  Aguardando confirmação do pagamento...
-                </div>
+                {pollExpired ? (
+                  <div className="space-y-2">
+                    <button onClick={() => { setRetryCount(c => c + 1); setPollExpired(false); }}
+                      className="w-full py-3 rounded-xl font-bold text-xs text-white"
+                      style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
+                      Já paguei, verificar novamente
+                    </button>
+                    <button onClick={() => setStage(STAGE.TIP_VALUE)}
+                      className={`w-full py-3 rounded-xl font-bold text-xs ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                      Algo deu errado, voltar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full py-3 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Aguardando confirmação do pagamento...
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
