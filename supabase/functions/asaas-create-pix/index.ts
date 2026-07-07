@@ -123,20 +123,19 @@ Deno.serve(async (req) => {
       const subData = await subResp.json()
       const subId = subData.id
 
-      // Save subscription ID + activate Pro for the artist
+      // Save subscription ID for the artist (is_pro will be activated by webhook after payment confirmation)
       if (artistUserId) {
         const updateResp = await fetch(`${supabaseUrl}/rest/v1/artists?user_id=eq.${artistUserId}`, {
           method: 'PATCH',
           headers: { ...dbHeaders, 'Prefer': 'return=minimal' },
           body: JSON.stringify({
-            asaas_subscription_id: subId,
-            is_pro: true
+            asaas_subscription_id: subId
           })
         })
         if (!updateResp.ok) {
           console.error('Failed to save subscription ID for artist:', await updateResp.text())
         } else {
-          console.log(`Pro activated for artist ${artistUserId}, subscription: ${subId}`)
+          console.log(`Subscription ID saved for artist ${artistUserId}: ${subId}`)
         }
       }
 
