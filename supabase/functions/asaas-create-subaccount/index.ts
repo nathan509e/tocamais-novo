@@ -66,6 +66,7 @@ serve(async (req) => {
     let cpfCnpj = ''
     let birthDate = ''
     let postalCode = ''
+    let phone = ''
     let address = ''
     let addressNumber = ''
     let complement = ''
@@ -77,6 +78,7 @@ serve(async (req) => {
       cpfCnpj = body.cpfCnpj || ''
       birthDate = body.birthDate || ''
       postalCode = body.postalCode || ''
+      phone = body.phone || ''
       address = body.address || ''
       addressNumber = body.addressNumber || ''
       complement = body.complement || ''
@@ -114,11 +116,27 @@ serve(async (req) => {
       })
     }
 
+    // Phone is required by Asaas
+    const cleanPhone = phone.replace(/\D/g, '')
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return resp({
+        success: false,
+        error: 'Telefone é obrigatório para criar conta Asaas',
+        details: 'Informe um telefone válido com DDD (mínimo 10 dígitos).'
+      })
+    }
+
     // Clean CPF/CNPJ (digits only)
     const cleanCpfCnpj = cpfCnpj.replace(/\D/g, '')
     const isCpf = cleanCpfCnpj.length === 11
     // Clean CEP (digits only)
     const cleanPostalCode = postalCode.replace(/\D/g, '')
+
+    // Format phone for Asaas: remove formatting, use digits only with area code
+    // Asaas accepts formats like "11 993367861" or "11993367861"
+    const formattedPhone = cleanPhone.length === 11
+      ? `${cleanPhone.slice(0, 2)} ${cleanPhone.slice(2)}`
+      : `${cleanPhone.slice(0, 2)} ${cleanPhone.slice(2)}`
 
     // Asaas expects birthDate as YYYY-MM-DD (no conversion needed, frontend sends this format)
     // Build body for Asaas subaccount creation — per docs: https://docs.asaas.com/reference/criar-subconta
@@ -128,8 +146,8 @@ serve(async (req) => {
       email: user.email,
       cpfCnpj: cleanCpfCnpj,
       birthDate: birthDate,
-      phone: user.user_metadata?.phone || '00000000000',
-      mobilePhone: user.user_metadata?.phone || '00000000000',
+      phone: formattedPhone,
+      mobilePhone: formattedPhone,
       address: address || 'Rua não informada',
       addressNumber: addressNumber || '0',
       complement: complement || '',
@@ -137,11 +155,12 @@ serve(async (req) => {
       postalCode: cleanPostalCode,
     }
 
-    // Only add companyType and incomeValue for CNPJ (pessoa jurídica)
+    // companyType is only for CNPJ (pessoa jurídica)
     if (!isCpf) {
       subaccountBody.companyType = companyType || 'MEI'
-      subaccountBody.incomeValue = incomeValue || 1000
     }
+    // incomeValue (renda/faturamento) is required by Asaas for ALL account types (CPF and CNPJ)
+    subaccountBody.incomeValue = incomeValue || 3000
 
     console.log('Creating subaccount for artist:', user.id)
     console.log('Body sent to Asaas:', JSON.stringify(subaccountBody))
@@ -159,36 +178,120 @@ serve(async (req) => {
     console.log('Asaas response status:', subaccountResp.status)
     console.log('Asaas response body:', respText)
 
+    // If creation failed, check if it's because CPF/CNPJ is already in use
+    // In that case, search for the existing account and link it
+    let walletId = ''
+    let subaccountApiKey = ''
+
     if (!subaccountResp.ok) {
-      return resp({
-        success: false,
-        error: `Asaas retornou status ${subaccountResp.status}`,
-        details: respText.substring(0, 1000),
-        sentBody: subaccountBody
-      })
+      const respLower = respText.toLowerCase()
+      console.log('Error response for detection:', respLower)
+      // Check for CPF already in use — match the exact Asaas error pattern
+      const isCpfInUse = respLower.includes('cpf') && respLower.includes('em uso')
+      
+      if (isCpfInUse) {
+        console.log('CPF/CNPJ already in use — searching for existing account...')
+
+        // Helper: search through a list of accounts for matching CPF
+        const findInList = (accounts: any[]) =>
+          Array.isArray(accounts)
+            ? accounts.find((a: any) => (a.cpfCnpj || '').replace(/\D/g, '') === cleanCpfCnpj)
+            : null
+
+        // Strategy 1: filtered query
+        const s1Resp = await fetch(`${baseUrl}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
+          headers: { 'access_token': apiKey }
+        })
+        const s1Text = await s1Resp.text()
+        console.log('Strategy 1 (filter):', s1Resp.status, s1Text.substring(0, 300))
+        if (s1Resp.ok) {
+          try {
+            const d = JSON.parse(s1Text)
+            const found = findInList(d.data || d)
+            if (found?.walletId || found?.id) { walletId = found.walletId || found.id; subaccountApiKey = found.apiKey || '' }
+          } catch (_) {}
+        }
+
+        // Strategy 2: list first page without filter
+        if (!walletId) {
+          const s2Resp = await fetch(`${baseUrl}/accounts?limit=100&offset=0`, {
+            headers: { 'access_token': apiKey }
+          })
+          const s2Text = await s2Resp.text()
+          console.log('Strategy 2 (page 0):', s2Resp.status, s2Text.substring(0, 300))
+          if (s2Resp.ok) {
+            try {
+              const d = JSON.parse(s2Text)
+              const accounts = d.data || d
+              const found = findInList(accounts)
+              if (found?.walletId || found?.id) { walletId = found.walletId || found.id; subaccountApiKey = found.apiKey || '' }
+              // Strategy 3: paginate further if total > 100
+              if (!walletId && d.totalCount > 100) {
+                const totalPages = Math.ceil(d.totalCount / 100)
+                for (let page = 1; page < Math.min(totalPages, 5) && !walletId; page++) {
+                  const sPageResp = await fetch(`${baseUrl}/accounts?limit=100&offset=${page * 100}`, {
+                    headers: { 'access_token': apiKey }
+                  })
+                  if (sPageResp.ok) {
+                    try {
+                      const pd = await sPageResp.json()
+                      const pFound = findInList(pd.data || pd)
+                      if (pFound?.walletId || pFound?.id) { walletId = pFound.walletId || pFound.id; subaccountApiKey = pFound.apiKey || '' }
+                    } catch (_) {}
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+        }
+        
+        // If still not found — return a special code so the frontend can show a manual input
+        if (!walletId) {
+          return resp({
+            success: false,
+            code: 'cpf_in_use',
+            error: 'CPF/CNPJ já está em uso no Asaas, mas não foi possível localizar a conta automaticamente.',
+            details: respText.substring(0, 500),
+            hint: 'Informe manualmente o Wallet ID da sua conta Asaas.'
+          })
+        }
+        
+        // We found the existing account — proceed to save it
+        console.log('Linking existing Asaas account:', walletId)
+        
+      } else {
+        // Some other error — return as-is
+        return resp({
+          success: false,
+          error: `Asaas retornou status ${subaccountResp.status}`,
+          details: respText.substring(0, 1000),
+          sentBody: subaccountBody
+        })
+      }
+    } else {
+      // Success — parse the new account
+      let subaccountData: Record<string, unknown> = {}
+      try {
+        subaccountData = JSON.parse(respText)
+      } catch (_) {
+        return resp({
+          success: false,
+          error: 'Resposta inválida do Asaas (não é JSON)',
+          details: respText.substring(0, 500)
+        })
+      }
+
+      console.log('Subaccount created:', JSON.stringify(subaccountData))
+
+      walletId = (subaccountData as any).walletId || (subaccountData as any).id || ''
+      subaccountApiKey = (subaccountData as any).apiKey || ''
     }
-
-    let subaccountData: Record<string, unknown> = {}
-    try {
-      subaccountData = JSON.parse(respText)
-    } catch (_) {
-      return resp({
-        success: false,
-        error: 'Resposta inválida do Asaas (não é JSON)',
-        details: respText.substring(0, 500)
-      })
-    }
-
-    console.log('Subaccount created:', JSON.stringify(subaccountData))
-
-    const walletId = (subaccountData as any).id
-    const subaccountApiKey = (subaccountData as any).apiKey
 
     if (!walletId) {
       return resp({
         success: false,
         error: 'Resposta do Asaas não contém id',
-        details: JSON.stringify(subaccountData).substring(0, 500)
+        details: respText.substring(0, 500)
       })
     }
 

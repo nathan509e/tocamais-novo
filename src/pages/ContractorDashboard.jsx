@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Heart, Star, CheckCircle, Sparkles,
-  X, Trash2, ListMusic
+  X, Trash2, ListMusic, Gift, Building2, Flame, PartyPopper
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/lib/ThemeContext';
 
 const eventTypes = [
-  { id: 'wedding', icon: '💍', label: 'Casamento', desc: 'Eventos luxuosos e românticos' },
-  { id: 'birthday', icon: '🎂', label: 'Aniversário', desc: 'Festas de aniversário e comemorações' },
-  { id: 'corporate', icon: '🏢', label: 'Corporativo', desc: 'Jantares e convenções empresariais' },
-  { id: 'bbq', icon: '🥩', label: 'Churrasco', desc: 'Eventos informais e churrascos' },
-  { id: 'private', icon: '🎉', label: 'Festa Privada', desc: 'Residências e salões de festas' },
-  { id: 'luxury', icon: '✨', label: 'Evento Luxo', desc: 'Premium, debutantes, comemorações exclusivas' },
+  { id: 'wedding', icon: Heart, label: 'Casamento', desc: 'Eventos luxuosos e românticos' },
+  { id: 'birthday', icon: Gift, label: 'Aniversário', desc: 'Festas de aniversário e comemorações' },
+  { id: 'corporate', icon: Building2, label: 'Corporativo', desc: 'Jantares e convenções empresariais' },
+  { id: 'bbq', icon: Flame, label: 'Churrasco', desc: 'Eventos informais e churrascos' },
+  { id: 'private', icon: PartyPopper, label: 'Festa Privada', desc: 'Residências e salões de festas' },
+  { id: 'luxury', icon: Sparkles, label: 'Evento Luxo', desc: 'Premium, debutantes, comemorações exclusivas' },
 ];
 
 const budgetTiers = {
@@ -81,7 +81,8 @@ export default function ContractorDashboard() {
       try {
         const { data } = await supabase.from('artists').select('*');
         if (data) {
-          setArtists(data);
+          const sorted = [...data].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
+          setArtists(sorted);
         }
       } catch (err) {
         console.error(err);
@@ -184,6 +185,7 @@ export default function ContractorDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {eventTypes.map(item => {
               const active = selectedEvent === item.id;
+              const IconComp = item.icon;
               return (
                 <button
                   key={item.id}
@@ -194,41 +196,13 @@ export default function ContractorDashboard() {
                       : 'bg-white/5 border-white/5 text-gray-400 hover:border-white/20'
                   }`}
                 >
-                  <span className="text-3xl mb-1.5">{item.icon}</span>
+                  <IconComp className="w-6 h-6 mb-1.5 text-neon-purple" />
                   <span className="text-xs font-bold">{item.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
-
-        {/* AUTOMATED BUDGET ESTIMATOR */}
-        <AnimatePresence mode="wait">
-          {selectedEvent && (
-            <motion.div
-              key={selectedEvent}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-5 rounded-2xl border border-white/10 bg-gradient-to-r from-[#0F0926] to-[#08041A] shadow-xl"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-neon-green" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white">Calculadora Automática de Orçamento ({selectedEvent})</h4>
-              </div>
-              <p className="text-[10px] text-gray-400 mb-4">Estimativa recomendada de cachê baseada em contratações passadas.</p>
-
-              <div className="grid sm:grid-cols-3 gap-3">
-                {budgetTiers[selectedEvent]?.map((tier, idx) => (
-                  <div key={idx} className={`p-4 rounded-xl bg-white/5 border ${tier.style} text-center`}>
-                    <p className="text-xs font-bold text-white">{tier.label}</p>
-                    <p className="text-sm font-black text-neon-green mt-1">{tier.range}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* CONTENT SPLIT: LISTINGS & EVENT PLAYLISTS */}
         <div className="grid lg:grid-cols-3 gap-8">

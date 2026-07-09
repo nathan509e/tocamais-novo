@@ -3,7 +3,7 @@ import { Star, CheckCircle, MapPin, Music, Zap, Crown } from 'lucide-react';
 import NeonButton from '@/components/ui/NeonButton';
 
 export default function ArtistCard({ artist, onHire, onView, compact = false }) {
-  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured, is_pro } = artist;
+  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured, is_pro, cover_position, cover_zoom } = artist;
 
   if (compact) {
     return (
@@ -22,7 +22,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
           <div className="flex items-center gap-1">
             <p className="text-gray-900 font-semibold text-sm truncate">{artistic_name}</p>
             {verified && <CheckCircle className="w-3.5 h-3.5 text-neon-purple flex-shrink-0" />}
-            {is_pro && <Crown className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
+            {is_pro && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
           </div>
           <p className="text-gray-500 text-xs">{genre} • {city}</p>
           <div className="flex items-center gap-1 mt-0.5">
@@ -44,10 +44,18 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
       className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:border-neon-purple/30 hover:shadow-md transition-all duration-300 cursor-pointer"
       onClick={() => onView?.(artist)}
     >
-      {/* Cover banner — same proportions as ArtistProfile (h-56 = 224px) */}
-      <div className="relative h-56 overflow-hidden">
+      {/* Cover banner — larger vertical size (h-64) */}
+      <div className="relative h-64 overflow-hidden">
         {cover_url ? (
-          <img src={cover_url} alt="" className="w-full h-full object-cover" />
+          <img 
+            src={cover_url} 
+            alt="" 
+            className="w-full h-full object-cover" 
+            style={{ 
+              objectPosition: `50% ${cover_position ?? 50}%`, 
+              transform: `scale(${cover_zoom ?? 1})` 
+            }} 
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-neon-purple/30 via-neon-purple/15 to-neon-green/15" />
         )}

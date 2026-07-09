@@ -5,6 +5,7 @@ import {
   Crown, CheckCircle, MapPin, Music,
   Edit3, Video, Wallet,
   ExternalLink, QrCode, X, Sun, Moon,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -24,53 +25,18 @@ export default function ArtistProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [coverPosition, setCoverPosition] = useState(50);
   const [coverZoom, setCoverZoom] = useState(1);
+  const [showAdjustPanel, setShowAdjustPanel] = useState(true);
   const [editForm, setEditForm] = useState({ photo_url: '', cover_url: '', artistic_name: '', bio: '', genre: '', city: '', base_fee: 0, pix_key: '' });
   const [saveStatus, setSaveStatus] = useState('');
   const [pixKey, setPixKey] = useState('');
   const [cropState, setCropState] = useState(null); // { src, aspectRatio, type } | null
-  const [asaasWalletId, setAsaasWalletId] = useState('');
   const [walletSaved, setWalletSaved] = useState(false);
-  const [connectingAsaas, setConnectingAsaas] = useState(false);
+  const [manualWalletId, setManualWalletId] = useState('');
+  const [savingManualWallet, setSavingManualWallet] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cpfCnpj, setCpfCnpj] = useState('');
-  const [cpfError, setCpfError] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [birthDateError, setBirthDateError] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [postalCodeError, setPostalCodeError] = useState('');
-
-  // Format CPF: 000.000.000-00 | CNPJ: 00.000.000/0000-00
-  const formatCpfCnpj = (value) => {
-    const digits = value.replace(/\D/g, '');
-    if (digits.length <= 11) {
-      // CPF format
-      return digits
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    } else {
-      // CNPJ format
-      return digits
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d)/, '$1-$2');
-    }
-  };
-
-  const isValidCpfCnpj = (value) => {
-    const digits = value.replace(/\D/g, '');
-    if (digits.length === 11) return true; // CPF — basic length check
-    if (digits.length === 14) return true; // CNPJ — basic length check
-    return false;
-  };
-
-  // Format CEP: 00000-000
-  const formatCep = (value) => {
-    const digits = value.replace(/\D/g, '').slice(0, 8);
-    return digits.replace(/(\d{5})(\d)/, '$1-$2');
-  };
+  const [asaasWalletId, setAsaasWalletId] = useState('');
 
   const handleImageUpload = async (file, type) => {
     const fileExt = file.name.split('.').pop();
@@ -93,7 +59,7 @@ export default function ArtistProfile() {
   // Abre o modal de crop quando o usuário seleciona uma imagem
   const openCrop = (file, type) => {
     const src = URL.createObjectURL(file);
-    const aspectRatio = type === 'avatar' ? 1 : 16 / 9;
+    const aspectRatio = type === 'avatar' ? 1 : 1672 / 941;
     setCropState({ src, aspectRatio, type, fileName: file.name });
   };
 
@@ -239,63 +205,31 @@ export default function ArtistProfile() {
     }
   };
 
-  const handleConnectAsaas = async () => {
-    if (!user) return;
-
-    // Validate CPF/CNPJ
-    if (!cpfCnpj || !isValidCpfCnpj(cpfCnpj)) {
-      setCpfError('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
-      return;
-    }
-    setCpfError('');
-
-    // Validate birth date
-    if (!birthDate) {
-      setBirthDateError('Informe sua data de nascimento.');
-      return;
-    }
-    setBirthDateError('');
-
-    // Validate CEP
-    const cleanCep = postalCode.replace(/\D/g, '');
-    if (!cleanCep || cleanCep.length < 8) {
-      setPostalCodeError('Informe um CEP válido (8 dígitos).');
-      return;
-    }
-    setPostalCodeError('');
-
-    setWalletSaved(false);
-    setConnectingAsaas(true);
+  const handleSaveManualWallet = async () => {
+    const cleanId = manualWalletId.trim();
+    if (!cleanId) return;
+    setSavingManualWallet(true);
     try {
-      const { data, error } = await supabase.functions.invoke('asaas-create-subaccount', {
-        body: {
-          cpfCnpj: cpfCnpj.replace(/\D/g, ''),
-          birthDate: birthDate,
-          postalCode: cleanCep,
-        }
-      });
-      
-      console.log('Asaas subaccount response:', data, error);
-      
-      // Edge function always returns 200 with success flag
-      if (data?.success) {
-        setArtistProfile(prev => prev ? { 
-          ...prev, 
-          asaas_wallet_id: data.walletId,
-          asaas_account_status: data.accountStatus 
-        } : prev);
-        setWalletSaved(true);
-        if (refreshProfile) refreshProfile();
-      } else {
-        const details = data?.details ? `\n${data.details}` : '';
-        const sentBody = data?.sentBody ? `\nBody enviado: ${JSON.stringify(data.sentBody)}` : '';
-        throw new Error((data?.error || error?.message || 'Erro ao criar conta') + details + sentBody);
-      }
+      const { error: updateError } = await supabase
+        .from('artists')
+        .update({
+          asaas_wallet_id: cleanId,
+          asaas_account_status: 'pending_verification'
+        })
+        .eq('user_id', user.id);
+      if (updateError) throw new Error(updateError.message);
+      setArtistProfile(prev => prev ? {
+        ...prev,
+        asaas_wallet_id: cleanId,
+        asaas_account_status: 'pending_verification'
+      } : prev);
+      setWalletSaved(true);
+      setManualWalletId('');
+      if (refreshProfile) refreshProfile();
     } catch (e) {
-      console.error('Error connecting Asaas:', e);
-      alert('Erro ao conectar conta Asaas:\n' + (e.message || e));
+      alert('Erro ao salvar Wallet ID:\n' + (e.message || e));
     } finally {
-      setConnectingAsaas(false);
+      setSavingManualWallet(false);
     }
   };
 
@@ -308,7 +242,7 @@ export default function ArtistProfile() {
   const isDark = theme === 'dark';
 
   return (
-    <AppLayout role="artist" userName={artistProfile?.artistic_name || user?.name || ''}>
+    <AppLayout role="artist">
       <div className="space-y-6">
         
         {/* Cover */}
@@ -336,41 +270,79 @@ export default function ArtistProfile() {
             />
           </div>
           {artistProfile?.cover_url && (
-            <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-white/60">⇅</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={coverPosition}
-                  onChange={async e => {
-                    const val = Number(e.target.value);
-                    setCoverPosition(val);
-                    await saveProfileField('cover_position', val);
-                  }}
-                  className="flex-1 h-1 appearance-none rounded-full bg-white/30 cursor-pointer"
-                  style={{ accentColor: '#7B2EFF' }}
-                />
+            showAdjustPanel ? (
+              <div className="absolute bottom-3 left-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-3 flex flex-col gap-2.5 shadow-lg z-20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Ajustar Capa</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdjustPanel(false)}
+                      className="p-0.5 rounded hover:bg-white/15 text-white/80 transition-all"
+                      title="Ocultar painel"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setCoverPosition(50);
+                      setCoverZoom(1);
+                      // Save fields directly on reset
+                      await supabase.from('artists').update({ cover_position: 50, cover_zoom: 1 }).eq('user_id', user.id);
+                      if (refreshProfile) refreshProfile();
+                    }}
+                    className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[9px] font-bold text-white transition-all uppercase tracking-wider"
+                  >
+                    Resetar
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[10px] text-white/70 font-semibold w-12">Posição:</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={coverPosition}
+                      onChange={e => setCoverPosition(Number(e.target.value))}
+                      onMouseUp={async () => await saveProfileField('cover_position', coverPosition)}
+                      onTouchEnd={async () => await saveProfileField('cover_position', coverPosition)}
+                      className="flex-1 h-1.5 appearance-none rounded-full bg-white/20 cursor-pointer outline-none"
+                      style={{ accentColor: '#7B2EFF' }}
+                    />
+                    <span className="text-[9px] text-white/60 w-6 text-right">{coverPosition}%</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[10px] text-white/70 font-semibold w-12">Zoom:</span>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="3"
+                      step="0.05"
+                      value={coverZoom}
+                      onChange={e => setCoverZoom(Number(e.target.value))}
+                      onMouseUp={async () => await saveProfileField('cover_zoom', coverZoom)}
+                      onTouchEnd={async () => await saveProfileField('cover_zoom', coverZoom)}
+                      className="flex-1 h-1.5 appearance-none rounded-full bg-white/20 cursor-pointer outline-none"
+                      style={{ accentColor: '#7B2EFF' }}
+                    />
+                    <span className="text-[9px] text-white/60 w-6 text-right">{coverZoom}x</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-white/60">🔍</span>
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={coverZoom}
-                  onChange={async e => {
-                    const val = Number(e.target.value);
-                    setCoverZoom(val);
-                    await saveProfileField('cover_zoom', val);
-                  }}
-                  className="flex-1 h-1 appearance-none rounded-full bg-white/30 cursor-pointer"
-                  style={{ accentColor: '#7B2EFF' }}
-                />
-              </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAdjustPanel(true)}
+                className="absolute bottom-3 right-3 p-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl text-white hover:bg-black/80 transition-all flex items-center gap-1 shadow-lg z-20"
+                title="Ajustar Capa"
+              >
+                <ChevronUp className="w-4 h-4" />
+                <span className="text-[9px] font-bold uppercase tracking-wider">Ajustar</span>
+              </button>
+            )
           )}
         </div>
 
@@ -466,7 +438,7 @@ export default function ArtistProfile() {
                   className="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-neon-purple file:text-white hover:file:opacity-90 cursor-pointer"
                 />
                 <img src={artistProfile?.photo_url || ''} alt="Preview" className="w-16 h-16 rounded-xl object-cover mt-2 border border-white/10"
-                  onError={e => e.target.style.display = 'none'}
+                  onError={e => { const img = e.currentTarget; img.style.display = 'none'; }}
                 />
               </div>
               <div>
@@ -652,71 +624,30 @@ export default function ArtistProfile() {
               ) : (
                 <div className="space-y-3">
                   <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Conecte sua conta Asaas para receber pagamentos. A plataforma criará uma subconta para você automaticamente.
+                    Insira o <strong>Wallet ID</strong> da sua conta Asaas para receber gorjetas via PIX.
                   </p>
                   <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                     Comissão: 30% TocaMais | 70% para você
                   </p>
+                  <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Encontre em: <strong>asaas.com → Configurações → Dados da conta</strong>
+                  </p>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-bold block mb-1">CPF ou CNPJ (obrigatório)</label>
+                    <label className="text-[10px] text-gray-400 font-bold block mb-1">Wallet ID</label>
                     <input
                       type="text"
-                      value={cpfCnpj}
-                      onChange={e => {
-                        const formatted = formatCpfCnpj(e.target.value);
-                        setCpfCnpj(formatted);
-                        setCpfError('');
-                      }}
-                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                      maxLength={18}
-                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                        cpfError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
+                      value={manualWalletId}
+                      onChange={e => setManualWalletId(e.target.value)}
+                      placeholder="Ex: wal_xxxxxxxxxxxxxxxx"
+                      className={`w-full p-2.5 rounded-xl border text-xs outline-none font-mono ${
+                        isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
                       }`}
                     />
-                    {cpfError && (
-                      <p className="text-[10px] text-red-400 mt-1 font-bold">{cpfError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 font-bold block mb-1">Data de Nascimento (obrigatório)</label>
-                    <input
-                      type="date"
-                      value={birthDate}
-                      onChange={e => {
-                        setBirthDate(e.target.value);
-                        setBirthDateError('');
-                      }}
-                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                        birthDateError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
-                      }`}
-                    />
-                    {birthDateError && (
-                      <p className="text-[10px] text-red-400 mt-1 font-bold">{birthDateError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 font-bold block mb-1">CEP (obrigatório)</label>
-                    <input
-                      type="text"
-                      value={postalCode}
-                      onChange={e => {
-                        setPostalCode(formatCep(e.target.value));
-                        setPostalCodeError('');
-                      }}
-                      placeholder="00000-000"
-                      maxLength={9}
-                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                        postalCodeError ? 'border-red-400' : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800')
-                      }`}
-                    />
-                    {postalCodeError && (
-                      <p className="text-[10px] text-red-400 mt-1 font-bold">{postalCodeError}</p>
-                    )}
                   </div>
                   <div className="space-y-2">
                     <button
-                      onClick={handleConnectAsaas}
-                      disabled={connectingAsaas || !cpfCnpj || !isValidCpfCnpj(cpfCnpj) || !birthDate || postalCode.replace(/\D/g, '').length < 8}
+                      onClick={handleSaveManualWallet}
+                      disabled={savingManualWallet || !manualWalletId.trim()}
                       className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       style={{
                         background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
@@ -724,7 +655,7 @@ export default function ArtistProfile() {
                       }}
                     >
                       <Wallet className="w-4 h-4" />
-                    {connectingAsaas ? 'Conectando...' : 'Conectar Conta Asaas'}
+                      {savingManualWallet ? 'Salvando...' : 'Conectar Conta Asaas'}
                     </button>
                     {walletSaved && (
                       <p className="text-[10px] text-neon-green text-center font-bold">✓ Conta Asaas conectada com sucesso!</p>

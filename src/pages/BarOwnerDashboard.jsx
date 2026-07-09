@@ -61,7 +61,8 @@ export default function VenueDashboard() {
       try {
         const { data } = await supabase.from('artists').select('*');
         if (data) {
-          setArtists(data);
+          const sorted = [...data].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
+          setArtists(sorted);
         }
       } catch (err) {
         console.error(err);

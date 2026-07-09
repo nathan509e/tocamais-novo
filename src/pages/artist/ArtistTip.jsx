@@ -14,6 +14,63 @@ const STAGE = {
   FINAL_THANKS: 4,
 };
 
+function generatePixPayload(key, amount, name = 'TocaMais Artista', city = 'SAO PAULO') {
+  const cleanString = (str) => {
+    if (!str) return '';
+    return str.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9 ]/g, "")
+      .substring(0, 25);
+  };
+
+  const cleanName = cleanString(name) || 'TocaMais Artista';
+  const cleanCity = cleanString(city) || 'SAO PAULO';
+  const formattedAmount = amount ? Number(amount).toFixed(2) : '';
+
+  const parts = {
+    payloadFormat: '000201',
+    merchantAccount: '', 
+    merchantCategory: '52040000',
+    currency: '5303986',
+    amount: formattedAmount ? `54${String(formattedAmount.length).padStart(2, '0')}${formattedAmount}` : '',
+    country: '5802BR',
+    merchantName: `59${String(cleanName.length).padStart(2, '0')}${cleanName}`,
+    merchantCity: `60${String(cleanCity.length).padStart(2, '0')}${cleanCity}`,
+    additionalData: '62070503***'
+  };
+
+  const gui = '0014br.gov.bcb.pix';
+  const keyTag = `01${String(key.length).padStart(2, '0')}${key}`;
+  const accountInfo = gui + keyTag;
+  parts.merchantAccount = `26${String(accountInfo.length).padStart(2, '0')}${accountInfo}`;
+
+  let payload = parts.payloadFormat + 
+                parts.merchantAccount + 
+                parts.merchantCategory + 
+                parts.currency + 
+                parts.amount + 
+                parts.country + 
+                parts.merchantName + 
+                parts.merchantCity + 
+                parts.additionalData + 
+                '6304';
+
+  let crc = 0xFFFF;
+  for (let i = 0; i < payload.length; i++) {
+    const charCode = payload.charCodeAt(i);
+    crc ^= (charCode << 8);
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc = (crc << 1);
+      }
+    }
+  }
+  const crcHex = (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  return payload + crcHex;
+}
+
 export default function ArtistTip() {
   const { artistId } = useParams();
   const { theme } = useTheme();
@@ -44,13 +101,18 @@ export default function ArtistTip() {
   const pollCountRef = useRef(0);
   const [pollExpired, setPollExpired] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_POLLS = 40;
+  const MAX_POLLS = 100;
+  const POLL_INTERVAL = 3000; // 3 seconds
+  const TIMEOUT_SECONDS = 300; // 5 minutes
 
   useEffect(() => {
     if (!pixCreated || !pendingTipId) return;
     autoConfirmedRef.current = false;
     pollCountRef.current = 0;
     setPollExpired(false);
+    
+    const startTime = Date.now();
+    
     const checkTip = async () => {
       try {
         pollCountRef.current += 1;
@@ -65,6 +127,16 @@ export default function ArtistTip() {
           setStage(STAGE.FINAL_THANKS);
           return;
         }
+        
+        // Check if 10 minutes have passed
+        const elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed >= TIMEOUT_SECONDS) {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          // Don't mark as expired in DB — if payment arrives later via webhook, it should still be processed
+          setPollExpired(true);
+          return;
+        }
+        
         if (pollCountRef.current >= MAX_POLLS) {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setPollExpired(true);
@@ -73,7 +145,7 @@ export default function ArtistTip() {
         console.error('Polling error:', e);
       }
     };
-    pollingRef.current = setInterval(checkTip, 3000);
+    pollingRef.current = setInterval(checkTip, POLL_INTERVAL);
     checkTip();
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [pixCreated, pendingTipId, retryCount]);
@@ -142,6 +214,38 @@ export default function ArtistTip() {
     setPixLoading(true);
     setPixError('');
     try {
+      if (artist?.is_pro && artist?.pix_key?.trim()) {
+        setPixMode('static');
+        const formattedPayload = generatePixPayload(
+          artist.pix_key.trim(),
+          tipAmount,
+          artist.artistic_name,
+          artist.city || 'SAO PAULO'
+        );
+        setPixKey(formattedPayload);
+        setPixPayload(formattedPayload);
+        
+        try {
+          const { data: tipData } = await supabase.from('pending_tips').insert({
+            amount: tipAmount,
+            artist_id: artistId,
+            user_name: userName || 'Cliente',
+            message: message || null,
+            musica_id: selectedMusic?.id || null,
+            status: 'pending'
+          }).select().single();
+          if (tipData) {
+            setPendingTipId(tipData.id);
+          }
+        } catch (e) {
+          console.error('Erro ao registrar gorjeta pendente no banco:', e);
+        }
+
+        setPixCreated(true);
+        setStage(STAGE.PIX_PAYMENT);
+        return;
+      }
+
       const { data, error: fnError } = await supabase.functions.invoke(
         'asaas-create-pix',
         {
@@ -376,7 +480,9 @@ export default function ArtistTip() {
 
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-white rounded-2xl">
-                  {pixMode === 'dynamic' && pixQrCodeImage ? (
+                  {artist?.is_pro && artist?.pix_key?.trim() ? (
+                    <QRCodeSVG value={pixKey} size={160} level="M" />
+                  ) : pixMode === 'dynamic' && pixQrCodeImage ? (
                     <img src={`data:image/png;base64,${pixQrCodeImage}`} alt="QR Code PIX" width={160} height={160} style={{ imageRendering: 'pixelated' }} />
                   ) : pixMode === 'static' && pixQrCodeImage ? (
                     <img src={`data:image/png;base64,${pixQrCodeImage}`} alt="QR Code PIX" width={160} height={160} style={{ imageRendering: 'pixelated' }} />
@@ -391,12 +497,14 @@ export default function ArtistTip() {
               </div>
 
               <p className={`text-center text-xs mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {pixMode === 'static'
-                  ? 'Escaneie e digite o valor manualmente'
-                  : 'Escaneie o código acima para fazer o pagamento'}
+                {artist?.is_pro && artist?.pix_key?.trim()
+                  ? 'Escaneie o QR Code ou digite a chave PIX abaixo para pagar'
+                  : pixMode === 'static'
+                    ? 'Escaneie e digite o valor manualmente'
+                    : 'Escaneie o código acima para fazer o pagamento'}
               </p>
 
-              {pixMode === 'static' && (
+              {pixMode === 'static' && !artist?.is_pro && (
                 <div className={`p-3 rounded-xl mb-3 bg-neon-purple/10 border border-neon-purple/30 text-center`}>
                   <p className={`text-neon-purple font-bold text-sm`}>
                     Digite: R$ {tipAmount.toFixed(2)}
@@ -405,10 +513,10 @@ export default function ArtistTip() {
               )}
 
               <div className="space-y-3">
-                {copyValue && (
+                {copyValue && (!artist?.is_pro || !artist?.pix_key?.trim()) && (
                   <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                     <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {pixMode === 'static' ? 'Chave PIX (Copiar e Colar)' : 'Código PIX (Copiar e Colar)'}
+                      Código PIX (Copiar e Colar)
                     </p>
                     <div className="flex items-center justify-between">
                       <p className={`font-mono text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
@@ -422,13 +530,96 @@ export default function ArtistTip() {
                   </div>
                 )}
 
+                {artist?.is_pro && artist?.pix_key?.trim() && (
+                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                    <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Chave PIX do Artista (Manual)
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={`font-mono text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                        {artist.pix_key}
+                      </p>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(artist.pix_key);
+                          alert('Chave PIX copiada!');
+                        }}
+                        className="p-2 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 transition-colors ml-2 flex-shrink-0"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className={`p-3 rounded-xl bg-neon-green/10 border border-neon-green/30 text-center`}>
                   <p className={`text-neon-green font-bold text-sm`}>
                     Valor: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
+                {artist?.is_pro && artist?.pix_key?.trim() ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        // 1. Mark pending_tip as confirmed
+                        if (pendingTipId) {
+                          await supabase.from('pending_tips').update({ status: 'confirmed', confirmed_at: new Date().toISOString() }).eq('id', pendingTipId);
+                        }
 
-                {pollExpired ? (
+                        // 2. Create music_request (same as webhook processTip)
+                        const musicRequest = {
+                          artist_id: artistId,
+                          musica_id: selectedMusic?.id || null,
+                          musica_titulo: selectedMusic?.titulo || 'Pedido com Gorjeta',
+                          musica_artista: selectedMusic?.artista_nome || null,
+                          user_name: userName || 'Cliente',
+                          message: message || null,
+                          status: 'pending',
+                          requested_at: new Date().toISOString(),
+                          amount: tipAmount,
+                          pix_payment_id: pendingTipId,
+                          pix_status: 'paid',
+                          rating: rating || null
+                        };
+                        const { error: insertErr } = await supabase.from('music_requests').insert(musicRequest);
+                        if (insertErr) console.error('Erro ao criar music_request:', insertErr);
+
+                        // 3. Notify artist
+                        const notifTitle = tipAmount > 0
+                          ? `Novo pedido com gorjeta de R$ ${tipAmount.toFixed(2)}`
+                          : 'Novo pedido de música';
+                        const notifContent = `${userName || 'Cliente'} pediu "${selectedMusic?.titulo || 'uma música'}"${message ? `: ${message}` : ''}`;
+                        await supabase.from('notifications').insert({
+                          user_id: artistId,
+                          title: notifTitle,
+                          content: notifContent,
+                          type: 'music_request',
+                          read: false
+                        });
+
+                        // 4. Update artist rating
+                        if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+                          const { data: ratings } = await supabase
+                            .from('music_requests')
+                            .select('rating')
+                            .eq('artist_id', artistId)
+                            .not('rating', 'is', null);
+                          if (ratings?.length) {
+                            const avg = ratings.reduce((sum, r) => sum + Number(r.rating), 0) / ratings.length;
+                            await supabase.from('artists').update({ rating: Math.round(avg * 10) / 10 }).eq('user_id', artistId);
+                          }
+                        }
+                      } catch (e) {
+                        console.error('Erro ao confirmar gorjeta:', e);
+                      }
+                      setStage(STAGE.FINAL_THANKS);
+                    }}
+                    className="w-full py-3 rounded-xl font-bold text-xs text-white text-center hover:shadow-lg transition-all"
+                    style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}
+                  >
+                    Confirmar Envio da Gorjeta
+                  </button>
+                ) : pollExpired ? (
                   <div className="space-y-2">
                     <button onClick={() => { setRetryCount(c => c + 1); setPollExpired(false); }}
                       className="w-full py-3 rounded-xl font-bold text-xs text-white"

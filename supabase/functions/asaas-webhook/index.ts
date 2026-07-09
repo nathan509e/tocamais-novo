@@ -139,6 +139,15 @@ serve(async (req) => {
             console.error('Failed to activate Pro:', subUpdateErr)
           } else {
             console.log(`Pro activated for artist ${subArtist.user_id}`)
+            
+            // Insert a notification so the frontend realtime listener can catch it
+            await supabase.from('notifications').insert({
+              user_id: subArtist.user_id,
+              title: 'Sua assinatura Pro está ativa! 👑',
+              content: 'Parabéns! Seu perfil TocaMais Pro foi ativado com sucesso. Aproveite todas as vantagens.',
+              type: 'pro_activation',
+              read: false
+            });
           }
         }
 
@@ -230,7 +239,7 @@ serve(async (req) => {
       } else {
         const { error: updateErr } = await supabase
           .from('artists')
-          .update({ is_pro: false })
+          .update({ is_pro: false, pix_key: null })
           .eq('user_id', artist.user_id)
 
         if (updateErr) {

@@ -163,7 +163,7 @@ export default function ImageCropModal({ imageSrc, aspectRatio = 1, onConfirm, o
         exit={{ opacity: 0, scale: 0.9 }}
         className="fixed inset-0 z-[210] flex items-center justify-center p-4"
       >
-        <div className="bg-[#1a1030] rounded-2xl border border-white/10 p-5 w-full max-w-sm space-y-4">
+        <div className="bg-[#1a1030] rounded-2xl border border-white/10 p-5 w-full max-w-[440px] space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <h3 className="text-white font-bold text-sm">Recortar Imagem</h3>

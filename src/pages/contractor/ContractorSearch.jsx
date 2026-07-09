@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -11,6 +12,7 @@ const genres = ['Todos', 'Sertanejo', 'MPB', 'Jazz', 'Pop', 'Samba', 'Rock', 'Fo
 
 export default function ContractorSearch() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [allArtists, setAllArtists] = useState([]);
   const [search, setSearch] = useState('');
@@ -22,7 +24,10 @@ export default function ContractorSearch() {
     async function loadArtists() {
       try {
         const { data } = await supabase.from('artists').select('*');
-        if (data) setAllArtists(data);
+        if (data) {
+          const sorted = [...data].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
+          setAllArtists(sorted);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -77,7 +82,7 @@ export default function ContractorSearch() {
         <div className="grid grid-cols-1 gap-4 pb-4">
           {filtered.map((artist, i) => (
             <motion.div key={artist.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <ArtistCard artist={artist} onView={() => setSelectedArtistProfile(artist)} onHire={() => console.log('Hire', artist)} />
+              <ArtistCard artist={artist} onView={() => setSelectedArtistProfile(artist)} onHire={() => navigate('/contractor', { state: { hireArtist: artist } })} />
             </motion.div>
           ))}
         </div>
@@ -87,7 +92,7 @@ export default function ContractorSearch() {
           onClose={() => setSelectedArtistProfile(null)} 
           onHire={(artist) => {
             setSelectedArtistProfile(null);
-            console.log('Hire flow from search', artist);
+            navigate('/contractor', { state: { hireArtist: artist } });
           }} 
         />
       </div>

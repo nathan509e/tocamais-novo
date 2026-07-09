@@ -67,8 +67,8 @@ serve(async (req) => {
     const accountData = await accountResp.json()
     console.log('Asaas account data:', JSON.stringify(accountData))
 
-    // Extract walletId from the response
-    const walletId = accountData?.walletId || accountData?.id
+    // Extract walletId from the response (check for list/collection first, then single object)
+    const walletId = accountData?.walletId || accountData?.id || accountData?.data?.[0]?.walletId || accountData?.data?.[0]?.id
 
     if (!walletId) {
       return new Response(JSON.stringify({

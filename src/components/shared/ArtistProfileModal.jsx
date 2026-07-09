@@ -54,10 +54,18 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
 
         {/* Cover + Profile Card Body */}
         <div className="space-y-6">
-          {/* Cover banner — same proportions as ArtistProfile (h-56) */}
-          <div className="relative h-56 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 overflow-hidden rounded-t-2xl">
+          {/* Cover banner — larger vertical size (h-72) */}
+          <div className="relative h-72 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 overflow-hidden rounded-t-2xl">
             {artist.cover_url ? (
-              <img src={artist.cover_url} alt="" className="w-full h-full object-cover" />
+              <img 
+                src={artist.cover_url} 
+                alt="" 
+                className="w-full h-full object-cover" 
+                style={{ 
+                  objectPosition: `50% ${artist.cover_position ?? 50}%`, 
+                  transform: `scale(${artist.cover_zoom ?? 1})` 
+                }} 
+              />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-neon-purple/30 via-neon-purple/15 to-neon-green/15" />
             )}

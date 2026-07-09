@@ -27,8 +27,10 @@ const chartData = [
 
 import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function VenueDashboard() {
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const { user, userProfile, refreshProfile } = useAuth();
   const [artists, setArtists] = useState([]);
@@ -216,6 +218,31 @@ export default function VenueDashboard() {
 
   // Featured Carousel artists
   const featured = [...artists].filter(a => a.featured || a.live_now);
+
+  // Calculate dynamic metrics from proposals (which are events)
+  const confirmedEvents = proposals.filter(p => p.status === 'confirmed');
+  const totalCaches = confirmedEvents.reduce((sum, p) => sum + (p.fee_proposed || p.fee_agreed || 0), 0);
+  const totalEvents = confirmedEvents.length;
+  
+  // Calculate average audience
+  const totalAudience = confirmedEvents.reduce((sum, p) => sum + (p.quantidade_pessoas || 0), 0);
+  const avgAudience = totalEvents > 0 ? Math.round(totalAudience / totalEvents) : 0;
+  
+  // Occupancy rate based on average audience divided by venue capacity
+  const capacity = userProfile?.capacity || 100;
+  const occupancyRate = capacity > 0 ? Math.min(100, Math.round((avgAudience / capacity) * 100)) : 0;
+  
+  // Future events count
+  const futureEvents = confirmedEvents.filter(p => new Date(p.date) >= new Date()).length;
+  
+  // Unique artists count
+  const hiredArtistsCount = new Set(confirmedEvents.map(p => p.artist_id)).size;
+  
+  // Total investment / faturamento noites (caches + bar sales / ticket sales simulated at R$ 40 per ticket)
+  const simulatedRevenue = confirmedEvents.reduce((sum, p) => sum + ((p.quantidade_pessoas || 0) * 40), 0);
+  
+  // Total tips received (simulated based on audience size)
+  const simulatedTips = confirmedEvents.reduce((sum, p) => sum + Math.round((p.quantidade_pessoas || 0) * 1.5), 0);
 
   const startHiringFlow = (artist) => {
     setHiringArtist(artist);
@@ -534,22 +561,22 @@ export default function VenueDashboard() {
               <p className="text-gray-400 text-xs mt-1">Total investido no estabelecimento ({selectedMonth})</p>
               
               <div className="flex items-baseline gap-3 mt-2">
-                <h2 className="text-4xl md:text-5xl font-black text-white">R$ 0,00</h2>
+                <h2 className="text-4xl md:text-5xl font-black text-white">R$ {(totalCaches + simulatedTips).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h2>
                 <div className="flex items-center gap-0.5 text-neon-green text-xs font-bold">
                   <TrendingUp className="w-4 h-4" />
-                  <span>+0%</span>
+                  <span>+{totalEvents > 0 ? '100' : '0'}%</span>
                 </div>
               </div>
               
-              <p className="text-[10px] text-gray-500 mt-1">vs. período anterior: R$ 0,00</p>
+              <p className="text-[10px] text-gray-500 mt-1">Cachês + Gorjetas extras</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { title: 'Cachês Pagos', value: 'R$ 0', icon: DollarSign, color: 'border-neon-purple/20', iconColor: 'text-neon-purple' },
-                { title: 'Gorjetas Extras', value: 'R$ 0', icon: Star, color: 'border-neon-green/20', iconColor: 'text-neon-green' },
-                { title: 'Total Eventos', value: '0 Shows', icon: Music, color: 'border-white/5', iconColor: 'text-white' },
-                { title: 'Média de Público', value: '0 pessoas', icon: Users, color: 'border-white/5', iconColor: 'text-gray-400' }
+                { title: 'Cachês Pagos', value: `R$ ${totalCaches.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'border-neon-purple/20', iconColor: 'text-neon-purple' },
+                { title: 'Gorjetas Extras', value: `R$ ${simulatedTips.toLocaleString('pt-BR')}`, icon: Star, color: 'border-neon-green/20', iconColor: 'text-neon-green' },
+                { title: 'Total Eventos', value: `${totalEvents} Shows`, icon: Music, color: 'border-white/5', iconColor: 'text-white' },
+                { title: 'Média de Público', value: `${avgAudience} pessoas`, icon: Users, color: 'border-white/5', iconColor: 'text-gray-400' }
               ].map((m, i) => (
                 <div key={i} className={`p-3.5 rounded-2xl bg-white/5 border ${m.color} backdrop-blur-sm`}>
                   <div className="flex items-center gap-2 mb-1">
@@ -565,10 +592,10 @@ export default function VenueDashboard() {
 
         {/* METRICS ROW */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Faturamento noites" value="R$ 0" change={0} changeLabel="vs. mês anterior" icon={DollarSign} iconColor="green" />
-          <StatCard title="Artistas contratados" value="0" change={0} changeLabel="novos músicos" icon={Music} iconColor="purple" />
-          <StatCard title="Eventos futuros" value="0" icon={Calendar} iconColor="green" />
-          <StatCard title="Ocupação média" value="0%" change={0} icon={Users} iconColor="purple" />
+          <StatCard title="Faturamento noites" value={`R$ ${simulatedRevenue.toLocaleString('pt-BR')}`} change={totalEvents > 0 ? 10 : 0} changeLabel="vs. período anterior" icon={DollarSign} iconColor="green" />
+          <StatCard title="Artistas contratados" value={`${hiredArtistsCount}`} change={hiredArtistsCount} changeLabel="músicos únicos" icon={Music} iconColor="purple" />
+          <StatCard title="Eventos futuros" value={`${futureEvents}`} icon={Calendar} iconColor="green" />
+          <StatCard title="Ocupação média" value={`${occupancyRate}%`} change={avgAudience} icon={Users} iconColor="purple" />
         </div>
 
         {/* PROPOSTAS ENVIADAS */}
@@ -845,7 +872,7 @@ export default function VenueDashboard() {
                         Ver Perfil
                       </button>
                       <button 
-                        onClick={() => startHiringFlow(a)}
+                        onClick={() => navigate('/venue/artists', { state: { hireArtist: a } })}
                         className="px-3 py-1.5 rounded-lg bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_10px_rgba(123,46,255,0.4)] transition-all"
                       >
                         Contratar
@@ -904,7 +931,7 @@ export default function VenueDashboard() {
                           Ver Perfil
                         </button>
                         <button 
-                          onClick={() => startHiringFlow(a)}
+                          onClick={() => navigate('/venue/artists', { state: { hireArtist: a } })}
                           className="px-4 py-2 rounded-xl bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_15px_rgba(123,46,255,0.3)] transition-all"
                         >
                           Contratar Show
@@ -940,7 +967,7 @@ export default function VenueDashboard() {
                     </div>
                   </div>
                   <button 
-                    onClick={() => startHiringFlow(artist)}
+                    onClick={() => navigate('/venue/artists', { state: { hireArtist: artist } })}
                     className="px-2.5 py-1.5 rounded-lg border border-neon-purple/20 text-neon-purple hover:bg-neon-purple/10 text-[10px] font-bold transition-all"
                   >
                     Chamar
@@ -1580,12 +1607,13 @@ export default function VenueDashboard() {
                   <div className="flex gap-3 pt-4 border-t border-white/5">
                     <button 
                       onClick={() => {
+                        const artist = selectedArtistProfile;
                         setSelectedArtistProfile(null);
-                        startHiringFlow(selectedArtistProfile);
+                        navigate('/venue/artists', { state: { hireArtist: artist } });
                       }}
                       className="flex-1 py-3 rounded-xl bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_15px_rgba(123,46,255,0.4)] transition-all"
                     >
-                      Iniciar Contratração de Show
+                      Iniciar Contratação de Show
                     </button>
                     <button 
                       onClick={() => setSelectedArtistProfile(null)}

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, Star, CheckCircle } from 'lucide-react';
@@ -45,7 +45,10 @@ export default function VenueArtists() {
     async function loadArtists() {
       try {
         const { data } = await supabase.from('artists').select('*');
-        if (data) setAllArtists(data);
+        if (data) {
+          const sorted = [...data].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
+          setAllArtists(sorted);
+        }
       } catch (err) {
         console.error(err);
       } finally {

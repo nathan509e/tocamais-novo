@@ -3,20 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Heart, Star, CheckCircle, Sparkles,
   X, Trash2, ListMusic,
-  FileText
+  FileText, Gift, Building2, Flame, PartyPopper,
+  CalendarCheck, Calendar, MapPin, DollarSign, Users
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
+import { useLocation } from 'react-router-dom';
 
 const eventTypes = [
-  { id: 'wedding', icon: '💍', label: 'Casamento', desc: 'Eventos luxuosos e românticos' },
-  { id: 'birthday', icon: '🎂', label: 'Aniversário', desc: 'Festas de aniversário e comemorações' },
-  { id: 'corporate', icon: '🏢', label: 'Corporativo', desc: 'Jantares e convenções empresariais' },
-  { id: 'bbq', icon: '🥩', label: 'Churrasco', desc: 'Eventos informais e churrascos' },
-  { id: 'private', icon: '🎉', label: 'Festa Privada', desc: 'Residências e salões de festas' },
-  { id: 'luxury', icon: '✨', label: 'Evento Luxo', desc: 'Premium, debutantes, comemorações exclusivas' },
+  { id: 'wedding', icon: Heart, label: 'Casamento', desc: 'Eventos luxuosos e românticos' },
+  { id: 'birthday', icon: Gift, label: 'Aniversário', desc: 'Festas de aniversário e comemorações' },
+  { id: 'corporate', icon: Building2, label: 'Corporativo', desc: 'Jantares e convenções empresariais' },
+  { id: 'bbq', icon: Flame, label: 'Churrasco', desc: 'Eventos informais e churrascos' },
+  { id: 'private', icon: PartyPopper, label: 'Festa Privada', desc: 'Residências e salões de festas' },
+  { id: 'luxury', icon: Sparkles, label: 'Evento Luxo', desc: 'Premium, debutantes, comemorações exclusivas' },
 ];
 
 const budgetTiers = {
@@ -56,6 +58,7 @@ export default function ContractorDashboard() {
   const { user, userProfile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const location = useLocation();
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -138,6 +141,17 @@ export default function ContractorDashboard() {
     return a.artistic_name.toLowerCase().includes(query) || a.genre.toLowerCase().includes(query) || a.city.toLowerCase().includes(query);
   });
 
+  const pendingProposals = contractorProposals.filter(p => p.status !== 'confirmed');
+  const confirmedShows = contractorProposals.filter(p => p.status === 'confirmed');
+
+  useEffect(() => {
+    if (location.state?.hireArtist && artists.length > 0) {
+      const artist = location.state.hireArtist;
+      handleOpenBooking(artist);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, artists]);
+
   const handleOpenBooking = (artist) => {
     setBookingArtist(artist);
     setEventDate('2026-06-12');
@@ -165,27 +179,30 @@ export default function ContractorDashboard() {
     };
 
     try {
-      await supabase.from('events').insert(newEvent);
+      const { error: err1 } = await supabase.from('events').insert(newEvent);
+      if (err1) throw new Error('Erro ao criar evento: ' + err1.message);
 
       const senderName = user?.user_metadata?.name || user?.email || 'Contratante';
       const msg = eventDetails.trim() || `Olá! Tenho interesse em contratar seu show para o dia ${eventDate}. Cachê proposto: R$ ${proposalFee}.`;
 
-      await supabase.from('notifications').insert({
+      const { error: err2 } = await supabase.from('notifications').insert({
         user_id: bookingArtist.user_id,
         title: 'Nova Proposta de Show',
         content: `${senderName} enviou uma proposta para ${eventDate}.`,
         type: 'proposal'
       });
+      if (err2) throw new Error('Erro ao criar notificação: ' + err2.message);
 
-      await supabase.from('messages').insert({
+      const { error: err3 } = await supabase.from('messages').insert({
         sender_id: user.id,
         receiver_id: bookingArtist.user_id,
         text: msg
       });
+      if (err3) throw new Error('Erro ao criar mensagem: ' + err3.message);
 
       setBookingSuccess(true);
     } catch (e) {
-      console.error('Failed to book', e);
+      console.error('Failed to book:', e);
     }
   };
 
@@ -263,6 +280,7 @@ export default function ContractorDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {eventTypes.map(item => {
               const active = selectedEvent === item.id;
+              const IconComp = item.icon;
               return (
                 <button
                   key={item.id}
@@ -273,43 +291,13 @@ export default function ContractorDashboard() {
                       : 'bg-white/5 border-white/5 text-gray-400 hover:border-white/20'
                   }`}
                 >
-                  <span className="text-3xl mb-1.5">{item.icon}</span>
+                  <IconComp className="w-6 h-6 mb-1.5 text-neon-purple" />
                   <span className="text-xs font-bold">{item.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
-
-        {/* AUTOMATED BUDGET ESTIMATOR */}
-        <AnimatePresence mode="wait">
-          {selectedEvent && (
-            <motion.div
-              key={selectedEvent}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={`p-5 rounded-2xl border transition-all ${
-                isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-neon-green" />
-                <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>Calculadora Automática de Orçamento ({selectedEvent})</h4>
-              </div>
-              <p className="text-[10px] text-gray-400 mb-4">Estimativa recomendada de cachê baseada em contratações passadas.</p>
-
-              <div className="grid sm:grid-cols-3 gap-3">
-                {budgetTiers[selectedEvent]?.map((tier, idx) => (
-                  <div key={idx} className={`p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${tier.style} text-center`}>
-                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{tier.label}</p>
-                    <p className="text-sm font-black text-neon-green mt-1">{tier.range}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* PROPOSTAS ENVIADAS */}
         <div>
@@ -318,7 +306,7 @@ export default function ContractorDashboard() {
               <FileText className="w-4 h-4 text-neon-purple" />
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Propostas Enviadas</h3>
               {!contractorProposalsLoading && (
-                <span className="text-[10px] text-gray-500 font-semibold">({contractorProposals.length})</span>
+                <span className="text-[10px] text-gray-500 font-semibold">({pendingProposals.length})</span>
               )}
             </div>
           </div>
@@ -327,19 +315,18 @@ export default function ContractorDashboard() {
             <div className="h-24 flex items-center justify-center bg-white/5 rounded-2xl border border-white/5">
               <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : contractorProposals.length === 0 ? (
-            <div className="p-6 text-center bg-white/5 rounded-2xl border border-white/5">
-              <p className="text-gray-500 text-xs">Nenhuma proposta enviada ainda.</p>
+          ) : pendingProposals.length === 0 ? (
+            <div className="p-6 text-center bg-white/5 rounded-2xl border border-white/5 mb-8">
+              <p className="text-gray-500 text-xs">Nenhuma proposta pendente no momento.</p>
             </div>
           ) : (
             <div className="grid gap-3 mb-8">
-              {contractorProposals.map(p => {
+              {pendingProposals.map(p => {
                 const artist = proposalArtistMap[p.artist_id];
                 const statusConfig = {
                   pending: { label: 'Pendente', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
                   pending_artist_approval: { label: 'Aguardando Artista', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
                   proposed: { label: 'Proposto', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
-                  confirmed: { label: 'Aceito', color: 'text-neon-green bg-neon-green/10 border-neon-green/20' },
                   rejected: { label: 'Recusado', color: 'text-red-400 bg-red-400/10 border-red-400/20' },
                 };
                 const sc = statusConfig[p.status] || { label: p.status, color: 'text-gray-400 bg-white/5 border-white/10' };
@@ -373,6 +360,72 @@ export default function ContractorDashboard() {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* SHOWS AGENDADOS */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="w-4 h-4 text-neon-green" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Shows Agendados</h3>
+              {!contractorProposalsLoading && confirmedShows.length > 0 && (
+                <span className="text-[10px] text-gray-500 font-semibold">({confirmedShows.length})</span>
+              )}
+            </div>
+          </div>
+
+          {contractorProposalsLoading ? (
+            <div className="h-40 flex items-center justify-center bg-white/5 rounded-2xl border border-white/5">
+              <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : confirmedShows.length === 0 ? (
+            <div className="p-8 text-center bg-white/5 rounded-2xl border border-white/5 mb-8">
+              <CalendarCheck className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm font-semibold">Nenhum show agendado ainda</p>
+              <p className="text-gray-500 text-xs mt-1">As propostas aceitas pelos artistas aparecerão aqui.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 mb-8">
+              {confirmedShows.map(s => {
+                const artist = proposalArtistMap[s.artist_id];
+                const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                return (
+                  <div key={s.id} className="p-5 bg-white/5 border border-neon-green/10 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-4 hover:border-neon-green/20 transition-all">
+                    <img
+                      src={artist?.photo_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100&h=100&fit=crop'}
+                      alt={artist?.artistic_name || 'Artista'}
+                      className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-white">{artist?.artistic_name || 'Artista'}</h4>
+                        <CheckCircle className="w-4 h-4 text-neon-green" />
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-neon-green/10 text-neon-green border border-neon-green/20">Confirmado</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{artist?.genre || ''}</p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-neon-green" /> {formattedDate}
+                          {s.time && <> às {s.time.substring(0, 5)}</>}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-neon-green" /> {s.address || 'Local não informado'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="w-3.5 h-3.5 text-neon-green" /> R$ {Number(s.fee_proposed).toLocaleString('pt-BR')}
+                        </span>
+                        {s.quantidade_pessoas && (
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-neon-green" /> {s.quantidade_pessoas} pessoas
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
