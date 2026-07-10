@@ -40,6 +40,10 @@ const navItems = {
     { icon: Mail, label: 'Mensagens', path: '/contractor/messages' },
     { icon: UserIcon, label: 'Perfil', path: '/contractor/profile' },
   ],
+  admin: [
+    { icon: Home, label: 'Painel Admin', path: '/admin' },
+    { icon: Mail, label: 'Pedidos PIX', path: '/admin/orders' },
+  ],
 };
 
 export default function AppLayout({ children, role = 'artist' }) {
@@ -189,7 +193,8 @@ export default function AppLayout({ children, role = 'artist' }) {
     };
   }, [user?.id]);
 
-  const nav = navItems[role] || navItems.artist;
+  const activeRole = userProfile?.role || user?.user_metadata?.role || user?.role || role;
+  const nav = navItems[activeRole] || navItems.artist;
   const username = user?.full_name || user?.name || 'Usuário';
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -226,14 +231,19 @@ export default function AppLayout({ children, role = 'artist' }) {
   };
 
   // Bottom nav mobile: artist gets only 4 core items
-  const mobileBottomNav = role === 'artist'
+  const mobileBottomNav = activeRole === 'artist'
     ? [
         { icon: Home, label: 'Painel', path: '/artist' },
         { icon: Mailbox, label: 'Propostas', path: '/artist/proposals' },
         { icon: Music, label: 'Pedidos', path: '/artist/requests' },
         { icon: Mail, label: 'Mensagens', path: '/artist/messages' },
       ]
-    : nav;
+    : activeRole === 'admin'
+      ? [
+          { icon: Home, label: 'Painel Admin', path: '/admin' },
+          { icon: Mail, label: 'Pedidos PIX', path: '/admin/orders' },
+        ]
+      : nav;
 
   const isDark = theme === 'dark';
 

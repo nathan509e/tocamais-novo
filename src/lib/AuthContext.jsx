@@ -38,8 +38,6 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
 
-      const role = (currentUser.user_metadata?.role || currentUser.role || 'contractor').replace('bar_owner', 'venue');
-      
       let pubUser = null;
       try {
         const { data: existingUser } = await supabase.from('users').select('*').eq('id', currentUser.id).single();
@@ -47,6 +45,8 @@ export const AuthProvider = ({ children }) => {
       } catch (e) {
         console.warn('Error loading public.users, will attempt insert:', e);
       }
+
+      const role = pubUser?.role || (currentUser.user_metadata?.role || currentUser.role || 'contractor').replace('bar_owner', 'venue');
 
       if (!pubUser) {
         const { data: newUserRow, error: insertErr } = await supabase.from('users').insert({
@@ -63,7 +63,9 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      if (role === 'artist') {
+      if (role === 'admin') {
+        setUserProfile(pubUser);
+      } else if (role === 'artist') {
         let artistData = null;
         try {
           const { data } = await supabase.from('artists').select('*').eq('user_id', currentUser.id).single();

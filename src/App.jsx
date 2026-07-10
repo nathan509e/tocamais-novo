@@ -30,6 +30,7 @@ import MessagesPage from './pages/shared/MessagesPage';
 import ArtistTip from './pages/artist/ArtistTip';
 import ArtistRequests from './pages/artist/ArtistRequests';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import ArtistMiniProfile from './pages/artist/ArtistMiniProfile';
 
 const AuthenticatedApp = () => {
@@ -62,12 +63,15 @@ const AuthenticatedApp = () => {
   }
 
   // Determine user dashboard landing page
-  const userRole = user?.user_metadata?.role || user?.role || 'artist';
-  const defaultDashboard = userRole === 'artist' 
-    ? '/artist' 
-    : userRole === 'venue' 
-      ? '/venue' 
-      : '/contractor';
+  const { userProfile } = useAuth();
+  const userRole = userProfile?.role || user?.user_metadata?.role || user?.role || 'artist';
+  const defaultDashboard = userRole === 'admin'
+    ? '/admin'
+    : userRole === 'artist' 
+      ? '/artist' 
+      : userRole === 'venue' 
+        ? '/venue' 
+        : '/contractor';
 
   return (
     <Routes>
@@ -104,6 +108,7 @@ const AuthenticatedApp = () => {
       <Route path="/live" element={<Live />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/messages" element={<Messages />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/orders" element={<AdminOrders />} />
 
       {/* Mini profile */}
