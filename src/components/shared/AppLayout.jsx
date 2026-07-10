@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -44,7 +45,7 @@ const navItems = {
 export default function AppLayout({ children, role = 'artist' }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, userProfile, logout } = useAuth();
+  const { user, userProfile, logout, refreshProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -57,6 +58,97 @@ export default function AppLayout({ children, role = 'artist' }) {
   const [proQrCode, setProQrCode] = useState(null);
   const [proPixPayload, setProPixPayload] = useState(null);
   const [proCpf, setProCpf] = useState('');
+  const [proPaymentCompleted, setProPaymentCompleted] = useState(false);
+
+  // Reset subscription modal state when closed
+  useEffect(() => {
+    if (!showProModal) {
+      setProLoading(false);
+      setProError('');
+      setProSuccess(false);
+      setProQrCode(null);
+      setProPixPayload(null);
+      setProPaymentCompleted(false);
+    }
+  }, [showProModal]);
+
+  // Monitor payment success in real-time or via polling
+  useEffect(() => {
+    if (!showProModal || !proSuccess || !proQrCode || !user?.id || role !== 'artist') return;
+
+    let intervalId;
+    let channel;
+
+    const checkPaymentStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('artists')
+          .select('is_pro')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data && data.is_pro) {
+          handlePaymentSuccess();
+        }
+      } catch (err) {
+        console.error('Error polling payment status:', err);
+      }
+    };
+
+    const triggerCelebration = () => {
+      const duration = 4 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+      const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+      const interval = setInterval(() => {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+    };
+
+    const handlePaymentSuccess = async () => {
+      if (intervalId) clearInterval(intervalId);
+      if (channel) supabase.removeChannel(channel);
+
+      setProPaymentCompleted(true);
+      triggerCelebration();
+      if (refreshProfile) {
+        await refreshProfile();
+      }
+    };
+
+    // Realtime subscription
+    channel = supabase
+      .channel('pro-payment-realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'artists',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        if (payload.new && payload.new.is_pro) {
+          handlePaymentSuccess();
+        }
+      })
+      .subscribe();
+
+    // Polling interval backup
+    intervalId = setInterval(checkPaymentStatus, 3000);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [showProModal, proSuccess, proQrCode, user?.id, role, refreshProfile]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -523,136 +615,179 @@ export default function AppLayout({ children, role = 'artist' }) {
           {/* Gradient top bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A]" />
           
-          <DialogHeader className="pt-2">
-            <div className="flex items-center justify-center mb-3">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center shadow-[0_0_30px_rgba(123,46,255,0.4)]">
-                <Crown className="w-7 h-7 text-white" />
-              </div>
-            </div>
-            <DialogTitle className={`text-center text-xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              TocaMais Pro
-            </DialogTitle>
-            <DialogDescription className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Desbloqueie recursos exclusivos para sua carreira musical
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Features list */}
-          <div className={`rounded-xl p-4 space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
-              </div>
-              <span className="text-sm font-medium">Destaque nos resultados de busca</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-4 h-4 text-[#39FF6A]" />
-              </div>
-              <span className="text-sm font-medium">Selo de verificação Pro</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
-              </div>
-              <span className="text-sm font-medium">100% das gorjetas</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-4 h-4 text-[#39FF6A]" />
-              </div>
-              <span className="text-sm font-medium">Suporte prioritário</span>
-            </div>
-          </div>
-
-          {/* Price */}
-          <div className="text-center py-2">
-            <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>R$ 49,90</span>
-            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
-          </div>
-
-          {/* CPF Input */}
-          {!proSuccess && !proQrCode && (
-            <div>
-              <label className={`text-xs font-semibold mb-1.5 block ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                CPF (obrigatório para assinatura)
-              </label>
-              <input
-                type="text"
-                value={proCpf}
-                onChange={(e) => setProCpf(formatCpf(e.target.value))}
-                placeholder="000.000.000-00"
-                maxLength={14}
-                className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium border outline-none transition-all ${
-                  isDark
-                    ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#7B2EFF]'
-                    : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-[#7B2EFF]'
-                }`}
-              />
-            </div>
-          )}
-
-          {/* Error */}
-          {proError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
-              <p className="text-xs text-red-400 font-medium">{proError}</p>
-            </div>
-          )}
-
-          {/* Success - Show QR Code */}
-          {proSuccess && proQrCode ? (
-            <div className="space-y-4">
-              <div className={`rounded-xl p-4 text-center space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-                <p className="text-xs font-bold text-neon-green uppercase tracking-wider">Pague com PIX</p>
-                <div className="bg-white rounded-xl p-3 inline-block">
-                  <img 
-                    src={`data:image/png;base64,${proQrCode}`} 
-                    alt="QR Code PIX" 
-                    className="w-48 h-48 mx-auto"
-                  />
+          {proPaymentCompleted ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center space-y-6">
+              <div className="relative mt-2 animate-bounce">
+                {/* Glow ring */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#7B2EFF] to-[#39FF6A] blur-lg opacity-60 animate-pulse" />
+                <div className={`relative w-20 h-20 rounded-full border-2 flex items-center justify-center ${
+                  isDark ? 'bg-[#0F0926] border-[#39FF6A]' : 'bg-white border-[#39FF6A]'
+                }`}>
+                  <Check className="w-10 h-10 text-[#39FF6A] drop-shadow-[0_0_8px_rgba(57,255,106,0.5)]" />
                 </div>
-                {proPixPayload && (
-                  <div>
-                    <p className={`text-[10px] mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Ou copie o código PIX:</p>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(proPixPayload)}
-                      className={`text-[10px] px-3 py-1.5 rounded-lg border transition-colors ${
-                        isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      Copiar código
-                    </button>
-                  </div>
-                )}
               </div>
-              <p className={`text-[10px] text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Após o pagamento, seu acesso Pro será ativado automaticamente.
-              </p>
+
+              <div className="space-y-2">
+                <h3 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Parabéns! Você é Pro!
+                </h3>
+                <p className={`text-sm max-w-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Sua assinatura <span className="font-bold text-[#7B2EFF]">TocaMais Pro</span> foi ativada com sucesso. Aproveite todos os benefícios exclusivos!
+                </p>
+              </div>
+
+              <div className={`rounded-xl p-4 w-full space-y-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                <div className="flex items-center gap-2.5 text-left text-xs font-semibold">
+                  <Check className="w-4 h-4 text-[#39FF6A]" />
+                  <span>Selo Pro no seu perfil</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-left text-xs font-semibold">
+                  <Check className="w-4 h-4 text-[#39FF6A]" />
+                  <span>Destaque nas buscas de contratantes</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowProModal(false)}
+                className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-[0_0_25px_rgba(123,46,255,0.3)] hover:shadow-[0_0_35px_rgba(123,46,255,0.5)] transition-all flex items-center justify-center gap-2"
+              >
+                <span>Acessar Recursos Pro</span>
+              </button>
             </div>
           ) : (
-            /* Subscribe Button */
-            <button
-              onClick={handleSubscribePro}
-              disabled={proLoading || !isCpfValid(proCpf)}
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-[0_0_25px_rgba(123,46,255,0.3)] hover:shadow-[0_0_35px_rgba(123,46,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {proLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Gerando cobrança...</span>
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" />
-                  <span>Assinar Agora</span>
-                </>
-              )}
-            </button>
-          )}
+            <>
+              <DialogHeader className="pt-2">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center shadow-[0_0_30px_rgba(123,46,255,0.4)]">
+                    <Crown className="w-7 h-7 text-white" />
+                  </div>
+                </div>
+                <DialogTitle className={`text-center text-xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  TocaMais Pro
+                </DialogTitle>
+                <DialogDescription className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Desbloqueie recursos exclusivos para sua carreira musical
+                </DialogDescription>
+              </DialogHeader>
 
-          <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-            Cobrança recorrente. Cancele quando quiser.
-          </p>
+              {/* Features list */}
+              <div className={`rounded-xl p-4 space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+                  </div>
+                  <span className="text-sm font-medium">Destaque nos resultados de busca</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-4 h-4 text-[#39FF6A]" />
+                  </div>
+                  <span className="text-sm font-medium">Selo de verificação Pro</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+                  </div>
+                  <span className="text-sm font-medium">100% das gorjetas</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-4 h-4 text-[#39FF6A]" />
+                  </div>
+                  <span className="text-sm font-medium">Suporte prioritário</span>
+                </div>
+              </div>
+
+              {/* Price */}
+              <div className="text-center py-2">
+                <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>R$ 49,90</span>
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
+              </div>
+
+              {/* CPF Input */}
+              {!proSuccess && !proQrCode && (
+                <div>
+                  <label className={`text-xs font-semibold mb-1.5 block ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    CPF (obrigatório para assinatura)
+                  </label>
+                  <input
+                    type="text"
+                    value={proCpf}
+                    onChange={(e) => setProCpf(formatCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium border outline-none transition-all ${
+                      isDark
+                        ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#7B2EFF]'
+                        : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-[#7B2EFF]'
+                    }`}
+                  />
+                </div>
+              )}
+
+              {/* Error */}
+              {proError && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-red-400 font-medium">{proError}</p>
+                </div>
+              )}
+
+              {/* Success - Show QR Code */}
+              {proSuccess && proQrCode ? (
+                <div className="space-y-4">
+                  <div className={`rounded-xl p-4 text-center space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                    <p className="text-xs font-bold text-neon-green uppercase tracking-wider">Pague com PIX</p>
+                    <div className="bg-white rounded-xl p-3 inline-block">
+                      <img 
+                        src={`data:image/png;base64,${proQrCode}`} 
+                        alt="QR Code PIX" 
+                        className="w-48 h-48 mx-auto"
+                      />
+                    </div>
+                    {proPixPayload && (
+                      <div>
+                        <p className={`text-[10px] mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Ou copie o código PIX:</p>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(proPixPayload)}
+                          className={`text-[10px] px-3 py-1.5 rounded-lg border transition-colors ${
+                            isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          Copiar código
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className={`text-[10px] text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Após o pagamento, seu acesso Pro será ativado automaticamente.
+                  </p>
+                </div>
+              ) : (
+                /* Subscribe Button */
+                <button
+                  onClick={handleSubscribePro}
+                  disabled={proLoading || !isCpfValid(proCpf)}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-[0_0_25px_rgba(123,46,255,0.3)] hover:shadow-[0_0_35px_rgba(123,46,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {proLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Gerando cobrança...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>Assinar Agora</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                Cobrança recorrente. Cancele quando quiser.
+              </p>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -5,7 +5,7 @@ import {
   Crown, CheckCircle, MapPin, Music,
   Edit3, Video, Wallet,
   ExternalLink, QrCode, X, Sun, Moon,
-  ChevronUp, ChevronDown
+  ChevronUp, ChevronDown, Check
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -37,6 +37,32 @@ export default function ArtistProfile() {
   const [copied, setCopied] = useState(false);
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [asaasWalletId, setAsaasWalletId] = useState('');
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
+
+  const hasWallet = !!artistProfile?.asaas_wallet_id;
+  const hasPhotos = !!artistProfile?.photo_url && !!artistProfile?.cover_url;
+  const hasVideo = !!artistProfile?.presentation_video_url;
+  const hasSongs = !!artistProfile?.selected_musicas_ids && artistProfile.selected_musicas_ids.length > 0;
+
+  const allStepsCompleted = hasWallet && hasPhotos && hasVideo && hasSongs;
+
+  const handleClaimVerified = async () => {
+    if (!user || !allStepsCompleted) return;
+    setSaveStatus('Ativando verificação...');
+    try {
+      const { error } = await supabase
+        .from('artists')
+        .update({ verified: true })
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setArtistProfile(prev => prev ? { ...prev, verified: true } : null);
+      setSaveStatus('');
+      if (refreshProfile) refreshProfile();
+    } catch (err) {
+      console.error('Error claiming verification:', err);
+      setSaveStatus('Erro ao verificar: ' + err.message);
+    }
+  };
 
   const handleImageUpload = async (file, type) => {
     const fileExt = file.name.split('.').pop();
@@ -364,7 +390,16 @@ export default function ArtistProfile() {
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-2">
                 <h2 className={`font-black text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>{artistProfile?.artistic_name || user?.name || 'Artista'}</h2>
-                <CheckCircle className="w-5 h-5 text-neon-purple" />
+                {artistProfile?.verified ? (
+                  <CheckCircle className="w-5 h-5 text-neon-purple" />
+                ) : (
+                  <button
+                    onClick={() => setShowTutorialModal(true)}
+                    className="px-2 py-0.5 rounded bg-neon-purple/20 hover:bg-neon-purple/30 text-[9px] font-bold text-neon-purple transition-all uppercase tracking-wider flex items-center gap-1"
+                  >
+                    Obter Verificado
+                  </button>
+                )}
                 {artistProfile?.is_pro && <Crown className="w-5 h-5 text-amber-400 fill-amber-400" />}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
@@ -633,7 +668,16 @@ export default function ArtistProfile() {
                     Encontre em: <strong>asaas.com → Configurações → Dados da conta</strong>
                   </p>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-bold block mb-1">Wallet ID</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] text-gray-400 font-bold block">Wallet ID</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowTutorialModal(true)}
+                        className="text-[10px] text-neon-purple hover:underline font-bold"
+                      >
+                        Como obter? (Passo a Passo)
+                      </button>
+                    </div>
                     <input
                       type="text"
                       value={manualWalletId}
@@ -796,6 +840,152 @@ export default function ArtistProfile() {
           onConfirm={handleCropConfirm}
           onCancel={() => setCropState(null)}
         />
+      )}
+
+      {/* Tutorial Modal */}
+      {showTutorialModal && createPortal(
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowTutorialModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className={`relative rounded-2xl p-6 max-w-md w-full ${isDark ? 'bg-[#1a1a2e] border border-white/10' : 'bg-white border border-gray-200'} shadow-2xl overflow-y-auto max-h-[90vh]`}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowTutorialModal(false)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+            
+            <div className="space-y-5">
+              <div className="text-center">
+                <h3 className={`text-lg font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Passo a Passo para Verificação
+                </h3>
+                <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Complete as tarefas abaixo para liberar as gorjetas e obter o selo de Verificado!
+                </p>
+              </div>
+
+              <div className="space-y-3.5">
+                {/* Step 1 */}
+                <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${hasWallet ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {hasWallet ? <Check className="w-4 h-4" /> : <span className="w-4 h-4 text-xs font-bold flex items-center justify-center">1</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>1. Criar Conta no Asaas</p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
+                      Crie uma conta gratuita no Asaas para receber e gerenciar seus pagamentos.
+                    </p>
+                    <a
+                      href="https://www.asaas.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-neon-purple hover:underline mt-1.5"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Ir para asaas.com
+                    </a>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${hasWallet ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {hasWallet ? <Check className="w-4 h-4" /> : <span className="w-4 h-4 text-xs font-bold flex items-center justify-center">2</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>2. Conectar Wallet ID</p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
+                      No Asaas, vá em <strong>Configurações → Dados da conta</strong>. Copie o <strong>Wallet ID</strong> (começa com wal_) e salve no formulário do perfil.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${hasPhotos ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {hasPhotos ? <Check className="w-4 h-4" /> : <span className="w-4 h-4 text-xs font-bold flex items-center justify-center">3</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>3. Adicionar Capa e Perfil</p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
+                      Envie uma foto de perfil e imagem de capa para destacar a identidade visual do seu show.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${hasVideo ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {hasVideo ? <Check className="w-4 h-4" /> : <span className="w-4 h-4 text-xs font-bold flex items-center justify-center">4</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>4. Cadastrar Vídeo de Apresentação</p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
+                      Adicione um vídeo de no máximo 1 minuto tocando/cantando para demonstrar seu trabalho aos contratantes.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 5 */}
+                <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${hasSongs ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {hasSongs ? <Check className="w-4 h-4" /> : <span className="w-4 h-4 text-xs font-bold flex items-center justify-center">5</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>5. Caprichar no Repertório</p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
+                      Selecione músicas de repertório no seu painel para que os fãs possam fazer pedidos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verified Button/Status */}
+              <div className="pt-2">
+                {artistProfile?.verified ? (
+                  <div className="p-4 rounded-xl bg-neon-green/10 border border-neon-green/30 text-center space-y-1">
+                    <p className="text-neon-green font-bold text-xs flex items-center justify-center gap-1.5">
+                      <CheckCircle className="w-5 h-5" />
+                      Perfil Verificado e Ativo!
+                    </p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Parabéns, você completou todas as etapas com sucesso!
+                    </p>
+                  </div>
+                ) : allStepsCompleted ? (
+                  <button
+                    onClick={handleClaimVerified}
+                    className="w-full py-3.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
+                      boxShadow: '0 0 15px rgba(123,46,255,0.4)'
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Reivindicar Selo de Verificado!
+                  </button>
+                ) : (
+                  <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-white/5 border-white/5 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                    <p className="text-xs font-bold">Ainda há tarefas pendentes</p>
+                    <p className="text-[10px] mt-0.5">Complete todas as 5 etapas acima para liberar o selo verificado.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>,
+        document.body
       )}
 
       {/* QR Code Modal — portal para evitar conflito de z-index com sidebar */}

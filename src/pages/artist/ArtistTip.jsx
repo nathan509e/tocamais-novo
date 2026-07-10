@@ -161,12 +161,19 @@ export default function ArtistTip() {
           .single();
         if (data) {
           setArtist(data);
-          if (data.selected_musicas_ids?.length) {
+          const activeSetlist = data.setlists?.find(s => s.active);
+          const musicIds = (activeSetlist && activeSetlist.musicas_ids?.length > 0)
+            ? activeSetlist.musicas_ids
+            : data.selected_musicas_ids;
+
+          if (musicIds?.length) {
             const { data: musicas } = await supabase
               .from('musicas_repertorio')
               .select('*')
-              .in('id', data.selected_musicas_ids);
+              .in('id', musicIds);
             setRepertorio(musicas || []);
+          } else {
+            setRepertorio([]);
           }
         } else {
           const { data: userData } = await supabase
@@ -214,38 +221,6 @@ export default function ArtistTip() {
     setPixLoading(true);
     setPixError('');
     try {
-      if (artist?.is_pro && artist?.pix_key?.trim()) {
-        setPixMode('static');
-        const formattedPayload = generatePixPayload(
-          artist.pix_key.trim(),
-          tipAmount,
-          artist.artistic_name,
-          artist.city || 'SAO PAULO'
-        );
-        setPixKey(formattedPayload);
-        setPixPayload(formattedPayload);
-        
-        try {
-          const { data: tipData } = await supabase.from('pending_tips').insert({
-            amount: tipAmount,
-            artist_id: artistId,
-            user_name: userName || 'Cliente',
-            message: message || null,
-            musica_id: selectedMusic?.id || null,
-            status: 'pending'
-          }).select().single();
-          if (tipData) {
-            setPendingTipId(tipData.id);
-          }
-        } catch (e) {
-          console.error('Erro ao registrar gorjeta pendente no banco:', e);
-        }
-
-        setPixCreated(true);
-        setStage(STAGE.PIX_PAYMENT);
-        return;
-      }
-
       const { data, error: fnError } = await supabase.functions.invoke(
         'asaas-create-pix',
         {
@@ -334,7 +309,7 @@ export default function ArtistTip() {
     setRequesting(false);
   };
 
-  const quickTipValues = [2, 5, 10, 20];
+  const quickTipValues = [5, 10, 20, 50, 100];
 
   const renderStage = () => {
     switch (stage) {
@@ -400,12 +375,18 @@ export default function ArtistTip() {
             </div>
 
             <div className="mt-8 space-y-3">
-              <button onClick={() => setStage(STAGE.TIP_VALUE)} disabled={requesting}
-                className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)', boxShadow: '0 0 25px rgba(123,46,255,0.4)' }}>
-                <DollarSign className="w-5 h-5" />
-                Adicionar Gorjeta
-              </button>
+              {artist?.asaas_wallet_id ? (
+                <button onClick={() => setStage(STAGE.TIP_VALUE)} disabled={requesting}
+                  className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)', boxShadow: '0 0 25px rgba(123,46,255,0.4)' }}>
+                  <DollarSign className="w-5 h-5" />
+                  Adicionar Gorjeta
+                </button>
+              ) : (
+                <div className={`p-4 rounded-2xl text-center text-xs border ${isDark ? 'bg-white/5 border-white/10 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                  ⚠️ Gorjetas desativadas para este artista (Wallet ID não configurado).
+                </div>
+              )}
 
               <button onClick={submitRequest} disabled={requesting}
                 className={`w-full py-4 px-6 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
@@ -428,9 +409,11 @@ export default function ArtistTip() {
             </div>
             <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>Obrigado por participar do show!</h2>
             <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Seu pedido foi enviado ao artista.</p>
-            <button onClick={() => { setTipAmount(0); setStage(STAGE.TIP_VALUE); }} className="mt-8 text-sm text-neon-purple hover:underline">
-              Adicionar uma gorjeta agora →
-            </button>
+            {artist?.asaas_wallet_id && (
+              <button onClick={() => { setTipAmount(0); setStage(STAGE.TIP_VALUE); }} className="mt-8 text-sm text-neon-purple hover:underline">
+                Adicionar uma gorjeta agora →
+              </button>
+            )}
           </motion.div>
         );
 
@@ -445,7 +428,7 @@ export default function ArtistTip() {
               <p className={`text-center text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Valor mínimo: R$ 1,00</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 mb-8">
+            <div className="grid grid-cols-5 gap-2 mb-8">
               {quickTipValues.map(value => (
                 <button key={value} onClick={() => setTipAmount(value)}
                   className={`py-3 rounded-2xl font-bold text-sm transition-all ${tipAmount === value ? 'bg-neon-green text-white' : isDark ? 'bg-white/5 text-white' : 'bg-gray-100 text-gray-800'}`}>
