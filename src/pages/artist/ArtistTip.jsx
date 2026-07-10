@@ -226,7 +226,7 @@ export default function ArtistTip() {
         {
           body: {
             amount: tipAmount,
-            description: `Gorjeta para ${artist?.artistic_name || 'Artista'} - TocaMais`,
+            description: `TocaMais - Gorjeta para ${artist?.artistic_name || 'Artista'}`,
             artistUserId: artistId,
             userName: userName || 'Cliente',
             userMessage: message || null,

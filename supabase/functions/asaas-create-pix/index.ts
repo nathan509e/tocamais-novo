@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
         billingType: 'PIX',
         value: amount,
         dueDate: dueDateStr,
-        description: description || `Gorjeta para ${artistUserId || 'Artista'} - TocaMais`
+        description: description || `TocaMais - Gorjeta para ${artistUserId || 'Artista'}`
       })
     })
 
