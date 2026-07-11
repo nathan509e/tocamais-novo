@@ -423,7 +423,7 @@ export default function ArtistTip() {
             <h2 className={`font-bold text-xl text-center mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Valor da Gorjeta</h2>
 
             <div className="mb-6">
-              <input type="number" min="1" step="1" value={tipAmount || ''} onChange={e => setTipAmount(Math.max(0, Number(e.target.value)))} placeholder="Digite o valor"
+              <input type="number" min="1" step="1" value={tipAmount || ''} onChange={e => setTipAmount(Math.max(0, Number(e.target.value)))} placeholder="Digite qualquer valor"
                 className={`w-full p-4 rounded-2xl border-2 text-center text-2xl font-bold outline-none transition-all focus:border-neon-green ${isDark ? 'bg-white/5 border-white/15 text-white placeholder:text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'}`} />
               <p className={`text-center text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Valor mínimo: R$ 1,00</p>
             </div>
@@ -463,13 +463,9 @@ export default function ArtistTip() {
 
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-white rounded-2xl">
-                  {artist?.is_pro && artist?.pix_key?.trim() ? (
-                    <QRCodeSVG value={pixKey} size={160} level="M" />
-                  ) : pixMode === 'dynamic' && pixQrCodeImage ? (
+                  {pixQrCodeImage ? (
                     <img src={`data:image/png;base64,${pixQrCodeImage}`} alt="QR Code PIX" width={160} height={160} style={{ imageRendering: 'pixelated' }} />
-                  ) : pixMode === 'static' && pixQrCodeImage ? (
-                    <img src={`data:image/png;base64,${pixQrCodeImage}`} alt="QR Code PIX" width={160} height={160} style={{ imageRendering: 'pixelated' }} />
-                  ) : pixMode === 'static' && pixKey ? (
+                  ) : pixKey ? (
                     <QRCodeSVG value={pixKey} size={160} level="M" />
                   ) : (
                     <div className="w-40 h-40 flex items-center justify-center">
@@ -480,14 +476,12 @@ export default function ArtistTip() {
               </div>
 
               <p className={`text-center text-xs mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {artist?.is_pro && artist?.pix_key?.trim()
-                  ? 'Escaneie o QR Code ou digite a chave PIX abaixo para pagar'
-                  : pixMode === 'static'
-                    ? 'Escaneie e digite o valor manualmente'
-                    : 'Escaneie o código acima para fazer o pagamento'}
+                {pixMode === 'static'
+                  ? 'Escaneie e digite o valor manualmente'
+                  : 'Escaneie o código acima para fazer o pagamento'}
               </p>
 
-              {pixMode === 'static' && !artist?.is_pro && (
+              {pixMode === 'static' && (
                 <div className={`p-3 rounded-xl mb-3 bg-neon-purple/10 border border-neon-purple/30 text-center`}>
                   <p className={`text-neon-purple font-bold text-sm`}>
                     Digite: R$ {tipAmount.toFixed(2)}
@@ -496,7 +490,7 @@ export default function ArtistTip() {
               )}
 
               <div className="space-y-3">
-                {copyValue && (!artist?.is_pro || !artist?.pix_key?.trim()) && (
+                {copyValue && (
                   <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                     <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                       Código PIX (Copiar e Colar)
@@ -513,114 +507,32 @@ export default function ArtistTip() {
                   </div>
                 )}
 
-                {artist?.is_pro && artist?.pix_key?.trim() && (
-                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
-                    <p className={`text-[10px] uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Chave PIX do Artista (Manual)
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <p className={`font-mono text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                        {artist.pix_key}
-                      </p>
-                      <button 
-                        onClick={() => {
-                          navigator.clipboard.writeText(artist.pix_key);
-                          alert('Chave PIX copiada!');
-                        }}
-                        className="p-2 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 transition-colors ml-2 flex-shrink-0"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 <div className={`p-3 rounded-xl bg-neon-green/10 border border-neon-green/30 text-center`}>
                   <p className={`text-neon-green font-bold text-sm`}>
                     Valor: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
-                {artist?.is_pro && artist?.pix_key?.trim() ? (
-                  <button
-                    onClick={async () => {
-                      try {
-                        // 1. Mark pending_tip as confirmed
-                        if (pendingTipId) {
-                          await supabase.from('pending_tips').update({ status: 'confirmed', confirmed_at: new Date().toISOString() }).eq('id', pendingTipId);
-                        }
 
-                        // 2. Create music_request (same as webhook processTip)
-                        const musicRequest = {
-                          artist_id: artistId,
-                          musica_id: selectedMusic?.id || null,
-                          musica_titulo: selectedMusic?.titulo || 'Pedido com Gorjeta',
-                          musica_artista: selectedMusic?.artista_nome || null,
-                          user_name: userName || 'Cliente',
-                          message: message || null,
-                          status: 'pending',
-                          requested_at: new Date().toISOString(),
-                          amount: tipAmount,
-                          pix_payment_id: pendingTipId,
-                          pix_status: 'paid',
-                          rating: rating || null
-                        };
-                        const { error: insertErr } = await supabase.from('music_requests').insert(musicRequest);
-                        if (insertErr) console.error('Erro ao criar music_request:', insertErr);
+                <div className="flex flex-col items-center justify-center pt-2 pb-1 space-y-2">
+                  <Loader className="w-5 h-5 animate-spin text-neon-green" />
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aguardando pagamento...</span>
+                </div>
 
-                        // 3. Notify artist
-                        const notifTitle = tipAmount > 0
-                          ? `Novo pedido com gorjeta de R$ ${tipAmount.toFixed(2)}`
-                          : 'Novo pedido de música';
-                        const notifContent = `${userName || 'Cliente'} pediu "${selectedMusic?.titulo || 'uma música'}"${message ? `: ${message}` : ''}`;
-                        await supabase.from('notifications').insert({
-                          user_id: artistId,
-                          title: notifTitle,
-                          content: notifContent,
-                          type: 'music_request',
-                          read: false
-                        });
-
-                        // 4. Update artist rating
-                        if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
-                          const { data: ratings } = await supabase
-                            .from('music_requests')
-                            .select('rating')
-                            .eq('artist_id', artistId)
-                            .not('rating', 'is', null);
-                          if (ratings?.length) {
-                            const avg = ratings.reduce((sum, r) => sum + Number(r.rating), 0) / ratings.length;
-                            await supabase.from('artists').update({ rating: Math.round(avg * 10) / 10 }).eq('user_id', artistId);
-                          }
-                        }
-                      } catch (e) {
-                        console.error('Erro ao confirmar gorjeta:', e);
-                      }
-                      setStage(STAGE.FINAL_THANKS);
-                    }}
-                    className="w-full py-3 rounded-xl font-bold text-xs text-white text-center hover:shadow-lg transition-all"
-                    style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}
-                  >
-                    Confirmar Envio da Gorjeta
-                  </button>
-                ) : pollExpired ? (
-                  <div className="space-y-2">
-                    <button onClick={() => { setRetryCount(c => c + 1); setPollExpired(false); }}
-                      className="w-full py-3 rounded-xl font-bold text-xs text-white"
-                      style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
-                      Já paguei, verificar novamente
-                    </button>
-                    <button onClick={() => setStage(STAGE.TIP_VALUE)}
-                      className={`w-full py-3 rounded-xl font-bold text-xs ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                      Algo deu errado, voltar
-                    </button>
+                {pollExpired && (
+                  <div className="text-center pt-2 space-y-2">
+                    <p className="text-[10px] text-yellow-500 font-bold">O tempo limite para detecção automática expirou.</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setRetryCount(c => c + 1); setPollExpired(false); }}
+                        className="flex-1 py-2 px-3 rounded-xl font-bold text-xs text-white"
+                        style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
+                        Verificar novamente
+                      </button>
+                      <button onClick={() => setStage(STAGE.TIP_VALUE)}
+                        className={`py-2 px-3 rounded-xl font-bold text-xs ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                        Voltar
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="w-full py-3 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-2"
-                    style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Aguardando confirmação do pagamento...
-                  </div>
-                )}
               </div>
             </div>
           </motion.div>

@@ -821,6 +821,7 @@ export default function ArtistDashboard() {
           </div>
         </div>
       )}
+      </div>
     </AppLayout>
   );
 }
