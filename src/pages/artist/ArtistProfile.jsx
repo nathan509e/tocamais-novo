@@ -534,11 +534,14 @@ export default function ArtistProfile() {
                 <input type="text" value={editForm.pix_key}
                   onChange={e => setEditForm(f => ({ ...f, pix_key: e.target.value }))}
                   onBlur={e => saveProfileField('pix_key', e.target.value)}
-                  placeholder="CPF, email, telefone ou chave aleatória"
+                  placeholder="Chave aleatória (recomendado), CPF, email ou telefone"
                   className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
                     isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
                   }`}
                 />
+                <p className="text-[9px] text-gray-500 mt-1 leading-relaxed">
+                  🔒 <strong>Dica de Privacidade:</strong> Cadastre uma <strong>Chave Aleatória (EVP)</strong> gerada no app do seu banco para que dados pessoais (como CPF ou celular) não fiquem visíveis aos fãs no código Copia e Cola.
+                </p>
               </div>
               {saveStatus && (
                 <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
