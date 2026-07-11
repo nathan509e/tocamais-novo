@@ -36,11 +36,11 @@ export default function ArtistDashboard() {
   const [musicasRepertorio, setMusicasRepertorio] = useState([]);
   const [selectedMusicasIds, setSelectedMusicasIds] = useState([]);
   const [searchRepertorio, setSearchRepertorio] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    { sender: 'bot', text: 'Olá! Envie um arquivo .txt com suas músicas (uma por linha, ex: "Título - Artista") para adicioná-las rapidamente ao seu repertório.' }
-  ]);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [filterMinhas, setFilterMinhas] = useState(true);
+  const [showCreateSetlistForm, setShowCreateSetlistForm] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
 
   // Availability calendar state
   const [busyDates, setBusyDates] = useState([]);
@@ -165,6 +165,93 @@ export default function ArtistDashboard() {
       if (refreshProfile) refreshProfile();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleImportPlaylistFromText = async (text) => {
+    setIsProcessingFile(true);
+    try {
+      const parsed = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const parsedSongs = parsed.map(line => {
+        let titulo = line;
+        let artista_nome = 'Vários';
+        const parts = line.split(/ - | – | — /);
+        if (parts.length > 1) {
+          titulo = parts[0].trim();
+          artista_nome = parts[1].trim();
+        } else {
+          const parts2 = line.split(/\s{2,}/);
+          if (parts2.length > 1) {
+            titulo = parts2[0].trim();
+            artista_nome = parts2[1].trim();
+          }
+        }
+        return { titulo, artista_nome };
+      });
+
+      const { data: allGlobalSongs } = await supabase
+        .from('musicas_repertorio')
+        .select('id, titulo, artista_nome');
+
+      const newSongIds = [];
+      const songsToInsert = [];
+
+      // Deduplicate parsedSongs by case-insensitive title
+      const uniqueParsedSongs = [];
+      const seenTitles = new Set();
+      for (const song of parsedSongs) {
+        const cleanTitle = song.titulo.toLowerCase().trim();
+        if (!seenTitles.has(cleanTitle)) {
+          seenTitles.add(cleanTitle);
+          uniqueParsedSongs.push(song);
+        }
+      }
+
+      for (const song of uniqueParsedSongs) {
+        const matched = allGlobalSongs?.find(s => 
+          s.titulo.toLowerCase().trim() === song.titulo.toLowerCase().trim()
+        );
+        if (matched) {
+          newSongIds.push(matched.id);
+        } else {
+          songsToInsert.push({
+            titulo: song.titulo,
+            artista_nome: song.artista_nome,
+            duracao_seg: 180,
+            genero: userProfile?.genre || 'Sertanejo'
+          });
+        }
+      }
+
+      if (songsToInsert.length > 0) {
+        const { data: insertedSongs, error: insertError } = await supabase
+          .from('musicas_repertorio')
+          .insert(songsToInsert)
+          .select('id');
+        if (insertError) throw insertError;
+        if (insertedSongs) {
+          newSongIds.push(...insertedSongs.map(s => s.id));
+        }
+      }
+
+      const updatedIds = Array.from(new Set([...selectedMusicasIds, ...newSongIds]));
+      setSelectedMusicasIds(updatedIds);
+      
+      await supabase.from('artists').update({ selected_musicas_ids: updatedIds }).eq('user_id', user.id);
+      if (refreshProfile) refreshProfile();
+
+      const { data: musicas } = await supabase
+        .from('musicas_repertorio')
+        .select('*')
+        .order('artista_nome', { ascending: true });
+      if (musicas) setMusicasRepertorio(musicas);
+
+      alert(`Sucesso! Adicionei ${newSongIds.length} músicas ao seu repertório.`);
+    } catch (err) {
+      console.error('Erro na importação:', err);
+      alert('Erro: ' + err.message);
+    } finally {
+      setIsProcessingFile(false);
     }
   };
 
@@ -336,21 +423,51 @@ export default function ArtistDashboard() {
                 <h4 className="text-xs font-bold uppercase tracking-wider text-white">Minhas Setlists</h4>
                 <p className="text-[10px] text-gray-500">Crie setlists nomeadas e ative uma delas para o show.</p>
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Nome da nova setlist..."
-                  value={newSetlistName}
-                  onChange={e => setNewSetlistName(e.target.value)}
-                  className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-purple/50"
-                />
-                <button
-                  onClick={handleCreateSetlist}
-                  className="p-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-xs font-bold flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Criar
-                </button>
+              <div className="flex items-center gap-2">
+                {showCreateSetlistForm ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nome da setlist..."
+                      value={newSetlistName}
+                      onChange={e => setNewSetlistName(e.target.value)}
+                      className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-purple/50"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => {
+                        handleCreateSetlist();
+                        setShowCreateSetlistForm(false);
+                      }}
+                      className="px-3 py-1.5 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-xs font-bold"
+                    >
+                      Criar
+                    </button>
+                    <button
+                      onClick={() => setShowCreateSetlistForm(false)}
+                      className="px-2 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg text-xs font-bold"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowImportModal(true)}
+                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-neon-purple border border-neon-purple/30 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Importar (.txt)
+                    </button>
+                    <button
+                      onClick={() => setShowCreateSetlistForm(true)}
+                      className="p-1.5 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-xs font-bold flex items-center justify-center"
+                      title="Criar Nova Setlist"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -525,148 +642,6 @@ export default function ArtistDashboard() {
                   : 'Salvar Repertório Geral'
               }
             </button>
-          </div>
-
-          {/* Repertoire Import Chat Assistant */}
-          <div className="mt-6 p-5 rounded-2xl bg-[#0F0926] border border-white/5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-neon-purple animate-pulse" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Assistente de Importação (.txt)</h4>
-            </div>
-
-            <div className="h-48 overflow-y-auto p-4 rounded-xl bg-black/30 border border-white/5 space-y-3 flex flex-col">
-              <div className="flex-1" />
-              {chatMessages.map((msg, index) => (
-                <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed ${
-                    msg.sender === 'user'
-                      ? 'bg-neon-purple text-white rounded-tr-none'
-                      : 'bg-white/10 text-gray-200 rounded-tl-none border border-white/5'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-              {isProcessingFile && (
-                <div className="flex justify-start">
-                  <div className="p-3 rounded-2xl bg-white/10 text-gray-200 rounded-tl-none flex items-center gap-1.5 border border-white/5">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="flex-1 flex items-center justify-between p-3 rounded-xl border border-white/10 bg-black/20 hover:border-white/20 transition-all cursor-pointer">
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <FileText className="w-4 h-4 text-neon-purple" />
-                  <span>Selecione o arquivo .txt da sua playlist</span>
-                </div>
-                <input
-                  type="file"
-                  accept=".txt"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    
-                    setChatMessages(prev => [...prev, { sender: 'user', text: `Arquivo enviado: ${file.name}` }]);
-                    setIsProcessingFile(true);
-
-                    try {
-                      const text = await file.text();
-                      const parsed = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                      
-                      setChatMessages(prev => [...prev, { sender: 'bot', text: `Processando ${parsed.length} músicas...` }]);
-
-                      const parsedSongs = parsed.map(line => {
-                        let titulo = line;
-                        let artista_nome = 'Vários';
-                        const parts = line.split(/ - | – | — /);
-                        if (parts.length > 1) {
-                          titulo = parts[0].trim();
-                          artista_nome = parts[1].trim();
-                        } else {
-                          const parts2 = line.split(/\s{2,}/);
-                          if (parts2.length > 1) {
-                            titulo = parts2[0].trim();
-                            artista_nome = parts2[1].trim();
-                          }
-                        }
-                        return { titulo, artista_nome };
-                      });
-
-                      const { data: allGlobalSongs } = await supabase
-                        .from('musicas_repertorio')
-                        .select('id, titulo, artista_nome');
-
-                      const newSongIds = [];
-                      const songsToInsert = [];
-
-                      // Deduplicate parsedSongs by case-insensitive title
-                      const uniqueParsedSongs = [];
-                      const seenTitles = new Set();
-                      for (const song of parsedSongs) {
-                        const cleanTitle = song.titulo.toLowerCase().trim();
-                        if (!seenTitles.has(cleanTitle)) {
-                          seenTitles.add(cleanTitle);
-                          uniqueParsedSongs.push(song);
-                        }
-                      }
-
-                      for (const song of uniqueParsedSongs) {
-                        const matched = allGlobalSongs?.find(s => 
-                          s.titulo.toLowerCase().trim() === song.titulo.toLowerCase().trim()
-                        );
-                        if (matched) {
-                          newSongIds.push(matched.id);
-                        } else {
-                          songsToInsert.push({
-                            titulo: song.titulo,
-                            artista_nome: song.artista_nome,
-                            duracao_seg: 180,
-                            genero: userProfile?.genre || 'Sertanejo'
-                          });
-                        }
-                      }
-
-                      if (songsToInsert.length > 0) {
-                        const { data: insertedSongs, error: insertError } = await supabase
-                          .from('musicas_repertorio')
-                          .insert(songsToInsert)
-                          .select('id');
-                        if (insertError) throw insertError;
-                        if (insertedSongs) {
-                          newSongIds.push(...insertedSongs.map(s => s.id));
-                        }
-                      }
-
-                      const updatedIds = Array.from(new Set([...selectedMusicasIds, ...newSongIds]));
-                      setSelectedMusicasIds(updatedIds);
-                      
-                      await supabase.from('artists').update({ selected_musicas_ids: updatedIds }).eq('user_id', user.id);
-                      if (refreshProfile) refreshProfile();
-
-                      const { data: musicas } = await supabase
-                        .from('musicas_repertorio')
-                        .select('*')
-                        .order('artista_nome', { ascending: true });
-                      if (musicas) setMusicasRepertorio(musicas);
-
-                      setChatMessages(prev => [...prev, { sender: 'bot', text: `Pronto! Importei e selecionei ${parsedSongs.length} músicas no seu repertório.` }]);
-                    } catch (err) {
-                      setChatMessages(prev => [...prev, { sender: 'bot', text: `Erro: ${err.message}` }]);
-                    } finally {
-                      setIsProcessingFile(false);
-                      e.target.value = '';
-                    }
-                  }}
-                />
-              </label>
-            </div>
-          </div>
         </div>
 
         {/* SMART CALENDAR AND BUSY DATES SECTION */}
@@ -754,6 +729,62 @@ export default function ArtistDashboard() {
         </div>
 
       </div>
+
+      {/* Import Playlist Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative rounded-2xl p-6 max-w-md w-full bg-[#0f0a26] border border-white/10 shadow-2xl space-y-4">
+            <button
+              onClick={() => {
+                setShowImportModal(false);
+                setImportText('');
+              }}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+
+            <div>
+              <h3 className="text-base font-bold text-white">Importar Playlist (Texto)</h3>
+              <p className="text-[10px] text-gray-400 mt-1">
+                Cole o texto da sua playlist abaixo (uma música por linha, ex: <strong>Título - Artista</strong>) para importá-las diretamente.
+              </p>
+            </div>
+
+            <textarea
+              rows={8}
+              placeholder="Exemplo:&#10;Ainda Ontem Chorei de Saudade - João Mineiro & Marciano&#10;Boate Azul - Bruno & Marrone"
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              className="w-full p-3 rounded-xl border text-xs outline-none resize-none font-mono bg-black/30 border-white/10 text-white placeholder:text-gray-600 focus:border-neon-purple/50"
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  if (!importText.trim()) return;
+                  await handleImportPlaylistFromText(importText);
+                  setShowImportModal(false);
+                  setImportText('');
+                }}
+                disabled={isProcessingFile}
+                className="flex-1 py-2 px-4 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+              >
+                {isProcessingFile ? 'Processando...' : 'Importar Músicas'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportText('');
+                }}
+                className="py-2 px-4 rounded-xl text-xs font-bold bg-white/5 text-gray-300 hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
