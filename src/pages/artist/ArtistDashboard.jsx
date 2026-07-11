@@ -10,6 +10,7 @@ import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../lib/AuthContext';
+import { useTheme } from '../../lib/ThemeContext';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line
@@ -21,6 +22,8 @@ const growthData = [];
 
 export default function ArtistDashboard() {
   const { user, userProfile, isLoadingAuth, refreshProfile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const [shows, setShows] = useState([]);
 
@@ -726,39 +729,69 @@ export default function ArtistDashboard() {
               </button>
             </form>
           </div>
-
         </div>
-
-      </div>
 
       {/* Import Playlist Modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative rounded-2xl p-6 max-w-md w-full bg-[#0f0a26] border border-white/10 shadow-2xl space-y-4">
+          <div className={`relative rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 ${
+            isDark ? 'bg-[#0f0a26] border border-white/10 text-white' : 'bg-white border border-gray-200 text-gray-900'
+          }`}>
             <button
               onClick={() => {
                 setShowImportModal(false);
                 setImportText('');
               }}
-              className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10"
+              className={`absolute top-3 right-3 p-1 rounded-full ${
+                isDark ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
+              }`}
             >
-              <X className="w-5 h-5 text-gray-400" />
+              <X className="w-5 h-5" />
             </button>
 
             <div>
-              <h3 className="text-base font-bold text-white">Importar Playlist (Texto)</h3>
-              <p className="text-[10px] text-gray-400 mt-1">
-                Cole o texto da sua playlist abaixo (uma música por linha, ex: <strong>Título - Artista</strong>) para importá-las diretamente.
+              <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Importar Playlist (Texto ou .txt)</h3>
+              <p className={`text-[10px] mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Cole o texto da sua playlist abaixo (uma música por linha, ex: <strong>Título - Artista</strong>) ou faça upload de um arquivo .txt.
               </p>
             </div>
 
             <textarea
-              rows={8}
+              rows={6}
               placeholder="Exemplo:&#10;Ainda Ontem Chorei de Saudade - João Mineiro & Marciano&#10;Boate Azul - Bruno & Marrone"
               value={importText}
               onChange={e => setImportText(e.target.value)}
-              className="w-full p-3 rounded-xl border text-xs outline-none resize-none font-mono bg-black/30 border-white/10 text-white placeholder:text-gray-600 focus:border-neon-purple/50"
+              className={`w-full p-3 rounded-xl border text-xs outline-none resize-none font-mono ${
+                isDark 
+                  ? 'bg-black/30 border-white/10 text-white placeholder:text-gray-600 focus:border-neon-purple/50' 
+                  : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-neon-purple/50'
+              }`}
             />
+
+            <div className={`flex items-center justify-between gap-2 p-3 rounded-xl border border-dashed cursor-pointer relative transition-all ${
+              isDark ? 'border-white/10 bg-black/10 hover:border-white/20' : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+            }`}>
+              <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                <FileText className="w-4 h-4 text-neon-purple" />
+                <span>Ou selecione um arquivo .txt da sua playlist</span>
+              </div>
+              <input
+                type="file"
+                accept=".txt"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    setImportText(text);
+                  } catch (err) {
+                    alert('Erro ao ler arquivo: ' + err.message);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </div>
 
             <div className="flex gap-2">
               <button
@@ -778,7 +811,9 @@ export default function ArtistDashboard() {
                   setShowImportModal(false);
                   setImportText('');
                 }}
-                className="py-2 px-4 rounded-xl text-xs font-bold bg-white/5 text-gray-300 hover:bg-white/10"
+                className={`py-2 px-4 rounded-xl text-xs font-bold ${
+                  isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
               >
                 Cancelar
               </button>
