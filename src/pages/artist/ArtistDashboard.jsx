@@ -642,6 +642,7 @@ export default function ArtistDashboard() {
                   : 'Salvar Repertório Geral'
               }
             </button>
+          </div>
         </div>
 
         {/* SMART CALENDAR AND BUSY DATES SECTION */}
