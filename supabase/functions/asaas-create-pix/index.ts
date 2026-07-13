@@ -110,11 +110,36 @@ Deno.serve(async (req) => {
         description: description || 'TocaMais Pro - Assinatura Mensal',
         nextDueDate: dueDateStr
       }
-      const subResp = await fetch(`${baseUrl}/subscriptions`, {
+      let subResp = await fetch(`${baseUrl}/subscriptions`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify(subscriptionBody)
       })
+      if (!subResp.ok) {
+        const errText = await subResp.clone().text()
+        if (errText.includes("invalid_billingType") || errText.includes("chave Pix")) {
+          console.log("No Pix key found for master account in subscription mode. Attempting auto-generation...")
+          try {
+            const keyGenResp = await fetch(`${baseUrl}/pix/keys`, {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({ type: 'EVP' })
+            })
+            const keyGenText = await keyGenResp.text()
+            console.log("Master PIX key auto-gen response (subscription):", keyGenResp.status, keyGenText)
+            
+            if (keyGenResp.ok) {
+              subResp = await fetch(`${baseUrl}/subscriptions`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify(subscriptionBody)
+              })
+            }
+          } catch (err) {
+            console.error("Auto-generation of master PIX key failed (subscription):", err)
+          }
+        }
+      }
       if (!subResp.ok) {
         const errText = await subResp.text()
         console.error('Asaas create subscription error:', errText)
@@ -215,7 +240,7 @@ Deno.serve(async (req) => {
     dueDate.setDate(dueDate.getDate() + 3)
     const dueDateStr = dueDate.toISOString().split('T')[0]
 
-    const paymentResp = await fetch(`${baseUrl}/payments`, {
+    let paymentResp = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({
@@ -226,6 +251,39 @@ Deno.serve(async (req) => {
         description: description || `TocaMais - Gorjeta para ${artistUserId || 'Artista'}`
       })
     })
+
+    // Auto-healing: If no PIX key is found on the master account, create one and retry
+    if (!paymentResp.ok) {
+      const errText = await paymentResp.clone().text()
+      if (errText.includes("invalid_billingType") || errText.includes("chave Pix")) {
+        console.log("No Pix key found for master account. Attempting auto-generation...")
+        try {
+          const keyGenResp = await fetch(`${baseUrl}/pix/keys`, {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ type: 'EVP' })
+          })
+          const keyGenText = await keyGenResp.text()
+          console.log("Master PIX key auto-gen response:", keyGenResp.status, keyGenText)
+          
+          if (keyGenResp.ok) {
+            paymentResp = await fetch(`${baseUrl}/payments`, {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({
+                customer: customerId,
+                billingType: 'PIX',
+                value: amount,
+                dueDate: dueDateStr,
+                description: description || `TocaMais - Gorjeta para ${artistUserId || 'Artista'}`
+              })
+            })
+          }
+        } catch (err) {
+          console.error("Auto-generation of master PIX key failed:", err)
+        }
+      }
+    }
 
     if (paymentResp.ok) {
       // ── Dynamic PIX succeeded ──
@@ -286,7 +344,7 @@ Deno.serve(async (req) => {
     const errText = await paymentResp.text()
     console.error('Asaas create payment error (dynamic PIX):', errText)
 
-    if (amount >= 5) {
+    if (amount >= 5 && !errText.includes("invalid_billingType")) {
       throw new Error(`Asaas payment creation failed: ${errText}`)
     }
 

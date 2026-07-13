@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
@@ -14,9 +15,56 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
+const COVER_ASPECT_RATIO = 2.5;
+const dbName = 'TocaMaisBanners';
+const storeName = 'banners';
+
+const saveToIndexedDB = (key, value) => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName);
+      }
+    };
+    request.onsuccess = (e) => {
+      const db = e.target.result;
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      store.put(value, key);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const getFromIndexedDB = (key) => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName);
+      }
+    };
+    request.onsuccess = (e) => {
+      const db = e.target.result;
+      const transaction = db.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const getReq = store.get(key);
+      getReq.onsuccess = () => resolve(getReq.result);
+      getReq.onerror = () => reject(getReq.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
 export default function ArtistProfile() {
   const { theme, setTheme } = useTheme();
   const { user, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   
   const [artistProfile, setArtistProfile] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
@@ -85,19 +133,28 @@ export default function ArtistProfile() {
   // Abre o modal de crop quando o usuário seleciona uma imagem
   const openCrop = (file, type) => {
     const src = URL.createObjectURL(file);
-    const aspectRatio = type === 'avatar' ? 1 : 1672 / 941;
-    setCropState({ src, aspectRatio, type, fileName: file.name });
+    const aspectRatio = type === 'avatar' ? 1 : COVER_ASPECT_RATIO;
+    setCropState({ 
+      src, 
+      aspectRatio, 
+      type, 
+      fileName: file.name,
+      zoom: 1,
+      crop: { x: 0, y: 0 },
+      mode: 'fill',
+      croppedAreaPixels: null
+    });
   };
 
   // Quando o usuário confirma o crop
-  const handleCropConfirm = async (blob) => {
+  const handleCropConfirm = async (blob, metadata) => {
     if (!cropState) return;
     const { type, fileName } = cropState;
     setCropState(null);
 
     // Converte blob em File
-    const ext = fileName.split('.').pop() || 'jpg';
-    const croppedFile = new File([blob], `${type}_cropped_${Date.now()}.${ext}`, { type: 'image/jpeg' });
+    const ext = fileName.split('.').pop() || 'webp';
+    const croppedFile = new File([blob], `${type}_cropped_${Date.now()}.${ext}`, { type: 'image/webp' });
 
     setSaveStatus(type === 'avatar' ? 'Enviando foto...' : 'Salvando capa...');
     try {
@@ -113,6 +170,26 @@ export default function ArtistProfile() {
         setEditForm(f => ({ ...f, cover_url: url }));
         setArtistProfile(prev => ({ ...prev, cover_url: url }));
         await saveProfileField('cover_url', url);
+
+        // Store original file + crop parameters in IndexedDB so "Ajustar" works
+        try {
+          const inputEl = document.getElementById('cover-input');
+          const file = inputEl?.files?.[0];
+          const existingMeta = await getFromIndexedDB(`cover_meta_${user.id}`);
+          const originalFile = file || (existingMeta ? existingMeta.file : null);
+
+          if (originalFile) {
+            await saveToIndexedDB(`cover_meta_${user.id}`, {
+              file: originalFile,
+              zoom: metadata?.zoom || 1,
+              crop: metadata?.crop || { x: 0, y: 0 },
+              mode: metadata?.mode || 'fill',
+              croppedAreaPixels: metadata?.croppedAreaPixels || null
+            });
+          }
+        } catch (dbErr) {
+          console.error('IndexedDB save error:', dbErr);
+        }
       }
 
       if (refreshProfile) refreshProfile();
@@ -120,6 +197,50 @@ export default function ArtistProfile() {
     } catch (err) {
       console.error('Erro completo:', err);
       setSaveStatus('Erro no upload: ' + (err.message || err));
+    }
+  };
+
+  const handleAdjustCover = async () => {
+    if (!artistProfile?.cover_url) return;
+    try {
+      const savedMeta = await getFromIndexedDB(`cover_meta_${user.id}`);
+      if (savedMeta && savedMeta.file) {
+        const src = URL.createObjectURL(savedMeta.file);
+        setCropState({
+          src,
+          aspectRatio: COVER_ASPECT_RATIO,
+          type: 'cover',
+          fileName: savedMeta.file.name || 'cover.webp',
+          zoom: savedMeta.zoom || 1,
+          crop: savedMeta.crop || { x: 0, y: 0 },
+          mode: savedMeta.mode || 'fill',
+          croppedAreaPixels: savedMeta.croppedAreaPixels || null
+        });
+      } else {
+        // Fallback to cropping current cover image
+        setCropState({
+          src: artistProfile.cover_url,
+          aspectRatio: COVER_ASPECT_RATIO,
+          type: 'cover',
+          fileName: 'cover.webp',
+          zoom: 1,
+          crop: { x: 0, y: 0 },
+          mode: 'fill',
+          croppedAreaPixels: null
+        });
+      }
+    } catch (e) {
+      console.error('IndexedDB load error, falling back:', e);
+      setCropState({
+        src: artistProfile.cover_url,
+        aspectRatio: COVER_ASPECT_RATIO,
+        type: 'cover',
+        fileName: 'cover.webp',
+        zoom: 1,
+        crop: { x: 0, y: 0 },
+        mode: 'fill',
+        croppedAreaPixels: null
+      });
     }
   };
 
@@ -272,12 +393,11 @@ export default function ArtistProfile() {
       <div className="space-y-6">
         
         {/* Cover */}
-        <div className="relative h-56 overflow-hidden rounded-2xl">
+        <div className="relative w-full overflow-hidden rounded-2xl" style={{ aspectRatio: COVER_ASPECT_RATIO }}>
           <img
             src={artistProfile?.cover_url || 'https://images.unsplash.com/photo-1540039155733-5bb30b4f1519?w=800&h=400&fit=crop'}
             alt="Cover"
-            className="w-full h-full object-cover transition-transform duration-200"
-            style={{ objectPosition: `50% ${coverPosition}%`, transform: `scale(${coverZoom})` }}
+            className="w-full h-full object-cover"
           />
           <div className={`absolute inset-0 bg-gradient-to-t via-transparent to-transparent ${
             isDark ? 'from-[#08041A]' : 'from-[#F4F5FA]'
@@ -296,79 +416,15 @@ export default function ArtistProfile() {
             />
           </div>
           {artistProfile?.cover_url && (
-            showAdjustPanel ? (
-              <div className="absolute bottom-3 left-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-3 flex flex-col gap-2.5 shadow-lg z-20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Ajustar Capa</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdjustPanel(false)}
-                      className="p-0.5 rounded hover:bg-white/15 text-white/80 transition-all"
-                      title="Ocultar painel"
-                    >
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setCoverPosition(50);
-                      setCoverZoom(1);
-                      // Save fields directly on reset
-                      await supabase.from('artists').update({ cover_position: 50, cover_zoom: 1 }).eq('user_id', user.id);
-                      if (refreshProfile) refreshProfile();
-                    }}
-                    className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[9px] font-bold text-white transition-all uppercase tracking-wider"
-                  >
-                    Resetar
-                  </button>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] text-white/70 font-semibold w-12">Posição:</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={coverPosition}
-                      onChange={e => setCoverPosition(Number(e.target.value))}
-                      onMouseUp={async () => await saveProfileField('cover_position', coverPosition)}
-                      onTouchEnd={async () => await saveProfileField('cover_position', coverPosition)}
-                      className="flex-1 h-1.5 appearance-none rounded-full bg-white/20 cursor-pointer outline-none"
-                      style={{ accentColor: '#7B2EFF' }}
-                    />
-                    <span className="text-[9px] text-white/60 w-6 text-right">{coverPosition}%</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] text-white/70 font-semibold w-12">Zoom:</span>
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="3"
-                      step="0.05"
-                      value={coverZoom}
-                      onChange={e => setCoverZoom(Number(e.target.value))}
-                      onMouseUp={async () => await saveProfileField('cover_zoom', coverZoom)}
-                      onTouchEnd={async () => await saveProfileField('cover_zoom', coverZoom)}
-                      className="flex-1 h-1.5 appearance-none rounded-full bg-white/20 cursor-pointer outline-none"
-                      style={{ accentColor: '#7B2EFF' }}
-                    />
-                    <span className="text-[9px] text-white/60 w-6 text-right">{coverZoom}x</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowAdjustPanel(true)}
-                className="absolute bottom-3 right-3 p-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl text-white hover:bg-black/80 transition-all flex items-center gap-1 shadow-lg z-20"
-                title="Ajustar Capa"
-              >
-                <ChevronUp className="w-4 h-4" />
-                <span className="text-[9px] font-bold uppercase tracking-wider">Ajustar</span>
-              </button>
-            )
+            <button
+              type="button"
+              onClick={handleAdjustCover}
+              className="absolute bottom-3 right-3 p-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl text-white hover:bg-black/80 transition-all flex items-center gap-1 shadow-lg z-20 animate-fade-in"
+              title="Ajustar Capa"
+            >
+              <ChevronUp className="w-4 h-4" />
+              <span className="text-[9px] font-bold uppercase tracking-wider">Ajustar</span>
+            </button>
           )}
         </div>
 
@@ -394,7 +450,7 @@ export default function ArtistProfile() {
                   <CheckCircle className="w-5 h-5 text-neon-purple" />
                 ) : (
                   <button
-                    onClick={() => setShowTutorialModal(true)}
+                    onClick={() => navigate('/artist/onboarding')}
                     className="px-2 py-0.5 rounded bg-neon-purple/20 hover:bg-neon-purple/30 text-[9px] font-bold text-neon-purple transition-all uppercase tracking-wider flex items-center gap-1"
                   >
                     Obter Verificado
@@ -662,52 +718,24 @@ export default function ArtistProfile() {
               ) : (
                 <div className="space-y-3">
                   <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Insira o <strong>Wallet ID</strong> da sua conta Asaas para receber gorjetas via PIX.
+                    Ative as gorjetas para receber pagamentos via PIX diretamente no seu perfil.
                   </p>
                   <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                     Comissão: 30% TocaMais | 70% para você
                   </p>
-                  <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Encontre em: <strong>asaas.com → Configurações → Dados da conta</strong>
-                  </p>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[10px] text-gray-400 font-bold block">Wallet ID</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowTutorialModal(true)}
-                        className="text-[10px] text-neon-purple hover:underline font-bold"
-                      >
-                        Como obter? (Passo a Passo)
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={manualWalletId}
-                      onChange={e => setManualWalletId(e.target.value)}
-                      placeholder="Ex: wal_xxxxxxxxxxxxxxxx"
-                      className={`w-full p-2.5 rounded-xl border text-xs outline-none font-mono ${
-                        isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
-                      }`}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <button
-                      onClick={handleSaveManualWallet}
-                      disabled={savingManualWallet || !manualWalletId.trim()}
-                      className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                      style={{
-                        background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
-                        boxShadow: '0 0 15px rgba(123,46,255,0.3)'
-                      }}
-                    >
-                      <Wallet className="w-4 h-4" />
-                      {savingManualWallet ? 'Salvando...' : 'Conectar Conta Asaas'}
-                    </button>
-                    {walletSaved && (
-                      <p className="text-[10px] text-neon-green text-center font-bold">✓ Conta Asaas conectada com sucesso!</p>
-                    )}
-                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => navigate('/artist/onboarding')}
+                    className="w-full py-2.5 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)',
+                      boxShadow: '0 0 15px rgba(123,46,255,0.3)'
+                    }}
+                  >
+                    <Wallet className="w-4 h-4" />
+                    Ativar Gorjeta
+                  </button>
                 </div>
               )}
             </div>

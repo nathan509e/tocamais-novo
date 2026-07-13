@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Star, X, Music } from 'lucide-react';
-import { useTheme } from '@/lib/ThemeContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useTheme } from '../../lib/ThemeContext';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function ArtistProfileModal({ artist, onClose, onHire }) {
   const { theme } = useTheme();
@@ -54,17 +54,13 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
 
         {/* Cover + Profile Card Body */}
         <div className="space-y-6">
-          {/* Cover banner — larger vertical size (h-72) */}
-          <div className="relative h-72 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 overflow-hidden rounded-t-2xl">
+          {/* Cover banner — compact aspect ratio (3.5) */}
+          <div className="relative -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 overflow-hidden rounded-t-2xl" style={{ aspectRatio: 3.5 }}>
             {artist.cover_url ? (
               <img 
                 src={artist.cover_url} 
                 alt="" 
                 className="w-full h-full object-cover" 
-                style={{ 
-                  objectPosition: `50% ${artist.cover_position ?? 50}%`, 
-                  transform: `scale(${artist.cover_zoom ?? 1})` 
-                }} 
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-neon-purple/30 via-neon-purple/15 to-neon-green/15" />
@@ -74,7 +70,9 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
 
           {/* Profile photo — centered, overlapping cover (same -mt-14 as ArtistProfile) */}
           <div className="flex justify-center -mt-14 relative z-10">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-white" style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
+            <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 shadow-lg transition-colors duration-300 ${
+              theme === 'dark' ? 'border-[#0F0926] bg-[#0f0a26]' : 'border-white bg-white'
+            }`} style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
               <img 
                 src={artist.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${artist.artistic_name}`} 
                 alt={artist.artistic_name} 

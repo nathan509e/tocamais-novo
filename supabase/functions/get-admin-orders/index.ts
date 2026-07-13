@@ -26,8 +26,24 @@ serve(async (req) => {
 
     if (reqError) throw new Error(reqError.message)
 
-    // Fetch matching artists
-    const artistIds = [...new Set((requests || []).map(r => r.artist_id).filter(Boolean))]
+    // Fetch pending tips (status = 'pending')
+    const { data: pendingTips, error: pendingError } = await supabaseAdmin
+      .from('pending_tips')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (pendingError) throw new Error(pendingError.message)
+
+    // Get unique artist IDs from both lists
+    const artistIds = [
+      ...new Set([
+        ...(requests || []).map(r => r.artist_id),
+        ...(pendingTips || []).map(p => p.artist_id)
+      ].filter(Boolean))
+    ]
+
     const { data: artists, error: artError } = artistIds.length > 0
       ? await supabaseAdmin.from('artists').select('user_id, artistic_name, photo_url, pix_key').in('user_id', artistIds)
       : { data: [], error: null }
@@ -36,13 +52,34 @@ serve(async (req) => {
 
     const artistMap = new Map((artists || []).map(a => [a.user_id, a]))
 
-    const enriched = (requests || []).map(r => ({
+    const enrichedRequests = (requests || []).map(r => ({
       ...r,
       artist: artistMap.get(r.artist_id) || null
     }))
 
+    const enrichedPending = (pendingTips || []).map(p => ({
+      id: String(p.id),
+      artist_id: p.artist_id,
+      user_name: p.user_name,
+      musica_id: p.musica_id,
+      musica_titulo: p.musica_titulo || 'Gorjeta Avulsa',
+      musica_artista: p.musica_artista,
+      status: 'pending',
+      pix_status: 'pending',
+      amount: p.amount,
+      requested_at: p.created_at,
+      message: p.user_message,
+      rating: p.rating,
+      artist: artistMap.get(p.artist_id) || null
+    }))
+
+    // Merge and sort by requested_at desc
+    const combined = [...enrichedRequests, ...enrichedPending].sort((a, b) => {
+      return new Date(b.requested_at || 0).getTime() - new Date(a.requested_at || 0).getTime()
+    })
+
     return new Response(
-      JSON.stringify({ success: true, data: enriched }),
+      JSON.stringify({ success: true, data: combined }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 

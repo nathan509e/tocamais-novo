@@ -65,7 +65,7 @@ const ArtistMiniProfile = ({ artist }) => {
       <div className="max-w-5xl mx-auto px-4 py-8 md:py-16">
         <div className="overflow-hidden rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
           {/* Banner Image */}
-          <div className="relative h-48 md:h-64 w-full bg-gray-100">
+          <div className="relative w-full bg-gray-100 overflow-hidden" style={{ aspectRatio: 2.5 }}>
             <img src={bannerSrc} alt="Artist Banner" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           </div>

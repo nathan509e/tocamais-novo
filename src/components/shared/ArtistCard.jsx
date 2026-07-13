@@ -1,15 +1,20 @@
 import { motion } from 'framer-motion';
 import { Star, CheckCircle, MapPin, Music, Zap, Crown } from 'lucide-react';
-import NeonButton from '@/components/ui/NeonButton';
+import NeonButton from '../ui/NeonButton';
+import { useTheme } from '../../lib/ThemeContext';
 
 export default function ArtistCard({ artist, onHire, onView, compact = false }) {
-  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured, is_pro, cover_position, cover_zoom } = artist;
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured, is_pro } = artist;
 
   if (compact) {
     return (
       <motion.div
         whileHover={{ scale: 1.02 }}
-        className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:border-neon-purple/30 transition-all cursor-pointer"
+        className={`flex items-center gap-3 p-3 rounded-xl border shadow-sm hover:border-neon-purple/30 transition-all cursor-pointer ${
+          isDark ? 'bg-[#120D2C] border-white/10 text-white' : 'bg-white border-gray-100 text-gray-800'
+        }`}
         onClick={() => onView?.(artist)}
       >
         <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
@@ -20,7 +25,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
-            <p className="text-gray-900 font-semibold text-sm truncate">{artistic_name}</p>
+            <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{artistic_name}</p>
             {verified && <CheckCircle className="w-3.5 h-3.5 text-neon-purple flex-shrink-0" />}
             {is_pro && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
           </div>
@@ -41,20 +46,18 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:border-neon-purple/30 hover:shadow-md transition-all duration-300 cursor-pointer"
+      className={`border rounded-2xl overflow-hidden shadow-sm hover:border-neon-purple/30 hover:shadow-md transition-all duration-300 cursor-pointer ${
+        isDark ? 'bg-[#120D2C] border-white/5 text-white' : 'bg-white border-gray-100 text-gray-800'
+      }`}
       onClick={() => onView?.(artist)}
     >
-      {/* Cover banner — larger vertical size (h-64) */}
-      <div className="relative h-64 overflow-hidden">
+      {/* Cover banner — standard height (h-64) */}
+      <div className="relative h-64 overflow-hidden bg-gray-900">
         {cover_url ? (
           <img 
             src={cover_url} 
             alt="" 
             className="w-full h-full object-cover" 
-            style={{ 
-              objectPosition: `50% ${cover_position ?? 50}%`, 
-              transform: `scale(${cover_zoom ?? 1})` 
-            }} 
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-neon-purple/30 via-neon-purple/15 to-neon-green/15" />
@@ -79,8 +82,10 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
       </div>
 
       {/* Profile photo — centered, overlapping cover (same -mt-14 as ArtistProfile) */}
-      <div className="flex justify-center -mt-14 relative z-10">
-        <div className="w-20 h-20 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-white" style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
+      <div className="flex justify-center -mt-10 sm:-mt-14 relative z-10">
+        <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 shadow-lg transition-colors duration-350 ${
+          isDark ? 'border-[#120D2C] bg-[#120D2C]' : 'border-white bg-white'
+        }`} style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
           <img
             src={photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${artistic_name}`}
             alt={artistic_name}
@@ -92,7 +97,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
       {/* Info */}
       <div className="px-4 pb-4 pt-2 text-center">
         <div className="flex items-center justify-center gap-1.5">
-          <p className="text-gray-900 font-bold text-base">{artistic_name}</p>
+          <p className={`font-bold text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>{artistic_name}</p>
           {verified && <CheckCircle className="w-4 h-4 text-neon-purple" />}
           {is_pro && <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />}
         </div>
@@ -107,7 +112,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
         <div className="flex items-center justify-between mt-3 mb-3">
           <div className="flex items-center gap-1.5">
             <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className="text-gray-900 font-semibold text-sm">{rating?.toFixed(1)}</span>
+            <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{rating?.toFixed(1)}</span>
             <span className="text-gray-500 text-xs">({artist.total_reviews || 0})</span>
           </div>
           <div className="text-right">

@@ -317,7 +317,7 @@ export default function AppLayout({ children, role = 'artist' }) {
         <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3 mb-3">
             <img 
-              src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
+              src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=7B2EFF&color=fff'} 
               alt="Avatar" 
               className="w-10 h-10 rounded-xl object-cover border border-white/10"
             />
@@ -590,7 +590,7 @@ export default function AppLayout({ children, role = 'artist' }) {
               <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
                 <div className="flex items-center gap-3 mb-3">
                   <img 
-                    src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop'} 
+                    src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=7B2EFF&color=fff'} 
                     alt="Avatar" 
                     className="w-9 h-9 rounded-lg object-cover"
                   />

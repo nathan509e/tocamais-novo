@@ -78,6 +78,7 @@ export default function ArtistTip() {
 
   const [stage, setStage] = useState(STAGE.FORM);
   const [artist, setArtist] = useState(null);
+  const canReceiveTip = artist?.is_pro ? !!artist?.pix_key : !!artist?.asaas_wallet_id;
   const [repertorio, setRepertorio] = useState([]);
   const [searchRepertorio, setSearchRepertorio] = useState('');
   const [selectedMusic, setSelectedMusic] = useState(null);
@@ -321,7 +322,7 @@ export default function ArtistTip() {
             className="w-full max-w-sm"
           >
             {/* Banner */}
-            <div className="w-full h-36 rounded-2xl overflow-hidden relative">
+            <div className="w-full rounded-2xl overflow-hidden relative" style={{ aspectRatio: 2.5 }}>
               {artist?.cover_url ? (
                 <img src={artist.cover_url} alt="Banner" className="w-full h-full object-cover" />
               ) : (
@@ -375,7 +376,7 @@ export default function ArtistTip() {
             </div>
 
             <div className="mt-8 space-y-3">
-              {artist?.asaas_wallet_id ? (
+              {canReceiveTip ? (
                 <button onClick={() => setStage(STAGE.TIP_VALUE)} disabled={requesting}
                   className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)', boxShadow: '0 0 25px rgba(123,46,255,0.4)' }}>
@@ -384,7 +385,7 @@ export default function ArtistTip() {
                 </button>
               ) : (
                 <div className={`p-4 rounded-2xl text-center text-xs border ${isDark ? 'bg-white/5 border-white/10 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
-                  ⚠️ Gorjetas desativadas para este artista (Wallet ID não configurado).
+                  ⚠️ Gorjetas desativadas para este artista ({artist?.is_pro ? 'Chave PIX não configurada' : 'Wallet ID não configurado'}).
                 </div>
               )}
 
@@ -409,7 +410,7 @@ export default function ArtistTip() {
             </div>
             <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>Obrigado por participar do show!</h2>
             <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Seu pedido foi enviado ao artista.</p>
-            {artist?.asaas_wallet_id && (
+            {canReceiveTip && (
               <button onClick={() => { setTipAmount(0); setStage(STAGE.TIP_VALUE); }} className="mt-8 text-sm text-neon-purple hover:underline">
                 Adicionar uma gorjeta agora →
               </button>
@@ -446,11 +447,9 @@ export default function ArtistTip() {
           </motion.div>
         );
 
-      case STAGE.PIX_PAYMENT:
-        // For static mode, show the pixKey as the "code" to copy
+      case STAGE.PIX_PAYMENT: {
         const copyValue = pixPayload || pixKey;
         const copyPreview = copyValue ? (copyValue.length > 30 ? copyValue.substring(0, 30) + '...' : copyValue) : '';
-
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-sm">
             <div className={`p-6 rounded-3xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-lg'}`}>
@@ -460,7 +459,6 @@ export default function ArtistTip() {
                 </div>
                 <span className={`ml-2 font-bold text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>QR Code PIX</span>
               </div>
-
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-white rounded-2xl">
                   {pixQrCodeImage ? (
@@ -474,21 +472,18 @@ export default function ArtistTip() {
                   )}
                 </div>
               </div>
-
               <p className={`text-center text-xs mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 {pixMode === 'static'
                   ? 'Escaneie e digite o valor manualmente'
                   : 'Escaneie o código acima para fazer o pagamento'}
               </p>
-
               {pixMode === 'static' && (
-                <div className={`p-3 rounded-xl mb-3 bg-neon-purple/10 border border-neon-purple/30 text-center`}>
-                  <p className={`text-neon-purple font-bold text-sm`}>
+                <div className="p-3 rounded-xl mb-3 bg-neon-purple/10 border border-neon-purple/30 text-center">
+                  <p className="text-neon-purple font-bold text-sm">
                     Digite: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
               )}
-
               <div className="space-y-3">
                 {copyValue && (
                   <div className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
@@ -506,18 +501,15 @@ export default function ArtistTip() {
                     </div>
                   </div>
                 )}
-
-                <div className={`p-3 rounded-xl bg-neon-green/10 border border-neon-green/30 text-center`}>
-                  <p className={`text-neon-green font-bold text-sm`}>
+                <div className="p-3 rounded-xl bg-neon-green/10 border border-neon-green/30 text-center">
+                  <p className="text-neon-green font-bold text-sm">
                     Valor: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
-
                 <div className="flex flex-col items-center justify-center pt-2 pb-1 space-y-2">
                   <Loader className="w-5 h-5 animate-spin text-neon-green" />
                   <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aguardando pagamento...</span>
                 </div>
-
                 {pollExpired && (
                   <div className="text-center pt-2 space-y-2">
                     <p className="text-[10px] text-yellow-500 font-bold">O tempo limite para detecção automática expirou.</p>
@@ -533,10 +525,12 @@ export default function ArtistTip() {
                       </button>
                     </div>
                   </div>
+                )}
               </div>
             </div>
           </motion.div>
         );
+      }
 
       case STAGE.FINAL_THANKS:
         return (

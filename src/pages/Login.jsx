@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 import { Music, Home, User, Mail, ArrowRight } from 'lucide-react';
 import NeonButton from '../components/ui/NeonButton';
 
@@ -54,8 +55,19 @@ export default function Login() {
         if (error) {
           setErrorMsg(error.message || 'Dados inválidos ou usuário não cadastrado.');
         } else if (user) {
-          const role = (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
-          navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
+          // Fetch exact role from public users table to handle updates/overrides (like admin)
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+          const role = profile?.role || (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
+          if (role === 'admin') {
+            navigate('/admin');
+          } else {
+            navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
+          }
         }
       }
     } catch (err) {
@@ -82,8 +94,19 @@ export default function Login() {
       if (error) {
         setErrorMsg(error.message || 'Erro ao fazer login');
       } else if (user) {
-        const role = (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
-        navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
+        // Fetch exact role from public users table to handle updates/overrides (like admin)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        const role = profile?.role || (user.user_metadata?.role || user.role || 'contractor').replace('bar_owner', 'venue');
+        if (role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate(role === 'artist' ? '/artist' : role === 'venue' ? '/venue' : '/contractor');
+        }
       } else {
         setErrorMsg('Resposta inválida do servidor');
       }
@@ -136,7 +159,7 @@ export default function Login() {
               </button>
               <button 
                 type="button" 
-                onClick={() => handleQuickLogin('joao@gmail.com')}
+                onClick={() => handleQuickLogin('maximiano.nathan004@gmail.com')}
                 className="py-2 px-1 rounded-xl bg-neon-green/10 border border-neon-green/20 text-[10px] font-bold text-green-300 hover:bg-neon-green/25 transition-all text-center"
               >
                 🏢 Casa Show

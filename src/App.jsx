@@ -32,6 +32,7 @@ import ArtistRequests from './pages/artist/ArtistRequests';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ArtistMiniProfile from './pages/artist/ArtistMiniProfile';
+import ArtistOnboarding from './pages/artist/ArtistOnboarding';
 
 const AuthenticatedApp = () => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
@@ -89,6 +90,7 @@ const AuthenticatedApp = () => {
       <Route path="/artist/messages" element={<MessagesPage role="artist" />} />
       <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
       <Route path="/artist/requests" element={<ArtistRequests />} />
+      <Route path="/artist/onboarding" element={<ArtistOnboarding />} />
 
       {/* Venue Routes */}
       <Route path="/venue" element={<VenueDashboard />} />

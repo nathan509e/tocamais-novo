@@ -295,11 +295,36 @@ serve(async (req) => {
       })
     }
 
+    // Create random PIX key (EVP) for the subaccount if apiKey is available
+    let createdPixKey = ''
+    if (subaccountApiKey) {
+      console.log('Generating random PIX key (EVP) for subaccount...')
+      try {
+        const pixKeyResp = await fetch(`${baseUrl}/pix/keys`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': subaccountApiKey
+          },
+          body: JSON.stringify({ type: 'EVP' })
+        })
+        const pixKeyText = await pixKeyResp.text()
+        console.log('Asaas PIX key response:', pixKeyResp.status, pixKeyText)
+        if (pixKeyResp.ok) {
+          const pixKeyData = JSON.parse(pixKeyText)
+          createdPixKey = pixKeyData.key || ''
+        }
+      } catch (err) {
+        console.error('Failed to auto-create random PIX key for subaccount:', err)
+      }
+    }
+
     // Save to database
     const updateData: Record<string, unknown> = {
       asaas_wallet_id: walletId,
     }
     if (subaccountApiKey) updateData.asaas_api_key = subaccountApiKey
+    if (createdPixKey) updateData.pix_key = createdPixKey
     updateData.asaas_account_status = 'pending_verification'
     updateData.cpf_cnpj = cleanCpfCnpj
 

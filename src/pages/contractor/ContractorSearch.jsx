@@ -23,9 +23,10 @@ export default function ContractorSearch() {
   useEffect(() => {
     async function loadArtists() {
       try {
-        const { data } = await supabase.from('artists').select('*');
+        const { data } = await supabase.from('artists').select('*, users(role)');
         if (data) {
-          const sorted = [...data].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
+          const filtered = data.filter(a => a.users?.role !== 'admin');
+          const sorted = [...filtered].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
           setAllArtists(sorted);
         }
       } catch (err) {
