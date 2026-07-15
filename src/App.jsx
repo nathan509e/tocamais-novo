@@ -33,6 +33,8 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ArtistMiniProfile from './pages/artist/ArtistMiniProfile';
 import ArtistOnboarding from './pages/artist/ArtistOnboarding';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 const AuthenticatedApp = () => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
@@ -58,6 +60,8 @@ const AuthenticatedApp = () => {
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
+        <Route path="/privacidade" element={<PrivacyPolicy />} />
+        <Route path="/termos" element={<TermsOfService />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -115,6 +119,10 @@ const AuthenticatedApp = () => {
 
       {/* Mini profile */}
       <Route path="/artist/mini-profile" element={<ArtistMiniProfile />} />
+
+      {/* Policy and Terms */}
+      <Route path="/privacidade" element={<PrivacyPolicy />} />
+      <Route path="/termos" element={<TermsOfService />} />
 
       {/* Catch all */}
       <Route path="*" element={<PageNotFound />} />

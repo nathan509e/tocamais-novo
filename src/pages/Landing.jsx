@@ -395,7 +395,16 @@ const Landing = () => {
 
       {/* ===== FOOTER ===== */}
       <footer className="py-16 bg-[#0a090b] text-white text-center">
-        <img src={logoTocaMais} alt="Toca Mais" className="h-16 w-auto mx-auto mb-8 opacity-80" />
+        <img src={logoTocaMais} alt="Toca Mais" className="h-16 w-auto mx-auto mb-6 opacity-80" />
+        <div className="flex flex-wrap justify-center gap-6 mb-6 text-xs text-white/50">
+          <Link to="/privacidade" className="hover:text-[#39FF6A] hover:underline transition-colors">
+            Política de Privacidade
+          </Link>
+          <span className="text-white/20 select-none">•</span>
+          <Link to="/termos" className="hover:text-[#39FF6A] hover:underline transition-colors">
+            Termos de Serviço
+          </Link>
+        </div>
         <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/60">
           © {new Date().getFullYear()} TOCAMAIS — O Palco é Todo Seu
         </p>
