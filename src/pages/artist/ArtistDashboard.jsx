@@ -85,6 +85,10 @@ export default function ArtistDashboard() {
   const [saved, setSaved] = useState(false);
   const [editingSetlist, setEditingSetlist] = useState(null); // { id, name, musicas_ids, active } | null
   const [newSetlistName, setNewSetlistName] = useState('');
+  const [newSetlistFileText, setNewSetlistFileText] = useState('');
+  const [newSetlistFileName, setNewSetlistFileName] = useState('');
+  const [newSetlistSongs, setNewSetlistSongs] = useState([]);
+  const [newSetlistSearch, setNewSetlistSearch] = useState('');
 
   const toggleMusica = (musicaId) => {
     setSaved(false);
@@ -113,7 +117,12 @@ export default function ArtistDashboard() {
           }
           return s;
         });
-        await supabase.from('artists').update({ setlists: updatedSetlists }).eq('user_id', user.id);
+        const updates = { setlists: updatedSetlists };
+        if (editingSetlist.active) {
+          updates.selected_musicas_ids = editingSetlist.musicas_ids;
+          setSelectedMusicasIds(editingSetlist.musicas_ids);
+        }
+        await supabase.from('artists').update(updates).eq('user_id', user.id);
         setEditingSetlist(null);
       } else {
         await supabase.from('artists').update({ selected_musicas_ids: selectedMusicasIds }).eq('user_id', user.id);
@@ -125,21 +134,116 @@ export default function ArtistDashboard() {
     setTimeout(() => setSaved(false), 3000);
   };
 
+  const parseAndRegisterSongs = async (text) => {
+    const parsed = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const parsedSongs = parsed.map(line => {
+      let titulo = line;
+      let artista_nome = 'Vários';
+      const parts = line.split(/ - | – | — /);
+      if (parts.length > 1) {
+        titulo = parts[0].trim();
+        artista_nome = parts[1].trim();
+      } else {
+        const parts2 = line.split(/\s{2,}/);
+        if (parts2.length > 1) {
+          titulo = parts2[0].trim();
+          artista_nome = parts2[1].trim();
+        }
+      }
+      return { titulo, artista_nome };
+    });
+
+    const { data: allGlobalSongs } = await supabase
+      .from('musicas_repertorio')
+      .select('id, titulo, artista_nome');
+
+    const newSongIds = [];
+    const songsToInsert = [];
+
+    // Deduplicate parsedSongs by case-insensitive title
+    const uniqueParsedSongs = [];
+    const seenTitles = new Set();
+    for (const song of parsedSongs) {
+      const cleanTitle = song.titulo.toLowerCase().trim();
+      if (!seenTitles.has(cleanTitle)) {
+        seenTitles.add(cleanTitle);
+        uniqueParsedSongs.push(song);
+      }
+    }
+
+    for (const song of uniqueParsedSongs) {
+      const matched = allGlobalSongs?.find(s => 
+        s.titulo.toLowerCase().trim() === song.titulo.toLowerCase().trim()
+      );
+      if (matched) {
+        newSongIds.push(matched.id);
+      } else {
+        songsToInsert.push({
+          titulo: song.titulo,
+          artista_nome: song.artista_nome,
+          duracao_seg: 180,
+          genero: userProfile?.genre || 'Sertanejo'
+        });
+      }
+    }
+
+    if (songsToInsert.length > 0) {
+      const { data: insertedSongs, error: insertError } = await supabase
+        .from('musicas_repertorio')
+        .insert(songsToInsert)
+        .select('id');
+      if (insertError) throw insertError;
+      if (insertedSongs) {
+        newSongIds.push(...insertedSongs.map(s => s.id));
+      }
+    }
+
+    const { data: musicas } = await supabase
+      .from('musicas_repertorio')
+      .select('*')
+      .order('artista_nome', { ascending: true });
+    if (musicas) setMusicasRepertorio(musicas);
+
+    return newSongIds;
+  };
+
   const handleCreateSetlist = async () => {
     if (!newSetlistName.trim() || !user?.id) return;
-    const newSetlist = {
-      id: 'set-' + Date.now(),
-      name: newSetlistName.trim(),
-      musicas_ids: [],
-      active: false
-    };
-    const updatedSetlists = [...(userProfile?.setlists || []), newSetlist];
+    setIsProcessingFile(true);
     try {
-      await supabase.from('artists').update({ setlists: updatedSetlists }).eq('user_id', user.id);
+      let musicasIds = [...newSetlistSongs];
+      const updates = {};
+
+      if (newSetlistFileText.trim()) {
+        const newSongIds = await parseAndRegisterSongs(newSetlistFileText);
+        musicasIds = Array.from(new Set([...musicasIds, ...newSongIds]));
+        // Also add them to the artist's general repertoire (selectedMusicasIds)
+        const updatedIds = Array.from(new Set([...selectedMusicasIds, ...newSongIds]));
+        setSelectedMusicasIds(updatedIds);
+        updates.selected_musicas_ids = updatedIds;
+      }
+
+      const newSetlist = {
+        id: 'set-' + Date.now(),
+        name: newSetlistName.trim(),
+        musicas_ids: musicasIds,
+        active: false
+      };
+      const updatedSetlists = [...(userProfile?.setlists || []), newSetlist];
+      updates.setlists = updatedSetlists;
+      
+      await supabase.from('artists').update(updates).eq('user_id', user.id);
       setNewSetlistName('');
+      setNewSetlistFileText('');
+      setNewSetlistFileName('');
+      setNewSetlistSongs([]);
+      setNewSetlistSearch('');
       if (refreshProfile) refreshProfile();
     } catch (e) {
       console.error(e);
+      alert('Erro ao criar setlist: ' + e.message);
+    } finally {
+      setIsProcessingFile(false);
     }
   };
 
@@ -157,14 +261,28 @@ export default function ArtistDashboard() {
 
   const handleToggleSetlistActive = async (setlistId) => {
     if (!user?.id) return;
+    let activeSetlistSongs = null;
+    let nextActiveState = false;
     const updatedSetlists = (userProfile?.setlists || []).map(s => {
       if (s.id === setlistId) {
-        return { ...s, active: !s.active };
+        const active = !s.active;
+        nextActiveState = active;
+        if (active) {
+          activeSetlistSongs = s.musicas_ids || [];
+        }
+        return { ...s, active };
       }
       return { ...s, active: false };
     });
+
     try {
-      await supabase.from('artists').update({ setlists: updatedSetlists }).eq('user_id', user.id);
+      const updates = { setlists: updatedSetlists };
+      // If we activated a playlist, sync its songs to the general active repertoire
+      if (nextActiveState && activeSetlistSongs !== null) {
+        updates.selected_musicas_ids = activeSetlistSongs;
+        setSelectedMusicasIds(activeSetlistSongs);
+      }
+      await supabase.from('artists').update(updates).eq('user_id', user.id);
       if (refreshProfile) refreshProfile();
     } catch (e) {
       console.error(e);
@@ -174,80 +292,12 @@ export default function ArtistDashboard() {
   const handleImportPlaylistFromText = async (text) => {
     setIsProcessingFile(true);
     try {
-      const parsed = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      const parsedSongs = parsed.map(line => {
-        let titulo = line;
-        let artista_nome = 'Vários';
-        const parts = line.split(/ - | – | — /);
-        if (parts.length > 1) {
-          titulo = parts[0].trim();
-          artista_nome = parts[1].trim();
-        } else {
-          const parts2 = line.split(/\s{2,}/);
-          if (parts2.length > 1) {
-            titulo = parts2[0].trim();
-            artista_nome = parts2[1].trim();
-          }
-        }
-        return { titulo, artista_nome };
-      });
-
-      const { data: allGlobalSongs } = await supabase
-        .from('musicas_repertorio')
-        .select('id, titulo, artista_nome');
-
-      const newSongIds = [];
-      const songsToInsert = [];
-
-      // Deduplicate parsedSongs by case-insensitive title
-      const uniqueParsedSongs = [];
-      const seenTitles = new Set();
-      for (const song of parsedSongs) {
-        const cleanTitle = song.titulo.toLowerCase().trim();
-        if (!seenTitles.has(cleanTitle)) {
-          seenTitles.add(cleanTitle);
-          uniqueParsedSongs.push(song);
-        }
-      }
-
-      for (const song of uniqueParsedSongs) {
-        const matched = allGlobalSongs?.find(s => 
-          s.titulo.toLowerCase().trim() === song.titulo.toLowerCase().trim()
-        );
-        if (matched) {
-          newSongIds.push(matched.id);
-        } else {
-          songsToInsert.push({
-            titulo: song.titulo,
-            artista_nome: song.artista_nome,
-            duracao_seg: 180,
-            genero: userProfile?.genre || 'Sertanejo'
-          });
-        }
-      }
-
-      if (songsToInsert.length > 0) {
-        const { data: insertedSongs, error: insertError } = await supabase
-          .from('musicas_repertorio')
-          .insert(songsToInsert)
-          .select('id');
-        if (insertError) throw insertError;
-        if (insertedSongs) {
-          newSongIds.push(...insertedSongs.map(s => s.id));
-        }
-      }
-
+      const newSongIds = await parseAndRegisterSongs(text);
       const updatedIds = Array.from(new Set([...selectedMusicasIds, ...newSongIds]));
       setSelectedMusicasIds(updatedIds);
       
       await supabase.from('artists').update({ selected_musicas_ids: updatedIds }).eq('user_id', user.id);
       if (refreshProfile) refreshProfile();
-
-      const { data: musicas } = await supabase
-        .from('musicas_repertorio')
-        .select('*')
-        .order('artista_nome', { ascending: true });
-      if (musicas) setMusicasRepertorio(musicas);
 
       alert(`Sucesso! Adicionei ${newSongIds.length} músicas ao seu repertório.`);
     } catch (err) {
@@ -428,30 +478,83 @@ export default function ArtistDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 {showCreateSetlistForm ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nome da setlist..."
-                      value={newSetlistName}
-                      onChange={e => setNewSetlistName(e.target.value)}
-                      className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-purple/50"
-                      autoFocus
-                    />
-                    <button
-                      onClick={() => {
-                        handleCreateSetlist();
-                        setShowCreateSetlistForm(false);
-                      }}
-                      className="px-3 py-1.5 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-xs font-bold"
-                    >
-                      Criar
-                    </button>
-                    <button
-                      onClick={() => setShowCreateSetlistForm(false)}
-                      className="px-2 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg text-xs font-bold"
-                    >
-                      Cancelar
-                    </button>
+                  <div className="flex flex-col gap-2 w-full mt-2 p-3 bg-black/40 border border-white/10 rounded-xl">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-400">Nome da Setlist</label>
+                      <input
+                        type="text"
+                        placeholder="Nome da setlist..."
+                        value={newSetlistName}
+                        onChange={e => setNewSetlistName(e.target.value)}
+                        className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-purple/50"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-400">Enviar arquivo .txt (Opcional)</label>
+                      <div className={`flex items-center justify-between gap-2 p-2 rounded-lg border border-dashed text-xs cursor-pointer relative transition-all ${
+                        newSetlistFileName ? 'border-neon-purple bg-neon-purple/5' : 'border-white/10 bg-black/10 hover:border-white/20'
+                      }`}>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                          <FileText className="w-3.5 h-3.5 text-neon-purple" />
+                          <span>{newSetlistFileName || "Selecionar arquivo .txt"}</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".txt"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const text = await file.text();
+                              setNewSetlistFileText(text);
+                              setNewSetlistFileName(file.name);
+                            } catch (err) {
+                              alert('Erro ao ler arquivo: ' + err.message);
+                            }
+                            e.target.value = '';
+                          }}
+                        />
+                        {newSetlistFileName && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setNewSetlistFileText('');
+                              setNewSetlistFileName('');
+                            }}
+                            className="text-gray-400 hover:text-white z-10"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end mt-1">
+                      <button
+                        onClick={async () => {
+                          if (!newSetlistName.trim()) return;
+                          await handleCreateSetlist();
+                          setShowCreateSetlistForm(false);
+                        }}
+                        disabled={isProcessingFile}
+                        className="px-3 py-1.5 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                      >
+                        {isProcessingFile ? 'Criando...' : 'Criar'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCreateSetlistForm(false);
+                          setNewSetlistFileText('');
+                          setNewSetlistFileName('');
+                        }}
+                        className="px-2 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg text-xs font-bold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -475,7 +578,58 @@ export default function ArtistDashboard() {
             </div>
 
             <div className="space-y-2">
-              {(userProfile?.setlists || []).length === 0 ? (
+              {showCreateSetlistForm ? (
+                <div className="space-y-3 p-3 bg-black/20 rounded-xl border border-white/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
+                    <span className="text-[11px] font-bold text-neon-purple uppercase tracking-wider">
+                      Selecione músicas do banco para a playlist ({newSetlistSongs.length} selecionadas):
+                    </span>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                      <input
+                        type="text"
+                        value={newSetlistSearch}
+                        onChange={e => setNewSetlistSearch(e.target.value)}
+                        placeholder="Filtrar músicas do banco..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-black/30 border border-white/10 rounded-lg text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-purple/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {musicasRepertorio
+                      .filter(m => !newSetlistSearch || m.titulo.toLowerCase().includes(newSetlistSearch.toLowerCase()) || m.artista_nome.toLowerCase().includes(newSetlistSearch.toLowerCase()))
+                      .map(musica => {
+                        const isSelected = newSetlistSongs.includes(musica.id);
+                        return (
+                          <button
+                            key={musica.id}
+                            type="button"
+                            onClick={() => {
+                              setNewSetlistSongs(prev =>
+                                isSelected ? prev.filter(id => id !== musica.id) : [...prev, musica.id]
+                              );
+                            }}
+                            className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${
+                              isSelected
+                                ? 'bg-neon-purple/10 border-neon-purple/40 text-white'
+                                : 'bg-white/5 border-white/5 text-gray-400 hover:border-white/20'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all ${
+                              isSelected ? 'bg-neon-purple border-neon-purple' : 'border-white/20'
+                            }`}>
+                              {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-bold truncate">{musica.titulo}</p>
+                              <p className="text-[9px] text-gray-500 truncate">{musica.artista_nome}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              ) : (userProfile?.setlists || []).length === 0 ? (
                 <p className="text-[10px] text-gray-500 italic text-center py-2">Você ainda não criou nenhuma setlist.</p>
               ) : (
                 (userProfile.setlists).map(setlist => {

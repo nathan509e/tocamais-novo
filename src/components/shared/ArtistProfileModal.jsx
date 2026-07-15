@@ -9,12 +9,22 @@ export default function ArtistProfileModal({ artist, onClose, onHire }) {
   const [songs, setSongs] = useState([]);
 
   useEffect(() => {
-    if (!artist?.selected_musicas_ids?.length) return;
+    if (!artist) return;
     async function loadSongs() {
+      const activeSetlist = artist.setlists?.find(s => s.active);
+      const musicIds = (activeSetlist && activeSetlist.musicas_ids?.length > 0)
+        ? activeSetlist.musicas_ids
+        : artist.selected_musicas_ids;
+
+      if (!musicIds?.length) {
+        setSongs([]);
+        return;
+      }
+
       const { data } = await supabase
         .from('musicas_repertorio')
         .select('*')
-        .in('id', artist.selected_musicas_ids);
+        .in('id', musicIds);
       if (data) setSongs(data);
     }
     loadSongs();
