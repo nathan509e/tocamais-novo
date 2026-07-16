@@ -129,29 +129,31 @@ const Landing = () => {
       </header>
 
       {/* Mobile nav bar — Como funciona + Planos + Entrar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 h-11 flex items-center gap-6 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => handleLinkClick('como-funciona')}
-          className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
-        >
-          Como funciona
-        </button>
-        <button
-          onClick={() => handleLinkClick('planos')}
-          className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
-        >
-          Planos
-        </button>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 h-14 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => handleLinkClick('como-funciona')}
+            className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap py-3"
+          >
+            Como funciona
+          </button>
+          <button
+            onClick={() => handleLinkClick('planos')}
+            className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap py-3"
+          >
+            Planos
+          </button>
+        </div>
         <Link
           to="/login"
-          className="ml-auto px-6 py-2 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] hover:scale-105 transition-transform whitespace-nowrap flex-shrink-0"
+          className="px-6 py-3 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] active:scale-95 transition-transform whitespace-nowrap"
         >
           Entrar
         </Link>
       </div>
 
       {/* ===== HERO ===== */}
-      <section className="relative min-h-screen flex items-center pt-14 md:pt-24 bg-white text-black">
+      <section className="relative min-h-screen flex items-center pt-16 md:pt-24 bg-white text-black">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <ParticleBackground className="absolute inset-0 z-0" />
 
