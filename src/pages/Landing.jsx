@@ -128,17 +128,20 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Mobile nav bar — links + Entrar */}
+      {/* Mobile nav bar — Como funciona + Planos + Entrar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 h-11 flex items-center gap-6 overflow-x-auto no-scrollbar">
-        {landingLinks.map((link) => (
-          <button
-            key={link.id}
-            onClick={() => handleLinkClick(link.id)}
-            className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
-          >
-            {link.label}
-          </button>
-        ))}
+        <button
+          onClick={() => handleLinkClick('como-funciona')}
+          className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
+        >
+          Como funciona
+        </button>
+        <button
+          onClick={() => handleLinkClick('planos')}
+          className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
+        >
+          Planos
+        </button>
         <Link
           to="/login"
           className="ml-auto px-6 py-2 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] hover:scale-105 transition-transform whitespace-nowrap flex-shrink-0"
