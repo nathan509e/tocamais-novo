@@ -76,6 +76,9 @@ export const AuthProvider = ({ children }) => {
 
         if (!artistData) {
           // Create default artist entry
+          const artistName = pubUser?.name || currentUser.user_metadata?.name || 'Artista';
+          const initialsUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=7B2EFF&color=fff&size=400`;
+          const coverUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=7B2EFF&color=fff&size=1200`;
           const { data: newArtist, error: newArtistErr } = await supabase.from('artists').insert({
             user_id: currentUser.id,
             artistic_name: pubUser?.name || currentUser.user_metadata?.name || 'Artista',
@@ -88,8 +91,8 @@ export const AuthProvider = ({ children }) => {
             verified: false,
             live_now: false,
             featured: false,
-            cover_url: '',
-            photo_url: pubUser?.avatar_url || ''
+            cover_url: coverUrl,
+            photo_url: pubUser?.avatar_url || initialsUrl
           }).select().single();
           if (newArtist) {
             artistData = newArtist;
