@@ -93,8 +93,9 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans">
-      <header className="fixed top-0 left-0 right-0 h-20 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 md:px-8 flex items-center">
-        <div className="flex items-center gap-4 flex-1 pl-60 md:pl-70">
+      {/* Desktop header */}
+      <header className="hidden md:flex fixed top-0 left-0 right-0 h-20 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-8 items-center">
+        <div className="flex items-center gap-4 flex-1 pl-70">
           <div
             className="cursor-pointer flex items-center justify-center"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -103,7 +104,7 @@ const Landing = () => {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center justify-center gap-10 flex-[2] relative">
+        <div className="flex items-center justify-center gap-10 flex-[2] relative">
           <div className="flex gap-10">
             {landingLinks.map((link) => (
               <button
@@ -125,22 +126,29 @@ const Landing = () => {
             Entrar
           </Link>
         </div>
-
-        <div className="md:hidden absolute top-20 left-0 right-0 bg-black border-b border-white/5 px-4 h-11 flex items-center gap-8 overflow-x-auto no-scrollbar">
-          {landingLinks.map((link) => (
-            <button
-              key={link.id}
-              onClick={() => handleLinkClick(link.id)}
-              className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
-            >
-              {link.label}
-            </button>
-          ))}
-        </div>
       </header>
 
+      {/* Mobile nav bar — links + Entrar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 h-11 flex items-center gap-6 overflow-x-auto no-scrollbar">
+        {landingLinks.map((link) => (
+          <button
+            key={link.id}
+            onClick={() => handleLinkClick(link.id)}
+            className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap"
+          >
+            {link.label}
+          </button>
+        ))}
+        <Link
+          to="/login"
+          className="ml-auto px-6 py-2 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] hover:scale-105 transition-transform whitespace-nowrap flex-shrink-0"
+        >
+          Entrar
+        </Link>
+      </div>
+
       {/* ===== HERO ===== */}
-      <section className="relative min-h-screen flex items-center pt-32 md:pt-24 bg-white text-black">
+      <section className="relative min-h-screen flex items-center pt-14 md:pt-24 bg-white text-black">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <ParticleBackground className="absolute inset-0 z-0" />
 
