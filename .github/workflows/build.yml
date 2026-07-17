@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - credentials updated
+# Trigger build - credentials corrected
 on:
   push:
     branches:
