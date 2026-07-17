@@ -45,7 +45,8 @@ platform :ios do
       configuration: "Release",
       export_method: "app-store",
       output_directory: "build",
-      output_name: "app-release.ipa"
+      output_name: "app-release.ipa",
+      xcargs: "PROVISIONING_PROFILE_SPECIFIER='match AppStore com.tocamais.app' DEVELOPMENT_TEAM='JLSP4RM3GL' CODE_SIGN_STYLE=Manual"
     )
 
     # 4. Upload to TestFlight
