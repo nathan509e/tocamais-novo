@@ -89,9 +89,7 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync ios
 
-      - name: Run Fastlane Beta (Build & Sign iOS)
-        id: fastlane_build
-        if: ${{ secrets.APP_STORE_CONNECT_KEY_ID != '' }}
+      - name: Build and Sign iOS App (Fastlane or Unsigned Fallback)
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -99,31 +97,29 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
         run: |
-          cd ios/App
-          fastlane beta
-          echo "FASTLANE_SUCCESS=true" >> $GITHUB_ENV
+          if [ ! -z "$APP_STORE_CONNECT_KEY_ID" ]; then
+            echo "App Store Connect credentials found. Running Fastlane..."
+            cd ios/App
+            fastlane beta
+          else
+            echo "No App Store Connect credentials found. Falling back to unsigned build..."
+            echo "Building unsigned Xcode archive..."
+            xcodebuild -project ios/App/App.xcodeproj \
+              -scheme App \
+              -sdk iphoneos \
+              -configuration Release \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              archive -archivePath ios/App/App.xcarchive
+            
+            echo "Packaging as unsigned .ipa..."
+            mkdir -p ios/App/build/Payload
+            cp -r ios/App/App.xcarchive/Products/Applications/App.app ios/App/build/Payload/
+            cd ios/App/build
+            zip -r app-unsigned.ipa Payload
+          fi
 
-      - name: Build Xcode Project (Archive) - Unsigned Fallback
-        if: ${{ secrets.APP_STORE_CONNECT_KEY_ID == '' }}
-        run: |
-          echo "Building unsigned Xcode archive..."
-          xcodebuild -project ios/App/App.xcodeproj \
-            -scheme App \
-            -sdk iphoneos \
-            -configuration Release \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            archive -archivePath ios/App/App.xcarchive
-
-      - name: Export IPA - Unsigned Fallback
-        if: ${{ secrets.APP_STORE_CONNECT_KEY_ID == '' }}
-        run: |
-          echo "Unsigned archive built. Packaging as unsigned .ipa..."
-          mkdir -p ios/App/build/Payload
-          cp -r ios/App/App.xcarchive/Products/Applications/App.app ios/App/build/Payload/
-          cd ios/App/build
-          zip -r app-unsigned.ipa Payload
 
       - name: Upload iOS Artifacts
         uses: actions/upload-artifact@v4
