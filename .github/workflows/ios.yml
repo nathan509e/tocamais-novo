@@ -123,23 +123,22 @@ jobs:
               -archivePath ios/App/App.xcarchive \
               -exportPath ios/App/build \
               -exportOptionsPlist ios/App/ExportOptions.plist
+            
+            mv ios/App/build/*.ipa ios/App/build/app-release.ipa
           else
-            echo "Unsigned archive built. Unsigned apps cannot be exported as .ipa easily via xcodebuild, but the archive file has been created."
-            # Create a mock/zip archive output for artifacts if unsigned
-            cd ios/App
-            zip -r App.xcarchive.zip App.xcarchive
+            echo "Unsigned archive built. Packaging as unsigned .ipa..."
+            mkdir -p ios/App/build/Payload
+            cp -r ios/App/App.xcarchive/Products/Applications/App.app ios/App/build/Payload/
+            cd ios/App/build
+            zip -r app-unsigned.ipa Payload
           fi
 
-      - name: Upload Signed IPA
-        if: env.SIGNED_BUILD == 'true'
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.ipa
-          path: ios/App/build/**/*.ipa
+          name: app-ios
+          path: |
+            ios/App/build/app-release.ipa
+            ios/App/build/app-unsigned.ipa
+          if-no-files-found: warn
 
-      - name: Upload Unsigned Archive
-        if: env.SIGNED_BUILD == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-unsigned-archive.zip
-          path: ios/App/App.xcarchive.zip
