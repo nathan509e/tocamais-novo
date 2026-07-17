@@ -6,7 +6,7 @@ platform :ios do
     api_key = app_store_connect_api_key(
       key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
       issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_PRIVATE_KEY"]
+      key_filepath: "fastlane/AuthKey_86KTM9R63W.p8"
     )
     
     readonly = ENV["MATCH_READONLY"] == "false" ? false : (ENV["CI"] ? true : false)
@@ -23,7 +23,7 @@ platform :ios do
     api_key = app_store_connect_api_key(
       key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
       issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_PRIVATE_KEY"]
+      key_filepath: "fastlane/AuthKey_86KTM9R63W.p8"
     )
 
     # 2. Sync certificates and provisioning profiles

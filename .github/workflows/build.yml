@@ -102,6 +102,8 @@ jobs:
             echo "App Store Connect credentials found. Configured Git and running Fastlane..."
             git config --global user.email "bot@fastlane.tools"
             git config --global user.name "Fastlane Bot"
+            mkdir -p ios/App/fastlane
+            echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
             fastlane beta
           else
