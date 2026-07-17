@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Set provisioning profile specifier
+# Trigger build - Force distribution signing identity
 on:
   push:
     branches:
