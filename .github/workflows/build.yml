@@ -103,11 +103,10 @@ jobs:
             git config --global user.email "bot@fastlane.tools"
             git config --global user.name "Fastlane Bot"
             mkdir -p ios/App/fastlane
-            echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > ios/App/fastlane/AuthKey_86KTM9R63W.p8
-            # Strip Windows carriage returns (\r) to avoid OpenSSL "invalid curve name" crash on macOS
-            tr -d '\r' < ios/App/fastlane/AuthKey_86KTM9R63W.p8 > ios/App/fastlane/AuthKey_86KTM9R63W_clean.p8
+            # Decode base64 and normalize carriage returns (\r) using Ruby (to avoid Linux vs macOS base64 command differences)
+            ruby -e "require 'base64'; key = Base64.decode64(ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64']).gsub(/\r\n?/, \"\n\"); File.write('ios/App/fastlane/AuthKey_86KTM9R63W.p8', key)"
             # Convert PKCS#8 EC key to SEC1 EC key format to fix Ruby 3.x/OpenSSL "invalid curve name" parser bug on macOS
-            openssl ec -in ios/App/fastlane/AuthKey_86KTM9R63W_clean.p8 -out ios/App/fastlane/AuthKey_86KTM9R63W.p8
+            openssl ec -in ios/App/fastlane/AuthKey_86KTM9R63W.p8 -out ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
             fastlane beta
           else
