@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Add Fastlane setup_ci keychain
+# Trigger build - App Store Connect Bundle ID matched
 on:
   push:
     branches:
