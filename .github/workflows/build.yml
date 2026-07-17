@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - App ID registered
+# Trigger build - Fastlane SPM configuration
 on:
   push:
     branches:

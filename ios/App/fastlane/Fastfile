@@ -36,7 +36,7 @@ platform :ios do
 
     # 3. Build the app (equivalent to gym)
     build_ios_app(
-      workspace: "App.xcworkspace",
+      project: "App.xcodeproj",
       scheme: "App",
       configuration: "Release",
       export_method: "app-store",
