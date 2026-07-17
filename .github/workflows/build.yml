@@ -194,3 +194,13 @@ jobs:
             ios/App/build/app-release.ipa
             ios/App/build/app-unsigned.ipa
           if-no-files-found: warn
+
+      - name: Upload to Apple TestFlight
+        if: env.SIGNED_BUILD == 'true'
+        uses: apple-actions/upload-testflight-build@v1
+        with:
+          app-path: ios/App/build/app-release.ipa
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+
