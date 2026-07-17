@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Xcode build log output
+# Trigger build - Configure code signing
 on:
   push:
     branches:

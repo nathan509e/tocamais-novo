@@ -34,6 +34,10 @@ platform :ios do
       readonly: readonly
     )
 
+    # Disable automatic code signing and set the development team ID
+    disable_automatic_code_signing(path: "App.xcodeproj")
+    update_project_team(path: "App.xcodeproj", teamid: "JLSP4RM3GL")
+
     # 3. Build the app (equivalent to gym)
     build_ios_app(
       project: "App.xcodeproj",
