@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Configure iPhone only target
+# Trigger build - Increment build version to 2
 on:
   push:
     branches:
