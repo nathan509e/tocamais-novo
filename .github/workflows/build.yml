@@ -124,17 +124,17 @@ jobs:
             echo "SIGNED_BUILD=true" >> $GITHUB_ENV
           fi
 
-      - name: Build Xcode Workspace (Archive)
+      - name: Build Xcode Project (Archive)
         run: |
           if [ "$SIGNED_BUILD" = "true" ]; then
-            xcodebuild -workspace ios/App/App.xcworkspace \
+            xcodebuild -project ios/App/App.xcodeproj \
               -scheme App \
               -sdk iphoneos \
               -configuration Release \
               archive -archivePath ios/App/App.xcarchive
           else
             echo "Building unsigned Xcode archive..."
-            xcodebuild -workspace ios/App/App.xcworkspace \
+            xcodebuild -project ios/App/App.xcodeproj \
               -scheme App \
               -sdk iphoneos \
               -configuration Release \
