@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Upgrade macOS runner to latest (Xcode 26)
+# Trigger build - Configure iPhone only target
 on:
   push:
     branches:
