@@ -1,0 +1,145 @@
+name: Build iOS (IPA)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Web App
+        run: npm run build
+
+      - name: Add iOS platform
+        run: |
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          else
+            echo "iOS platform already exists"
+          fi
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
+      - name: Install Apple Certificate and Provisioning Profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$BUILD_CERTIFICATE_BASE64" ]; then
+            echo "Signing certificates not configured. Skipping code signing setup."
+            echo "SIGNED_BUILD=false" >> $GITHUB_ENV
+          else
+            # Create variables
+            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+            # Import certificate and provisioning profile from secrets
+            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+            # Create temporary keychain
+            security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+            security default-keychain -s $KEYCHAIN_PATH
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/xcodebuild
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+            # Apply provisioning profile
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+            echo "SIGNED_BUILD=true" >> $GITHUB_ENV
+          fi
+
+      - name: Build Xcode Workspace (Archive)
+        run: |
+          if [ "$SIGNED_BUILD" = "true" ]; then
+            xcodebuild -workspace ios/App/App.xcworkspace \
+              -scheme App \
+              -sdk iphoneos \
+              -configuration Release \
+              archive -archivePath ios/App/App.xcarchive
+          else
+            echo "Building unsigned Xcode archive..."
+            xcodebuild -workspace ios/App/App.xcworkspace \
+              -scheme App \
+              -sdk iphoneos \
+              -configuration Release \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              archive -archivePath ios/App/App.xcarchive
+          fi
+
+      - name: Export IPA
+        run: |
+          if [ "$SIGNED_BUILD" = "true" ]; then
+            # Create ExportOptions.plist
+            cat <<EOF > ios/App/ExportOptions.plist
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>compileBitcode</key>
+                <false/>
+                <key>method</key>
+                <string>app-store</string>
+                <key>signingStyle</key>
+                <string>manual</string>
+                <key>stripSwiftSymbols</key>
+                <true/>
+                <key>teamID</key>
+                <string>${{ secrets.APPLE_TEAM_ID }}</string>
+                <key>provisioningProfiles</key>
+                <dict>
+                    <key>com.tocamais.app</key>
+                    <string>${{ secrets.PROVISIONING_PROFILE_NAME }}</string>
+                </dict>
+            </dict>
+            </plist>
+          EOF
+
+            xcodebuild -exportArchive \
+              -archivePath ios/App/App.xcarchive \
+              -exportPath ios/App/build \
+              -exportOptionsPlist ios/App/ExportOptions.plist
+          else
+            echo "Unsigned archive built. Unsigned apps cannot be exported as .ipa easily via xcodebuild, but the archive file has been created."
+            # Create a mock/zip archive output for artifacts if unsigned
+            cd ios/App
+            zip -r App.xcarchive.zip App.xcarchive
+          fi
+
+      - name: Upload Signed IPA
+        if: env.SIGNED_BUILD == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.ipa
+          path: ios/App/build/**/*.ipa
+
+      - name: Upload Unsigned Archive
+        if: env.SIGNED_BUILD == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned-archive.zip
+          path: ios/App/App.xcarchive.zip
