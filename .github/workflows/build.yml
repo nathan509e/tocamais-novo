@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - App Store Connect Bundle ID matched
+# Trigger build - Retain raw PKCS8 auth key
 on:
   push:
     branches:
@@ -162,8 +162,6 @@ jobs:
             
             File.write('ios/App/fastlane/AuthKey_86KTM9R63W.p8', normalized)
             "
-            # Convert PKCS#8 EC key to SEC1 EC key format to fix Ruby 3.x/OpenSSL "invalid curve name" parser bug on macOS
-            openssl ec -in ios/App/fastlane/AuthKey_86KTM9R63W.p8 -out ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
             echo "Pre-resolving Swift Package Manager dependencies using system SCM provider to prevent hangs..."
             xcodebuild -resolvePackageDependencies -scmProvider system
