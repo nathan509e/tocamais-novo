@@ -96,9 +96,12 @@ jobs:
           APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_READONLY: "false"
         run: |
           if [ ! -z "$APP_STORE_CONNECT_KEY_ID" ]; then
-            echo "App Store Connect credentials found. Running Fastlane..."
+            echo "App Store Connect credentials found. Configured Git and running Fastlane..."
+            git config --global user.email "bot@fastlane.tools"
+            git config --global user.name "Fastlane Bot"
             cd ios/App
             fastlane beta
           else

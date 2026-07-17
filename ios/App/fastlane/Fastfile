@@ -9,10 +9,11 @@ platform :ios do
       key_content: ENV["APP_STORE_CONNECT_PRIVATE_KEY"]
     )
     
+    readonly = ENV["MATCH_READONLY"] == "false" ? false : (ENV["CI"] ? true : false)
     match(
       type: "appstore",
       api_key: api_key,
-      readonly: ENV["CI"] ? true : false
+      readonly: readonly
     )
   end
 
@@ -26,10 +27,11 @@ platform :ios do
     )
 
     # 2. Sync certificates and provisioning profiles
+    readonly = ENV["MATCH_READONLY"] == "false" ? false : (ENV["CI"] ? true : false)
     match(
       type: "appstore",
       api_key: api_key,
-      readonly: ENV["CI"] ? true : false
+      readonly: readonly
     )
 
     # 3. Build the app (equivalent to gym)
