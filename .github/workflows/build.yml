@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Retain raw PKCS8 auth key
+# Trigger build - Upgrade macOS runner to latest (Xcode 26)
 on:
   push:
     branches:
@@ -61,7 +61,7 @@ jobs:
             android/app/build/outputs/bundle/release/app-release.aab
 
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
