@@ -1,0 +1,52 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Sync certificates and provisioning profiles"
+  lane :sync_certs do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_PRIVATE_KEY"]
+    )
+    
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: ENV["CI"] ? true : false
+    )
+  end
+
+  desc "Build and release to Apple TestFlight"
+  lane :beta do
+    # 1. Authenticate with Apple Developer API
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_PRIVATE_KEY"]
+    )
+
+    # 2. Sync certificates and provisioning profiles
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: ENV["CI"] ? true : false
+    )
+
+    # 3. Build the app (equivalent to gym)
+    build_ios_app(
+      workspace: "App.xcworkspace",
+      scheme: "App",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build",
+      output_name: "app-release.ipa"
+    )
+
+    # 4. Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: "build/app-release.ipa",
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

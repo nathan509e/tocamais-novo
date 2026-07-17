@@ -1,0 +1,6 @@
+git_url(ENV["MATCH_GIT_URL"])
+storage_mode("git")
+type("appstore")
+
+app_identifier(["com.tocamais.app"])
+team_id("H4HH45TYS2")
