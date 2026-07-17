@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - SPM hang workaround
+# Trigger build - Xcode build log output
 on:
   push:
     branches:
@@ -167,7 +167,11 @@ jobs:
             cd ios/App
             echo "Pre-resolving Swift Package Manager dependencies using system SCM provider to prevent hangs..."
             xcodebuild -resolvePackageDependencies -scmProvider system
-            fastlane beta
+            fastlane beta || {
+              echo "=== Xcode Build Log on Failure ==="
+              cat ~/Library/Logs/gym/App-App.log | tail -n 250
+              exit 1
+            }
           else
             echo "No App Store Connect credentials found. Falling back to unsigned build..."
             echo "Building unsigned Xcode archive..."
