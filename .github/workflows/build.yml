@@ -104,6 +104,9 @@ jobs:
             git config --global user.name "Fastlane Bot"
             mkdir -p ios/App/fastlane
             echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > ios/App/fastlane/AuthKey_86KTM9R63W.p8
+            # Strip Windows carriage returns (\r) to avoid OpenSSL "invalid curve name" crash on macOS
+            tr -d '\r' < ios/App/fastlane/AuthKey_86KTM9R63W.p8 > ios/App/fastlane/AuthKey_86KTM9R63W_clean.p8
+            mv ios/App/fastlane/AuthKey_86KTM9R63W_clean.p8 ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
             fastlane beta
           else
