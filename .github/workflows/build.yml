@@ -103,38 +103,62 @@ jobs:
             git config --global user.email "bot@fastlane.tools"
             git config --global user.name "Fastlane Bot"
             mkdir -p ios/App/fastlane
-            # Decode base64 or write raw PEM private key and normalize carriage returns
+            # Trim credentials, output diagnostics, decode base64 or write raw PEM private key
             ruby -e "
             require 'base64'
-            raw = ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'].to_s.strip
-            if raw.empty?
-              puts 'Error: APP_STORE_CONNECT_PRIVATE_KEY_BASE64 is empty'
+            
+            key_id = ENV['APP_STORE_CONNECT_KEY_ID'].to_s.strip
+            issuer_id = ENV['APP_STORE_CONNECT_ISSUER_ID'].to_s.strip
+            raw_key = ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'].to_s.strip
+            
+            puts '=== App Store Connect Credentials Diagnostics ==='
+            puts \"Key ID: '#{key_id}' (Length: #{key_id.length}, Expected: 10)\"
+            if key_id.length != 10
+              puts '  WARNING: Key ID is not 10 characters long!'
+            end
+            
+            puts \"Issuer ID: '#{issuer_id}' (Length: #{issuer_id.length}, Expected: 36)\"
+            if issuer_id.length != 36
+              puts '  WARNING: Issuer ID is not 36 characters long (standard UUID format)!'
+            end
+            
+            if raw_key.empty?
+              puts 'Error: Private Key secret is empty'
               exit 1
             end
+            
             key = nil
-            if raw.include?('-----BEGIN')
+            if raw_key.include?('-----BEGIN')
               puts 'Key appears to be raw PEM format.'
-              key = raw
+              key = raw_key
             else
               puts 'Attempting to decode key from base64...'
               begin
-                decoded = Base64.decode64(raw)
+                decoded = Base64.decode64(raw_key)
                 if decoded.include?('-----BEGIN')
                   puts 'Successfully decoded base64 key.'
                   key = decoded
                 else
                   puts 'Decoded base64 does not contain PEM header. Using raw input.'
-                  key = raw
+                  key = raw_key
                 end
               rescue => e
                 puts \"Base64 decoding failed: #{e.message}. Using raw input.\"
-                key = raw
+                key = raw_key
               end
             end
+            
             normalized = key.gsub(/\r\n?/, \"\n\").strip + \"\n\"
             if !normalized.include?('-----BEGIN')
               puts 'WARNING: Key does not contain standard PEM header (-----BEGIN ...)'
             end
+            
+            # Export trimmed values to GITHUB_ENV so subsequent tools use the cleaned versions
+            File.open(ENV['GITHUB_ENV'], 'a') do |f|
+              f.puts \"APP_STORE_CONNECT_KEY_ID=#{key_id}\"
+              f.puts \"APP_STORE_CONNECT_ISSUER_ID=#{issuer_id}\"
+            end
+            
             File.write('ios/App/fastlane/AuthKey_86KTM9R63W.p8', normalized)
             "
             # Convert PKCS#8 EC key to SEC1 EC key format to fix Ruby 3.x/OpenSSL "invalid curve name" parser bug on macOS
