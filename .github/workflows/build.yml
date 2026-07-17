@@ -93,7 +93,7 @@ jobs:
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_READONLY: "false"
@@ -103,7 +103,7 @@ jobs:
             git config --global user.email "bot@fastlane.tools"
             git config --global user.name "Fastlane Bot"
             mkdir -p ios/App/fastlane
-            echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ios/App/fastlane/AuthKey_86KTM9R63W.p8
+            echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
             fastlane beta
           else
