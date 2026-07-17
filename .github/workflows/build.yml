@@ -103,8 +103,40 @@ jobs:
             git config --global user.email "bot@fastlane.tools"
             git config --global user.name "Fastlane Bot"
             mkdir -p ios/App/fastlane
-            # Decode base64 and normalize carriage returns (\r) using Ruby (to avoid Linux vs macOS base64 command differences)
-            ruby -e "require 'base64'; key = Base64.decode64(ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64']).gsub(/\r\n?/, \"\n\"); File.write('ios/App/fastlane/AuthKey_86KTM9R63W.p8', key)"
+            # Decode base64 or write raw PEM private key and normalize carriage returns
+            ruby -e "
+            require 'base64'
+            raw = ENV['APP_STORE_CONNECT_PRIVATE_KEY_BASE64'].to_s.strip
+            if raw.empty?
+              puts 'Error: APP_STORE_CONNECT_PRIVATE_KEY_BASE64 is empty'
+              exit 1
+            end
+            key = nil
+            if raw.include?('-----BEGIN')
+              puts 'Key appears to be raw PEM format.'
+              key = raw
+            else
+              puts 'Attempting to decode key from base64...'
+              begin
+                decoded = Base64.decode64(raw)
+                if decoded.include?('-----BEGIN')
+                  puts 'Successfully decoded base64 key.'
+                  key = decoded
+                else
+                  puts 'Decoded base64 does not contain PEM header. Using raw input.'
+                  key = raw
+                end
+              rescue => e
+                puts \"Base64 decoding failed: #{e.message}. Using raw input.\"
+                key = raw
+              end
+            end
+            normalized = key.gsub(/\r\n?/, \"\n\").strip + \"\n\"
+            if !normalized.include?('-----BEGIN')
+              puts 'WARNING: Key does not contain standard PEM header (-----BEGIN ...)'
+            end
+            File.write('ios/App/fastlane/AuthKey_86KTM9R63W.p8', normalized)
+            "
             # Convert PKCS#8 EC key to SEC1 EC key format to fix Ruby 3.x/OpenSSL "invalid curve name" parser bug on macOS
             openssl ec -in ios/App/fastlane/AuthKey_86KTM9R63W.p8 -out ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
