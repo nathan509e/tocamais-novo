@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Fastlane SPM configuration
+# Trigger build - SPM hang workaround
 on:
   push:
     branches:
@@ -97,6 +97,7 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_READONLY: "false"
+          GIT_TERMINAL_PROMPT: 0
         run: |
           if [ ! -z "$APP_STORE_CONNECT_KEY_ID" ]; then
             echo "App Store Connect credentials found. Configured Git and running Fastlane..."
@@ -164,6 +165,8 @@ jobs:
             # Convert PKCS#8 EC key to SEC1 EC key format to fix Ruby 3.x/OpenSSL "invalid curve name" parser bug on macOS
             openssl ec -in ios/App/fastlane/AuthKey_86KTM9R63W.p8 -out ios/App/fastlane/AuthKey_86KTM9R63W.p8
             cd ios/App
+            echo "Pre-resolving Swift Package Manager dependencies using system SCM provider to prevent hangs..."
+            xcodebuild -resolvePackageDependencies -scmProvider system
             fastlane beta
           else
             echo "No App Store Connect credentials found. Falling back to unsigned build..."
