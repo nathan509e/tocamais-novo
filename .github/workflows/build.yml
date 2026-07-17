@@ -1,5 +1,5 @@
 name: Build Apps (Android & iOS)
-# Trigger build - Force distribution signing identity
+# Trigger build - Add Fastlane setup_ci keychain
 on:
   push:
     branches:
