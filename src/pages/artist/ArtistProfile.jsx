@@ -569,19 +569,6 @@ export default function ArtistProfile() {
             <span>{isEditing ? 'Fechar Edição' : 'Editar Perfil'}</span>
           </button>
 
-          {/* Button to Mini Profile */}
-          <button
-            onClick={() => window.location.href = '/artist/mini-profile'}
-            className="w-full py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2"
-            style={{
-              borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb',
-              color: isDark ? '#fff' : '#374151',
-              backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
-            }}
-          >
-            <span>Ver Mini Perfil</span>
-          </button>
-
           {/* QR Code Button */}
           <button
             onClick={() => setShowQrCode(true)}
