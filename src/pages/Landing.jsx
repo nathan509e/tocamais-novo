@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { supabase } from "@/lib/supabaseClient";
 import logoTocaMais from "@/assets/logo-tocamais.png";
+import logoHero from "@/assets/logo-hero.png";
 import tableTent from "@/assets/table-tent.png";
 import cantoraImg from "@/assets/Cantora.png";
 import { motion } from "framer-motion";
@@ -95,12 +96,12 @@ const Landing = () => {
     <div className="min-h-screen bg-white text-black font-sans">
       {/* Desktop header */}
       <header className="hidden md:flex fixed top-0 left-0 right-0 h-20 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-8 items-center">
-        <div className="flex items-center gap-4 flex-1 pl-70">
+        <div className="flex items-center gap-4 flex-1">
           <div
             className="cursor-pointer flex items-center justify-center"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <img src={logoTocaMais} alt="Toca Mais Logo" className="h-14" />
+            <img src={logoHero} alt="Toca Mais Logo" className="h-14 hover:scale-105 transition-transform" />
           </div>
         </div>
 
@@ -110,7 +111,7 @@ const Landing = () => {
               <button
                 key={link.id}
                 onClick={() => handleLinkClick(link.id)}
-                className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors"
+                className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-neon-green transition-colors"
               >
                 {link.label}
               </button>
@@ -121,32 +122,38 @@ const Landing = () => {
         <div className="flex items-center justify-end gap-4 flex-1">
           <Link
             to="/login"
-            className="px-8 py-3 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] hover:scale-105 transition-transform"
+            className="px-8 py-3 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] hover:bg-neon-purple/90 hover:shadow-[0_0_20px_rgba(123,46,255,0.4)] hover:scale-105 transition-all duration-300"
           >
             Entrar
           </Link>
         </div>
       </header>
 
-      {/* Mobile nav bar — Como funciona + Planos + Entrar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 h-14 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      {/* Mobile nav bar — Logo + Como funciona + Planos + Entrar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/5 px-4 h-16 flex items-center justify-between gap-2">
+        <div
+          className="cursor-pointer flex items-center justify-center flex-shrink-0"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          <img src={logoHero} alt="Toca Mais Logo" className="h-8 hover:scale-105 transition-transform" />
+        </div>
+        <div className="flex items-center gap-3">
           <button
             onClick={() => handleLinkClick('como-funciona')}
-            className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap py-3"
+            className="text-[10px] font-black uppercase tracking-wider text-[#FFFFFF] hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Como funciona
           </button>
           <button
             onClick={() => handleLinkClick('planos')}
-            className="text-xs font-black uppercase tracking-[0.2em] text-[#FFFFFF] hover:text-white/80 transition-colors whitespace-nowrap py-3"
+            className="text-[10px] font-black uppercase tracking-wider text-[#FFFFFF] hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Planos
           </button>
         </div>
         <Link
           to="/login"
-          className="px-6 py-3 bg-neon-purple rounded-xl text-xs font-black uppercase tracking-widest text-[#FFFFFF] active:scale-95 transition-transform whitespace-nowrap"
+          className="px-4 py-2 bg-neon-purple rounded-xl text-[10px] font-black uppercase tracking-widest text-[#FFFFFF] active:scale-95 transition-all whitespace-nowrap hover:bg-neon-purple/90 shadow-[0_0_15px_rgba(123,46,255,0.3)]"
         >
           Entrar
         </Link>
@@ -164,7 +171,7 @@ const Landing = () => {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div initial="hidden" animate="visible" className="max-w-xl relative z-20">
 
-              <motion.h1 custom={1} variants={fadeIn} className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight leading-[0.9] mb-8 uppercase italic relative -top-8">
+              <motion.h1 custom={1} variants={fadeIn} className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight leading-[0.9] mb-8 uppercase italic relative">
                 O Palco <br />
                 <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-green pr-8">
                   é todo seu
@@ -182,13 +189,6 @@ const Landing = () => {
                 >
                   <Apple className="w-5 h-5" />
                   App Store
-                </button>
-                <button
-                  onClick={() => alert('Em breve na Play Store')}
-                  className="flex items-center justify-center gap-3 h-16 px-6 rounded-full bg-white text-[#8A05FF] font-black text-base border border-[#8A05FF]/10 shadow-lg shadow-purple-500/5 transition-all hover:scale-105 active:scale-95"
-                >
-                  <Play className="w-5 h-5 fill-[#8A05FF] text-[#8A05FF]" />
-                  Play Store
                 </button>
                 <button
                   onClick={() => navigate("/explore")}

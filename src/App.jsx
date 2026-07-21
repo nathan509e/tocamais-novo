@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
+import { Capacitor } from '@capacitor/core';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
@@ -54,9 +55,10 @@ const AuthenticatedApp = () => {
 
   // Redirect to Landing if not authenticated
   if (!isAuthenticated) {
+    const isApp = Capacitor.isNativePlatform();
     return (
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={isApp ? <Navigate to="/login" replace /> : <Landing />} />
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/artist/tip/:artistId" element={<ArtistTip />} />

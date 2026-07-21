@@ -18,6 +18,31 @@ export default function ContractorProfile() {
   const [editForm, setEditForm] = useState({ name: '', phone: '', city: '', address: '' });
   const [saveStatus, setSaveStatus] = useState('');
 
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Tem certeza absoluta que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita e todos os seus dados serão apagados."
+    );
+    if (!confirmed) return;
+
+    try {
+      setSaveStatus('Excluindo conta...');
+      const { error: profileError } = await supabase
+        .from('contractors')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (profileError) throw profileError;
+
+      await logout();
+      alert("Sua conta foi excluída com sucesso.");
+      navigate('/');
+    } catch (error) {
+      console.error("Erro ao excluir conta:", error);
+      alert("Ocorreu um erro ao excluir sua conta: " + error.message);
+      setSaveStatus('');
+    }
+  };
+
   const isDark = theme === 'dark';
   const preferences = userProfile?.preferences || {};
 
@@ -270,6 +295,27 @@ export default function ContractorProfile() {
               <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{field.value}</span>
             </div>
           ))}
+        </div>
+
+        {/* Account Settings / Security (Delete Account) */}
+        <div className={`p-4 rounded-2xl border transition-all ${
+          isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
+        } space-y-3`}>
+          <div className="flex items-center gap-2">
+            <span className="text-red-500">🛡️</span>
+            <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              Segurança da Conta
+            </h3>
+          </div>
+          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            Deseja encerrar sua conta? Todos os seus dados de contratante e histórico serão apagados permanentemente. Esta ação não pode ser desfeita.
+          </p>
+          <button
+            onClick={handleDeleteAccount}
+            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/30 text-red-500 text-xs font-bold rounded-xl transition-all duration-300 w-full text-center"
+          >
+            Excluir Minha Conta Permanentemente
+          </button>
         </div>
 
         <NeonButton variant="gradient" size="lg" className="w-full" onClick={openEditor}>

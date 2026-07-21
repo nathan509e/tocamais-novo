@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
+import logoTocaMais from '@/assets/logo-tocamais.png';
 import { supabase } from '@/lib/supabaseClient';
 import { 
   Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Sun, Moon, Mailbox,
@@ -278,11 +279,9 @@ export default function AppLayout({ children, role = 'artist' }) {
       <aside className={`hidden md:flex flex-col w-64 border-r p-6 h-screen sticky top-0 z-30 transition-colors duration-300 ${
         isDark ? 'bg-[#0F0926] border-white/5' : 'bg-[#FFFFFF] border-gray-200/80 shadow-sm'
       }`}>
-        {/* Logo */}
+          {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center shadow-[0_0_15px_rgba(123,46,255,0.4)]">
-            <span className="text-white font-black text-sm">T</span>
-          </div>
+          <img src={logoTocaMais} alt="TocaMais" className="w-9 h-9 rounded-xl object-cover" />
           <span className={`text-lg font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>TocaMais</span>
         </div>
 
@@ -367,9 +366,7 @@ export default function AppLayout({ children, role = 'artist' }) {
             
             {/* Mobile Logo */}
             <div className="flex md:hidden items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center">
-                <span className="text-white font-black text-xs">T</span>
-              </div>
+              <img src={logoTocaMais} alt="TocaMais" className="w-7 h-7 rounded-lg object-cover" />
               <span className={`text-sm font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>TocaMais</span>
             </div>
           </div>

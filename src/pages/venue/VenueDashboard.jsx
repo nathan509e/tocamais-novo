@@ -32,9 +32,34 @@ import { useNavigate } from 'react-router-dom';
 export default function VenueDashboard() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { user, userProfile, refreshProfile } = useAuth();
+  const { user, userProfile, refreshProfile, logout } = useAuth();
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Tem certeza absoluta que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita e todos os seus dados serão apagados."
+    );
+    if (!confirmed) return;
+
+    try {
+      setSaveStatus('Excluindo conta...');
+      const { error: profileError } = await supabase
+        .from('venues')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (profileError) throw profileError;
+
+      await logout();
+      alert("Sua conta foi excluída com sucesso.");
+      navigate('/');
+    } catch (error) {
+      console.error("Erro ao excluir conta:", error);
+      alert("Ocorreu um erro ao excluir sua conta: " + error.message);
+      setSaveStatus('');
+    }
+  };
   const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
   
   // Profile editing state
@@ -543,6 +568,21 @@ export default function VenueDashboard() {
             {saveStatus && (
               <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
             )}
+
+            {/* Account Settings / Security (Delete Account) */}
+            <div className="pt-4 border-t border-white/5 space-y-2">
+              <span className="text-[10px] text-red-500 font-bold block">Segurança da Conta</span>
+              <p className="text-[10px] text-gray-400">
+                Deseja encerrar sua conta? Todos os dados do estabelecimento e histórico de shows serão apagados permanentemente. Esta ação não pode ser desfeita.
+              </p>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                className="px-4 py-2 bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/30 text-red-500 text-[10px] font-bold rounded-xl transition-all duration-300 w-full text-center"
+              >
+                Excluir Minha Conta Permanentemente
+              </button>
+            </div>
           </div>
         )}
 
