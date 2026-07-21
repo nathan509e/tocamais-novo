@@ -134,6 +134,7 @@ export default function ArtistProfile() {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState(null);
   const [isEditingVideo, setIsEditingVideo] = useState(false);
+  const [videoSaveStatus, setVideoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
   const [isEditing, setIsEditing] = useState(false);
   const [coverPosition, setCoverPosition] = useState(50);
   const [coverZoom, setCoverZoom] = useState(1);
@@ -381,6 +382,7 @@ export default function ArtistProfile() {
 
   const handleSaveVideo = async () => {
     if (!user) return;
+    setVideoSaveStatus('saving');
     try {
       let finalVideoUrl = videoUrl;
       
@@ -402,11 +404,16 @@ export default function ArtistProfile() {
       }));
       setVideoUrl(finalVideoUrl);
       setVideoFile(null);
-      setIsEditingVideo(false);
-      alert('Vídeo de apresentação salvo com sucesso!');
+      setVideoSaveStatus('saved');
+      
+      setTimeout(() => {
+        setIsEditingVideo(false);
+        setVideoSaveStatus('idle');
+      }, 2000);
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar vídeo: ' + (err.message || err));
+      setVideoSaveStatus('idle');
     }
   };
   
@@ -890,9 +897,16 @@ export default function ArtistProfile() {
                 </div>
                 <button 
                   onClick={handleSaveVideo}
-                  className="w-full py-2.5 rounded-xl bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_15px_rgba(123,46,255,0.3)] transition-all"
+                  disabled={videoSaveStatus !== 'idle'}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${
+                    videoSaveStatus === 'saved'
+                      ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                      : videoSaveStatus === 'saving'
+                        ? 'bg-neon-purple/50 text-white/80 cursor-wait'
+                        : 'bg-neon-purple text-white hover:shadow-[0_0_15px_rgba(123,46,255,0.3)]'
+                  }`}
                 >
-                  Salvar Vídeo
+                  {videoSaveStatus === 'saved' ? '✓ Vídeo Salvo!' : videoSaveStatus === 'saving' ? 'Salvando Vídeo...' : 'Salvar Vídeo'}
                 </button>
               </div>
             ) : (
