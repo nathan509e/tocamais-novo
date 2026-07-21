@@ -66,6 +66,45 @@ export default function ArtistProfile() {
   const { user, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaveStatus('Salvando perfil...');
+    try {
+      const { error } = await supabase
+        .from('artists')
+        .update({
+          artistic_name: editForm.artistic_name,
+          bio: editForm.bio,
+          genre: editForm.genre,
+          city: editForm.city,
+          base_fee: editForm.base_fee,
+          pix_key: editForm.pix_key
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setArtistProfile(prev => prev ? {
+        ...prev,
+        artistic_name: editForm.artistic_name,
+        bio: editForm.bio,
+        genre: editForm.genre,
+        city: editForm.city,
+        base_fee: editForm.base_fee,
+        pix_key: editForm.pix_key
+      } : prev);
+
+      setSaveStatus('');
+      setIsEditing(false);
+      alert('Alterações salvas com sucesso!');
+      if (refreshProfile) refreshProfile();
+    } catch (err) {
+      console.error('Erro ao salvar perfil:', err);
+      setSaveStatus(`Erro: ${err.message || 'desconhecido'}`);
+      alert('Erro ao salvar perfil: ' + (err.message || err));
+    }
+  };
+
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
       "Tem certeza absoluta que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita e todos os seus dados serão apagados."
@@ -364,8 +403,10 @@ export default function ArtistProfile() {
       setVideoUrl(finalVideoUrl);
       setVideoFile(null);
       setIsEditingVideo(false);
+      alert('Vídeo de apresentação salvo com sucesso!');
     } catch (err) {
       console.error(err);
+      alert('Erro ao salvar vídeo: ' + (err.message || err));
     }
   };
   
@@ -462,7 +503,22 @@ export default function ArtistProfile() {
               }`} style={{ boxShadow: '0 0 25px rgba(123,46,255,0.5)' }}>
                 <img src={artistProfile?.photo_url || user?.avatar_url || ''} alt="Avatar" className="w-full h-full object-cover" />
               </div>
-              <div className={`absolute -bottom-1 -right-1 bg-neon-green rounded-full w-5 h-5 flex items-center justify-center border-2 ${
+              <button 
+                onClick={() => document.getElementById('avatar-input')?.click()} 
+                className="absolute -top-1 -right-1 p-1.5 bg-neon-purple rounded-full border border-white/20 shadow-md hover:scale-110 active:scale-95 transition-all z-20"
+                title="Mudar Foto de Perfil"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-white" />
+              </button>
+              <input id="avatar-input" type="file" accept="image/*" className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  openCrop(file, 'avatar');
+                  e.target.value = '';
+                }}
+              />
+              <div className={`absolute -bottom-1 -left-1 bg-neon-green rounded-full w-5 h-5 flex items-center justify-center border-2 ${
                 isDark ? 'border-[#08041A]' : 'border-[#F4F5FA]'
               }`}>
                 <span className="text-black text-[7px] font-black">AO</span>
@@ -627,6 +683,13 @@ export default function ArtistProfile() {
               {saveStatus && (
                 <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
               )}
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="w-full py-2.5 rounded-xl bg-neon-purple text-white text-xs font-bold hover:shadow-[0_0_15px_rgba(123,46,255,0.3)] transition-all mt-2"
+              >
+                Salvar Alterações
+              </button>
             </div>
           )}
 
