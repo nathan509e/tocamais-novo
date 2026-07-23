@@ -564,9 +564,32 @@ export default function ArtistTip() {
                   </p>
                 </div>
                 {artist?.is_pro ? (
-                  <button onClick={() => setStage(STAGE.FINAL_THANKS)}
-                    className="w-full py-3 px-4 rounded-xl font-bold text-xs text-white transition-all bg-gradient-to-r from-neon-purple to-neon-green shadow-md hover:scale-105 active:scale-95">
-                    Já fiz a transferência
+                  <button onClick={async () => {
+                    setPixLoading(true);
+                    try {
+                      // Insert the music request record directly so the artist can see it in their dashboard
+                      await supabase.from('music_requests').insert({
+                        artist_id: artistId,
+                        musica_id: selectedMusic?.id || null,
+                        musica_titulo: selectedMusic?.titulo || null,
+                        musica_artista: selectedMusic?.artista_nome || null,
+                        user_name: userName || 'Cliente',
+                        message: message || null,
+                        status: 'pending',
+                        requested_at: new Date().toISOString(),
+                        amount: tipAmount
+                      });
+                      
+                      setStage(STAGE.FINAL_THANKS);
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setPixLoading(false);
+                    }
+                  }}
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs text-white transition-all bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-md hover:scale-105 active:scale-95 disabled:opacity-50"
+                    disabled={pixLoading}>
+                    {pixLoading ? 'Processando...' : 'Já fiz a transferência'}
                   </button>
                 ) : (
                   <div className="flex flex-col items-center justify-center pt-2 pb-1 space-y-2">
