@@ -195,7 +195,9 @@ export default function ArtistTip() {
               artistic_name: userData.name || userData.email?.split('@')[0] || 'Artista',
               photo_url: userData.avatar_url || '',
               bio: userData.bio || '',
-              city: 'Brasil'
+              city: 'Brasil',
+              is_pro: !!userData.is_pro,
+              user_row: userData
             });
           }
         }
@@ -211,7 +213,9 @@ export default function ArtistTip() {
             artistic_name: userData.name || userData.email?.split('@')[0] || 'Artista',
             photo_url: userData.avatar_url || '',
             bio: userData.bio || '',
-            city: 'Brasil'
+            city: 'Brasil',
+            is_pro: !!userData.is_pro,
+            user_row: userData
           });
         }
       }
