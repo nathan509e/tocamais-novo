@@ -423,7 +423,7 @@ export default function ArtistDashboard() {
       setIsProcessingFile(false);
     }
   };
-  const pendingRequests = requests.filter(request => request.status === 'pending');
+  const pendingRequests = requests.filter(request => request.status === 'pending' || request.status === 'playing');
 
   const totalTips = requests
     .filter(r => {
