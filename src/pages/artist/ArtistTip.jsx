@@ -78,8 +78,8 @@ export default function ArtistTip() {
 
   const [stage, setStage] = useState(STAGE.FORM);
   const [artist, setArtist] = useState(null);
-  const isArtistPro = artist?.is_pro || artist?.user_row?.is_pro || artist?.user_row?.role === 'artist';
-  const canReceiveTip = isArtistPro ? !!artist?.pix_key : !!artist?.asaas_wallet_id;
+  const isArtistPro = artist?.is_pro || artist?.user_row?.is_pro || artist?.user_row?.role === 'artist' || !!artist?.pix_key;
+  const canReceiveTip = isArtistPro ? !!artist?.pix_key : (!!artist?.asaas_wallet_id || !!artist?.pix_key);
   const [repertorio, setRepertorio] = useState([]);
   const [searchRepertorio, setSearchRepertorio] = useState('');
   const [selectedMusic, setSelectedMusic] = useState(null);
@@ -162,10 +162,10 @@ export default function ArtistTip() {
           .eq('user_id', artistId)
           .single();
         
-        // Fetch is_pro from the users table as the source of truth for PRO status
+        // Fetch is_pro and role from the users table as the source of truth for PRO status
         const { data: userRow } = await supabase
           .from('users')
-          .select('is_pro')
+          .select('is_pro, role')
           .eq('id', artistId)
           .single();
 
