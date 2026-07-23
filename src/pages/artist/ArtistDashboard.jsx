@@ -423,7 +423,22 @@ export default function ArtistDashboard() {
       setIsProcessingFile(false);
     }
   };
-  const pendingRequests = requests.filter(request => request.status === 'pending' || request.status === 'playing');
+  const pendingRequests = requests
+    .filter(request => request.status === 'pending' || request.status === 'playing')
+    .sort((a, b) => {
+      const tipA = Number(a.amount) || 0;
+      const tipB = Number(b.amount) || 0;
+
+      // 1. Sort by tip value descending if at least one has a tip
+      if (tipA > 0 || tipB > 0) {
+        return tipB - tipA;
+      }
+
+      // 2. If both have no tips, sort by requested_at ascending (first in, first out)
+      const dateA = new Date(a.requested_at || 0).getTime();
+      const dateB = new Date(b.requested_at || 0).getTime();
+      return dateA - dateB;
+    });
 
   const totalTips = requests
     .filter(r => {
