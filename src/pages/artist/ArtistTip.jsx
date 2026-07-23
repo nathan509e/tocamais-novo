@@ -160,8 +160,16 @@ export default function ArtistTip() {
           .select('*')
           .eq('user_id', artistId)
           .single();
+        
+        // Fetch is_pro from the users table as the source of truth for PRO status
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('is_pro')
+          .eq('id', artistId)
+          .single();
+
         if (data) {
-          setArtist(data);
+          setArtist({ ...data, is_pro: !!userRow?.is_pro });
           const activeSetlist = data.setlists?.find(s => s.active);
           const musicIds = (activeSetlist && activeSetlist.musicas_ids?.length > 0)
             ? activeSetlist.musicas_ids
