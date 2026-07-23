@@ -128,6 +128,21 @@ export default function ArtistDashboard() {
     setRequests(prev =>
       prev.map(r => r.id === requestId ? { ...r, ...updates } : r)
     );
+
+    // Auto-archive (set to cancelled) 1 minute after status becomes 'playing'
+    if (newStatus === 'playing') {
+      setTimeout(async () => {
+        const archiveUpdates = { status: 'cancelled' };
+        await supabase
+          .from('music_requests')
+          .update(archiveUpdates)
+          .eq('id', requestId);
+
+        setRequests(prev =>
+          prev.map(r => r.id === requestId ? { ...r, ...archiveUpdates } : r)
+        );
+      }, 60000);
+    }
   };
 
   const deleteRequest = async (requestId) => {
