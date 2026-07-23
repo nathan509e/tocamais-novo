@@ -222,38 +222,85 @@ export default function ArtistTip() {
     setPixLoading(true);
     setPixError('');
     try {
-      const { data, error: fnError } = await supabase.functions.invoke(
-        'asaas-create-pix',
-        {
-          body: {
+      if (artist?.is_pro && artist?.pix_key) {
+        // Create pending tip record directly in supabase database
+        const { data: tipData, error: dbError } = await supabase
+          .from('pending_tips')
+          .insert({
+            artist_id: artistId,
+            user_name: userName || 'Cliente',
+            user_message: message || null,
             amount: tipAmount,
-            description: `TocaMais - Gorjeta para ${artist?.artistic_name || 'Artista'}`,
-            artistUserId: artistId,
-            userName: userName || 'Cliente',
-            userMessage: message || null,
-            musicaId: selectedMusic?.id || null,
-            musicaTitulo: selectedMusic?.titulo || null,
-            musicaArtista: selectedMusic?.artista_nome || null,
+            status: 'pending',
+            musica_id: selectedMusic?.id || null,
+            musica_titulo: selectedMusic?.titulo || null,
+            musica_artista: selectedMusic?.artista_nome || null,
             rating: rating || null
+          })
+          .select()
+          .single();
+
+        if (dbError) throw dbError;
+
+        // Generate client-side static PIX payload using the artist's registered key
+        const staticPayload = generatePixPayload(
+          artist.pix_key,
+          tipAmount,
+          artist.artistic_name || 'TocaMais Artista',
+          artist.city || 'SAO PAULO'
+        );
+
+        setPixMode('static');
+        setPixQrCodeImage('');
+        setPixKey(staticPayload);
+        setPixPayload(staticPayload);
+        setPendingTipId(tipData.id);
+        setPixCreated(true);
+        setStage(STAGE.PIX_PAYMENT);
+
+        // Notify artist via notifications
+        await supabase.from('notifications').insert({
+          user_id: artistId,
+          title: 'Novo pedido com gorjeta pendente',
+          content: `${userName || 'Cliente'} enviou um pedido de R$ ${tipAmount.toFixed(2)} para "${selectedMusic?.titulo || 'uma música'}"`,
+          type: 'music_request',
+          read: false
+        });
+      } else {
+        // Non-PRO artist: trigger payment via Asaas API edge function
+        const { data, error: fnError } = await supabase.functions.invoke(
+          'asaas-create-pix',
+          {
+            body: {
+              amount: tipAmount,
+              description: `TocaMais - Gorjeta para ${artist?.artistic_name || 'Artista'}`,
+              artistUserId: artistId,
+              userName: userName || 'Cliente',
+              userMessage: message || null,
+              musicaId: selectedMusic?.id || null,
+              musicaTitulo: selectedMusic?.titulo || null,
+              musicaArtista: selectedMusic?.artista_nome || null,
+              rating: rating || null
+            }
           }
+        );
+
+        console.log('asaas-create-pix response:', { data, fnError });
+        if (fnError) {
+          const serverMsg = data?.error || fnError.message || 'Erro ao gerar PIX';
+          const serverCode = data?.code || '';
+          console.error('PIX server error:', { serverMsg, serverCode, data, fnError });
+          throw new Error(serverCode ? `${serverCode}: ${serverMsg}` : serverMsg);
         }
-      );
 
-      console.log('asaas-create-pix response:', { data, fnError });
-      if (fnError) {
-        const serverMsg = data?.error || fnError.message || 'Erro ao gerar PIX';
-        const serverCode = data?.code || '';
-        console.error('PIX server error:', { serverMsg, serverCode, data, fnError });
-        throw new Error(serverCode ? `${serverCode}: ${serverMsg}` : serverMsg);
+        setPixMode(data.mode || 'static');
+        setPixQrCodeImage(data.pixQrCode || '');
+        setPixKey(data.pixKey || '');
+        setPixPayload(data.pixPayload || '');
+        setPendingTipId(data.pendingTipId);
+        setPixCreated(true);
+        setStage(STAGE.PIX_PAYMENT);
       }
-
-      setPixMode(data.mode || 'static');
-      setPixQrCodeImage(data.pixQrCode || '');
-      setPixKey(data.pixKey || '');
-      setPixPayload(data.pixPayload || '');
-      setPendingTipId(data.pendingTipId);
-      setPixCreated(true);
-      setStage(STAGE.PIX_PAYMENT);
     } catch (err) {
       console.error('PIX error:', err);
       let msg = err.message || 'Erro ao gerar PIX';
@@ -516,11 +563,18 @@ export default function ArtistTip() {
                     Valor: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
-                <div className="flex flex-col items-center justify-center pt-2 pb-1 space-y-2">
-                  <Loader className="w-5 h-5 animate-spin text-neon-green" />
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aguardando pagamento...</span>
-                </div>
-                {pollExpired && (
+                {artist?.is_pro ? (
+                  <button onClick={() => setStage(STAGE.FINAL_THANKS)}
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs text-white transition-all bg-gradient-to-r from-neon-purple to-neon-green shadow-md hover:scale-105 active:scale-95">
+                    Já fiz a transferência
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center justify-center pt-2 pb-1 space-y-2">
+                    <Loader className="w-5 h-5 animate-spin text-neon-green" />
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aguardando pagamento...</span>
+                  </div>
+                )}
+                {pollExpired && !artist?.is_pro && (
                   <div className="text-center pt-2 space-y-2">
                     <p className="text-[10px] text-yellow-500 font-bold">O tempo limite para detecção automática expirou.</p>
                     <div className="flex gap-2">
