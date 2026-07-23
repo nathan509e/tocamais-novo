@@ -8,7 +8,7 @@ import logoTocaMais from '@/assets/logo-tocamais.png';
 import { supabase } from '@/lib/supabaseClient';
 import { 
   Search, Bell, Home, Video, Mail, User as UserIcon, LogOut, Menu, X, Calendar, Music, Sun, Moon, Mailbox,
-  Crown, CreditCard, Loader2, Check, Sparkles, ChevronDown, ChevronUp
+  Crown, CreditCard, Loader2, Check, Sparkles, ChevronDown, ChevronUp, Mic, ListMusic
 } from 'lucide-react';
 import {
   Dialog,
@@ -21,19 +21,10 @@ import {
 const navItems = {
   artist: [
     { icon: Home, label: 'Painel', path: '/artist' },
-    { 
-      label: 'Palco', 
-      isSubmenu: true, 
-      icon: Music, 
-      items: [
-        { label: 'Pedidos', path: '/artist/requests' },
-        { label: 'Repertório', path: '/artist', hash: '#repertorio' },
-        { label: 'Gorjetas', path: '/artist/onboarding' }
-      ]
-    },
     { icon: Calendar, label: 'Agenda', path: '/artist/agenda' },
-    { icon: Video, label: 'Métricas', path: '/artist/metrics' },
     { icon: Mailbox, label: 'Propostas', path: '/artist/proposals' },
+    { icon: Music, label: 'Pedidos', path: '/artist/requests' },
+    { icon: ListMusic, label: 'Repertório', path: '/artist/repertorio' },
     { icon: Mail, label: 'Mensagens', path: '/artist/messages' },
     { icon: UserIcon, label: 'Perfil', path: '/artist/profile' },
   ],
@@ -73,9 +64,8 @@ export default function AppLayout({ children, role = 'artist' }) {
   const [proPixPayload, setProPixPayload] = useState(null);
   const [proCpf, setProCpf] = useState('');
   const [proPaymentCompleted, setProPaymentCompleted] = useState(false);
-  const [showPalcoSubmenu, setShowPalcoSubmenu] = useState(
-    location.pathname === '/artist/requests' || location.pathname === '/artist/onboarding'
-  );
+  const [showShowsMenu, setShowShowsMenu] = useState(true);
+  const [showPalcoMenu, setShowPalcoMenu] = useState(true);
 
   // Reset subscription modal state when closed
   useEffect(() => {
@@ -270,86 +260,6 @@ export default function AppLayout({ children, role = 'artist' }) {
 
   const isCpfValid = (cpf) => cpf.replace(/\D/g, '').length === 11;
 
-  const renderNavItem = (item, isMobile = false) => {
-    const Icon = item.icon;
-    
-    if (item.isSubmenu) {
-      const isOpen = showPalcoSubmenu;
-      return (
-        <div key="palco-submenu-container" className="space-y-1">
-          <button
-            onClick={() => setShowPalcoSubmenu(!showPalcoSubmenu)}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-              isOpen
-                ? isDark 
-                  ? 'text-white bg-white/5' 
-                  : 'text-gray-900 bg-gray-100'
-                : isDark
-                  ? 'text-gray-400 hover:text-white hover:bg-white/5'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Icon className={`w-5 h-5 ${isOpen ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-              <span className="text-sm">{item.label}</span>
-            </div>
-            {isOpen ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-          </button>
-          {isOpen && (
-            <div className="pl-6 space-y-1">
-              {item.items.map((subItem) => {
-                const active = location.pathname === subItem.path && (subItem.hash ? location.hash === subItem.hash : true);
-                return (
-                  <Link
-                    key={subItem.label + subItem.path}
-                    to={subItem.path + (subItem.hash || '')}
-                    onClick={() => {
-                      if (isMobile) setShowMobileSidebar(false);
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs transition-all ${
-                      active
-                        ? isDark
-                          ? 'bg-neon-purple/20 text-white font-bold border-l-2 border-neon-purple'
-                          : 'bg-neon-purple/10 text-neon-purple font-bold border-l-2 border-neon-purple'
-                        : isDark
-                          ? 'text-gray-400 hover:text-white'
-                          : 'text-gray-500 hover:text-gray-900'
-                    }`}
-                  >
-                    <span>{subItem.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    const active = location.pathname === item.path;
-    return (
-      <Link
-        key={item.path}
-        to={item.path}
-        onClick={() => {
-          if (isMobile) setShowMobileSidebar(false);
-        }}
-        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-          active 
-            ? isDark 
-              ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple font-bold shadow-[0_0_15px_rgba(123,46,255,0.15)]' 
-              : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-sm'
-            : isDark 
-              ? 'text-gray-400 hover:text-white hover:bg-white/5' 
-              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-        }`}
-      >
-        <Icon className={`w-5 h-5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-        <span className="text-sm">{item.label}</span>
-      </Link>
-    );
-  };
-
   return (
     <div className={`min-h-screen font-poppins flex flex-col md:flex-row relative overflow-x-hidden transition-colors duration-300 ${
       isDark ? 'bg-[#08041A] text-white' : 'bg-[#F4F5FA] text-gray-800'
@@ -374,6 +284,624 @@ export default function AppLayout({ children, role = 'artist' }) {
           {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
           <img src={logoTocaMais} alt="TocaMais" className="w-9 h-9 rounded-xl object-cover" />
+          <span className={`text-lg font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>TocaMais</span>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-2">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4 px-2">Menu Principal</p>
+          {(() => {
+            if (activeRole === 'artist') {
+              const mainItems = nav.filter(i => !['/artist/agenda', '/artist/proposals', '/artist/messages', '/artist/requests', '/artist/repertorio'].includes(i.path));
+              const showsSubItems = nav.filter(i => ['/artist/agenda', '/artist/proposals', '/artist/messages'].includes(i.path));
+              const palcoSubItems = nav.filter(i => ['/artist/requests', '/artist/repertorio'].includes(i.path));
+              
+              const isShowsActive = ['/artist/agenda', '/artist/proposals', '/artist/messages'].includes(location.pathname);
+              const isPalcoActive = ['/artist/requests', '/artist/repertorio'].includes(location.pathname);
+
+              return (
+                <div className="space-y-2">
+                  {/* Panel */}
+                  {(() => {
+                    const item = mainItems[0];
+                    if (!item) return null;
+                    const Icon = item.icon;
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          active 
+                            ? isDark 
+                              ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple shadow-[0_0_15px_rgba(123,46,255,0.15)] font-bold' 
+                              : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-sm'
+                            : isDark 
+                              ? 'text-gray-400 hover:text-white hover:bg-white/5' 
+                              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    );
+                  })()}
+
+                  {/* Collapsible Shows Button */}
+                  <button
+                    onClick={() => setShowShowsMenu(!showShowsMenu)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                      isShowsActive
+                        ? isDark
+                          ? 'bg-neon-purple/10 text-white font-bold'
+                          : 'bg-neon-purple/5 text-neon-purple font-bold shadow-xs'
+                        : isDark
+                          ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Music className={`w-5 h-5 ${isShowsActive ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className="text-sm">Shows</span>
+                    </div>
+                    {showShowsMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+
+                  {/* Shows Submenu Items */}
+                  {showShowsMenu && (
+                    <div className="pl-6 space-y-1 border-l border-white/5 ml-4">
+                      {showsSubItems.map((item) => {
+                        const Icon = item.icon;
+                        const active = location.pathname === item.path;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                              active 
+                                ? isDark 
+                                  ? 'bg-neon-purple/20 text-white font-bold' 
+                                  : 'bg-neon-purple/10 text-neon-purple font-bold'
+                                : isDark 
+                                  ? 'text-gray-500 hover:text-white' 
+                                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className={`w-4 h-4 ${active ? 'text-neon-purple' : 'text-gray-500'}`} />
+                            <span className="text-xs">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Collapsible Palco Button */}
+                  <button
+                    onClick={() => setShowPalcoMenu(!showPalcoMenu)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                      isPalcoActive
+                        ? isDark
+                          ? 'bg-neon-purple/10 text-white font-bold'
+                          : 'bg-neon-purple/5 text-neon-purple font-bold shadow-xs'
+                        : isDark
+                          ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Mic className={`w-5 h-5 ${isPalcoActive ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className="text-sm">Palco</span>
+                    </div>
+                    {showPalcoMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+
+                  {/* Palco Submenu Items */}
+                  {showPalcoMenu && (
+                    <div className="pl-6 space-y-1 border-l border-white/5 ml-4">
+                      {palcoSubItems.map((item) => {
+                        const Icon = item.icon;
+                        const active = location.pathname === item.path;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                              active 
+                                ? isDark 
+                                  ? 'bg-neon-purple/20 text-white font-bold' 
+                                  : 'bg-neon-purple/10 text-neon-purple font-bold'
+                                : isDark 
+                                  ? 'text-gray-500 hover:text-white' 
+                                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className={`w-4 h-4 ${active ? 'text-neon-purple' : 'text-gray-500'}`} />
+                            <span className="text-xs">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Remaining main items */}
+                  {mainItems.slice(1).map((item) => {
+                    const Icon = item.icon;
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          active 
+                            ? isDark 
+                              ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple shadow-[0_0_15px_rgba(123,46,255,0.15)] font-bold' 
+                              : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-sm'
+                            : isDark 
+                              ? 'text-gray-400 hover:text-white hover:bg-white/5' 
+                              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Normal nav rendering for other roles
+            return nav.map((item) => {
+              const Icon = item.icon;
+              const active = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    active 
+                      ? isDark 
+                        ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple shadow-[0_0_15px_rgba(123,46,255,0.15)] font-bold' 
+                        : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-sm'
+                      : isDark 
+                        ? 'text-gray-400 hover:text-white hover:bg-white/5' 
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              );
+            });
+          })()}
+        </nav>
+
+        {/* User profile section at the bottom of sidebar */}
+        <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
+          <div className="flex items-center gap-3 mb-3">
+            <img 
+              src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=7B2EFF&color=fff'} 
+              alt="Avatar" 
+              className="w-10 h-10 rounded-xl object-cover border border-white/10"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{username}</p>
+                {role === 'artist' && userProfile?.is_pro && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
+              </div>
+              <p className="text-[10px] text-neon-green uppercase font-bold tracking-wider">
+                {role === 'artist' ? 'Artista' : role === 'venue' ? 'Casa Show' : 'Contratante'}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => logout()}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sair da Conta</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTAINER */}
+      <div className="flex-1 flex flex-col min-w-0 z-10 pb-20 md:pb-0">
+        
+        {/* HEADER */}
+        <header className={`fixed top-0 left-0 right-0 md:sticky backdrop-blur-md border-b px-4 md:px-8 py-4 flex items-center justify-between z-40 transition-colors duration-300 ${
+          isDark ? 'bg-[#08041A]/80 border-white/5' : 'bg-white/80 border-gray-200 shadow-xs'
+        }`}>
+          <div className="flex items-center gap-3">
+            {/* Mobile Sidebar Trigger */}
+            <button 
+              onClick={() => setShowMobileSidebar(true)} 
+              className={`md:hidden p-2 rounded-lg border ${
+                isDark ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'
+              }`}
+            >
+              <Menu className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+            </button>
+            
+            {/* Page Header text */}
+            <div className="hidden sm:block">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Plataforma Digital</span>
+              <h2 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>TocaMais • Conexão Musical</h2>
+            </div>
+            
+            {/* Mobile Logo */}
+            <div className="flex md:hidden items-center gap-2">
+              <img src={logoTocaMais} alt="TocaMais" className="w-7 h-7 rounded-lg object-cover" />
+              <span className={`text-sm font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>TocaMais</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 md:gap-4">
+            
+            {/* Ser Pro Button */}
+            {(!userProfile?.is_pro || role !== 'artist') && (
+              <button
+                onClick={() => setShowProModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] text-white shadow-[0_0_20px_rgba(123,46,255,0.3)] hover:shadow-[0_0_25px_rgba(123,46,255,0.5)] hover:scale-105 active:scale-95"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Ser Pro</span>
+              </button>
+            )}
+
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-xl border transition-colors ${
+                isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-200 hover:bg-gray-200'
+              }`}
+              title={isDark ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-yellow-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-purple-600" />
+              )}
+            </button>
+
+
+
+            {/* Notifications */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`p-2 rounded-xl border transition-colors ${
+                  isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-200 hover:bg-gray-200'
+                }`}
+              >
+                <Bell className={`w-4 h-4 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-pulse shadow-lg shadow-red-500/50">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowNotifications(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className={`absolute right-0 mt-2 w-80 border rounded-2xl p-4 shadow-2xl z-40 ${
+                        isDark ? 'bg-[#0F0926] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                        <h4 className="text-xs font-bold uppercase tracking-wider">Notificações</h4>
+                        <span 
+                          onClick={async () => {
+                            if (!user) return;
+                            await supabase.from('notifications').delete().eq('user_id', user.id);
+                            setNotifications([]);
+                          }}
+                          className="text-[10px] text-neon-green font-semibold cursor-pointer hover:text-neon-green/80"
+                        >Limpar tudo</span>
+                      </div>
+                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {notifications.length === 0 && (
+                          <p className="text-xs text-gray-500 text-center py-4">Nenhuma notificação</p>
+                        )}
+                        {notifications.map(n => (
+                          <div 
+                            key={n.id} 
+                            className={`p-2.5 rounded-xl transition-colors cursor-pointer ${
+                              isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'
+                            } ${!n.read ? 'border-l-2 border-neon-purple' : ''}`}
+                          >
+                            <p className="text-xs font-bold">{n.title}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{n.content}</p>
+                            <span className="text-[9px] text-gray-500 mt-1 block">
+                              {new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Logout Mobile */}
+            <button 
+              onClick={() => logout()}
+              className="md:hidden p-2 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+            >
+              <LogOut className="w-4 h-4 text-red-400" />
+            </button>
+          </div>
+        </header>
+
+        {/* CONTENT AREA */}
+        <main className="flex-1 px-4 md:px-8 pt-24 pb-6 md:py-6 w-full max-w-7xl mx-auto z-10">
+          {children}
+        </main>
+      </div>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t px-4 py-2 flex items-center justify-around z-40 pb-5 ${
+        isDark ? 'bg-[#0F0926] border-white/5' : 'bg-[#FFFFFF] border-gray-200 shadow-sm'
+      }`}>
+        {mobileBottomNav.map((item) => {
+          const Icon = item.icon;
+          const active = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="flex flex-col items-center gap-1 py-1"
+            >
+              <motion.div whileTap={{ scale: 0.9 }}>
+                <Icon className={`w-5 h-5 ${active ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+              </motion.div>
+              <span className={`text-[9px] uppercase tracking-wider ${active ? 'font-semibold text-neon-purple' : isDark ? 'font-medium text-gray-400' : 'font-medium text-gray-500'}`}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* MOBILE SIDEBAR DRAWER */}
+      <AnimatePresence>
+        {showMobileSidebar && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileSidebar(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+              className={`fixed top-0 bottom-0 left-0 w-64 p-6 z-50 flex flex-col md:hidden ${
+                isDark ? 'bg-[#0F0926] text-white' : 'bg-white text-gray-800 border-r border-gray-200'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center">
+                    <span className="text-white font-black text-xs">T</span>
+                  </div>
+                  <span className="text-sm font-black tracking-wider">TocaMais</span>
+                </div>
+                <button 
+                  onClick={() => setShowMobileSidebar(false)}
+                  className={`p-1 rounded-lg border ${
+                    isDark ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <nav className="flex-1 space-y-2">
+                {(() => {
+                  if (activeRole === 'artist') {
+                    const mainItems = nav.filter(i => !['/artist/agenda', '/artist/proposals', '/artist/messages', '/artist/requests', '/artist/repertorio'].includes(i.path));
+                    const showsSubItems = nav.filter(i => ['/artist/agenda', '/artist/proposals', '/artist/messages'].includes(i.path));
+                    const palcoSubItems = nav.filter(i => ['/artist/requests', '/artist/repertorio'].includes(i.path));
+                    
+                    const isShowsActive = ['/artist/agenda', '/artist/proposals', '/artist/messages'].includes(location.pathname);
+                    const isPalcoActive = ['/artist/requests', '/artist/repertorio'].includes(location.pathname);
+
+                    return (
+                      <div className="space-y-2">
+                        {/* Panel */}
+                        {(() => {
+                          const item = mainItems[0];
+                          if (!item) return null;
+                          const Icon = item.icon;
+                          const active = location.pathname === item.path;
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => setShowMobileSidebar(false)}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                                active 
+                                  ? isDark 
+                                    ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple font-bold' 
+                                    : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-xs'
+                                  : isDark 
+                                    ? 'text-gray-400 hover:text-white' 
+                                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                              }`}
+                            >
+                              <Icon className="w-5 h-5" />
+                              <span className="text-sm">{item.label}</span>
+                            </Link>
+                          );
+                        })()}
+
+                        {/* Collapsible Shows Button */}
+                        <button
+                          onClick={() => setShowShowsMenu(!showShowsMenu)}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                            isShowsActive
+                              ? isDark
+                                ? 'bg-neon-purple/10 text-white font-bold'
+                                : 'bg-neon-purple/5 text-neon-purple font-bold shadow-xs'
+                              : isDark
+                                ? 'text-gray-400 hover:text-white'
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Music className={`w-5 h-5 ${isShowsActive ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <span className="text-sm">Shows</span>
+                          </div>
+                          {showShowsMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+
+                        {/* Shows Submenu Items */}
+                        {showShowsMenu && (
+                          <div className="pl-6 space-y-1 border-l border-white/5 ml-4">
+                            {showsSubItems.map((item) => {
+                              const Icon = item.icon;
+                              const active = location.pathname === item.path;
+                              return (
+                                <Link
+                                  key={item.path}
+                                  to={item.path}
+                                  onClick={() => setShowMobileSidebar(false)}
+                                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                                    active 
+                                      ? isDark 
+                                        ? 'bg-neon-purple/20 text-white font-bold' 
+                                        : 'bg-neon-purple/10 text-neon-purple font-bold'
+                                      : isDark 
+                                        ? 'text-gray-500 hover:text-white' 
+                                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <Icon className={`w-4 h-4 ${active ? 'text-neon-purple' : 'text-gray-500'}`} />
+                                  <span className="text-xs">{item.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Collapsible Palco Button */}
+                        <button
+                          onClick={() => setShowPalcoMenu(!showPalcoMenu)}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                            isPalcoActive
+                              ? isDark
+                                ? 'bg-neon-purple/10 text-white font-bold'
+                                : 'bg-neon-purple/5 text-neon-purple font-bold shadow-xs'
+                              : isDark
+                                ? 'text-gray-400 hover:text-white'
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Mic className={`w-5 h-5 ${isPalcoActive ? 'text-neon-purple' : isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <span className="text-sm">Palco</span>
+                          </div>
+                          {showPalcoMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+
+                        {/* Palco Submenu Items */}
+                        {showPalcoMenu && (
+                          <div className="pl-6 space-y-1 border-l border-white/5 ml-4">
+                            {palcoSubItems.map((item) => {
+                              const Icon = item.icon;
+                              const active = location.pathname === item.path;
+                              return (
+                                <Link
+                                  key={item.path}
+                                  to={item.path}
+                                  onClick={() => setShowMobileSidebar(false)}
+                                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                                    active 
+                                      ? isDark 
+                                        ? 'bg-neon-purple/20 text-white font-bold' 
+                                        : 'bg-neon-purple/10 text-neon-purple font-bold'
+                                      : isDark 
+                                        ? 'text-gray-500 hover:text-white' 
+                                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <Icon className={`w-4 h-4 ${active ? 'text-neon-purple' : 'text-gray-500'}`} />
+                                  <span className="text-xs">{item.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Remaining main items */}
+                        {mainItems.slice(1).map((item) => {
+                          const Icon = item.icon;
+                          const active = location.pathname === item.path;
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => setShowMobileSidebar(false)}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                                active 
+                                  ? isDark 
+                                    ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple font-bold' 
+                                    : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-xs'
+                                  : isDark 
+                                    ? 'text-gray-400 hover:text-white' 
+                                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                              }`}
+                            >
+                              <Icon className="w-5 h-5" />
+                              <span className="text-sm">{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
+                  // Normal rendering for non-artist roles on mobile
+                  return nav.map((item) => {
+                    const Icon = item.icon;
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setShowMobileSidebar(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          active 
+                            ? isDark 
+                              ? 'bg-neon-purple/20 text-white border-l-4 border-neon-purple font-bold' 
+                              : 'bg-neon-purple/10 text-neon-purple border-l-4 border-neon-purple font-bold shadow-xs'
+                            : isDark 
+                              ? 'text-gray-400 hover:text-white' 
+                              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    );
+                  });
+                })()}
+              </nav>
+
+              <div className={`border-t pt-4 mt-auto ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <img 
+                    src={userProfile?.photo_url || userProfile?.logo_url || user?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=7B2EFF&color=fff'} 
                     alt="Avatar" 
                     className="w-9 h-9 rounded-lg object-cover"
                   />

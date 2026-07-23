@@ -93,6 +93,86 @@ export default function VenueArtists() {
       }
       if (!venueId) { setHireError('Erro: perfil da casa de show não encontrado.'); setHiring(false); return; }
 
+      // Verificar disponibilidade da agenda do artista
+      const { data: agendaBlocks } = await supabase
+        .from('agendas')
+        .select('*')
+        .eq('artist_id', selectedArtist.id)
+        .eq('busy_date', hireForm.date);
+
+      if (agendaBlocks && agendaBlocks.length > 0) {
+        for (const block of agendaBlocks) {
+          let isFullDay = true;
+          let blockStart = "00:00";
+          let blockEnd = "23:59";
+          let blockDesc = "Compromisso";
+
+          try {
+            if (block.note && (block.note.startsWith('{') || block.note.startsWith('['))) {
+              const parsed = JSON.parse(block.note);
+              if (parsed.isTimeBlock) {
+                isFullDay = false;
+                blockStart = parsed.start_time;
+                blockEnd = parsed.end_time;
+                blockDesc = parsed.description || "Compromisso";
+              } else {
+                blockDesc = parsed.description || "Dia Todo";
+              }
+            } else {
+              blockDesc = block.note || "Compromisso";
+            }
+          } catch (e) {}
+
+          if (isFullDay) {
+            setHireError(`Artista indisponível nesta data (${blockDesc}).`);
+            setHiring(false);
+            return;
+          } else {
+            const toMinutes = (t) => {
+              const [h, m] = t.split(':').map(Number);
+              return h * 60 + m;
+            };
+            const pStart = toMinutes(hireForm.time || "20:00");
+            const pEnd = pStart + 120; // 2h padrão
+            const bStart = toMinutes(blockStart);
+            const bEnd = toMinutes(blockEnd);
+
+            if (pStart < bEnd && bStart < pEnd) {
+              setHireError(`Horário indisponível. O artista tem um compromisso das ${blockStart} às ${blockEnd} (${blockDesc}).`);
+              setHiring(false);
+              return;
+            }
+          }
+        }
+      }
+
+      // Verificar shows existentes
+      const { data: existingEvents } = await supabase
+        .from('events')
+        .select('*')
+        .eq('artist_id', selectedArtist.id)
+        .eq('date', hireForm.date)
+        .in('status', ['confirmed', 'pending', 'pending_artist_approval', 'proposed']);
+
+      if (existingEvents && existingEvents.length > 0) {
+        for (const ev of existingEvents) {
+          const toMinutes = (t) => {
+            const [h, m] = t.substring(0, 5).split(':').map(Number);
+            return h * 60 + m;
+          };
+          const pStart = toMinutes(hireForm.time || "20:00");
+          const pEnd = pStart + 120;
+          const evStart = toMinutes(ev.time);
+          const evEnd = evStart + (ev.duration || 120);
+
+          if (pStart < evEnd && evStart < pEnd) {
+            setHireError(`Horário indisponível. O artista já possui outro show das ${ev.time.substring(0, 5)} às ${new Date(new Date("2000-01-01T" + ev.time).getTime() + (ev.duration || 120) * 60 * 1000).toTimeString().substring(0, 5)} neste dia.`);
+            setHiring(false);
+            return;
+          }
+        }
+      }
+
       const { error: err1 } = await supabase.from('events').insert({
         title: `Show: ${selectedArtist.artistic_name}`,
         description: hireForm.message || `Evento no dia ${hireForm.date}`,

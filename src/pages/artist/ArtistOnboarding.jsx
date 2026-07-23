@@ -559,49 +559,57 @@ export default function ArtistOnboarding() {
                   <div className={`p-4 rounded-2xl border ${
                     isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'
                   } space-y-3`}>
-                    <p className="text-xs font-semibold flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#7B2EFF] text-white flex items-center justify-center text-[10px] font-black">1</span>
-                      Crie sua conta no Asaas gratuitamente:
-                    </p>
-                    <a
-                      href="https://www.asaas.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7B2EFF] hover:underline bg-[#7B2EFF]/10 px-3 py-1.5 rounded-lg border border-[#7B2EFF]/20"
-                    >
-                      Criar conta em asaas.com
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+                    {!profile?.verified ? (
+                      <>
+                        <p className="text-xs font-semibold flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-[#7B2EFF] text-white flex items-center justify-center text-[10px] font-black">1</span>
+                          Crie sua conta no Asaas gratuitamente:
+                        </p>
+                        <a
+                          href="https://www.asaas.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7B2EFF] hover:underline bg-[#7B2EFF]/10 px-3 py-1.5 rounded-lg border border-[#7B2EFF]/20"
+                        >
+                          Criar conta em asaas.com
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
 
-                    <div className="pt-2 border-t border-white/5 space-y-3">
-                      <p className="text-xs font-semibold flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[#7B2EFF] text-white flex items-center justify-center text-[10px] font-black">2</span>
-                        Como obter seu Wallet ID:
-                      </p>
-                      <p className="text-[11px] text-gray-400 leading-relaxed pl-7">
-                        Acesse sua conta Asaas. Clique no seu ícone de perfil no canto superior direito e escolha a opção <strong>Integrações</strong>.
-                      </p>
-                      <div className="pl-7">
-                        <img 
-                          src={asaasStep1} 
-                          alt="Tutorial Asaas - Menu Integrações" 
-                          className="rounded-xl border border-white/10 max-h-52 object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => setFullscreenImage({ src: asaasStep1, alt: "Tutorial Asaas - Menu Integrações" })}
-                        />
-                      </div>
+                        <div className="pt-2 border-t border-white/5 space-y-3">
+                          <p className="text-xs font-semibold flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-[#7B2EFF] text-white flex items-center justify-center text-[10px] font-black">2</span>
+                            Como obter seu Wallet ID:
+                          </p>
+                          <p className="text-[11px] text-gray-400 leading-relaxed pl-7">
+                            Acesse sua conta Asaas. Clique no seu ícone de perfil no canto superior direito e escolha a opção <strong>Integrações</strong>.
+                          </p>
+                          <div className="pl-7">
+                            <img 
+                              src={asaasStep1} 
+                              alt="Tutorial Asaas - Menu Integrações" 
+                              className="rounded-xl border border-white/10 max-h-52 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setFullscreenImage({ src: asaasStep1, alt: "Tutorial Asaas - Menu Integrações" })}
+                            />
+                          </div>
 
-                      <p className="text-[11px] text-gray-400 leading-relaxed pl-7 pt-2">
-                        Na página de Integrações, copie o código <strong>Wallet ID</strong> localizado no rodapé da página (o código sempre começa com <code className="text-[#39FF6A] font-mono">wal_</code>).
+                          <p className="text-[11px] text-gray-400 leading-relaxed pl-7 pt-2">
+                            Na página de Integrações, copie o código <strong>Wallet ID</strong> localizado no rodapé da página (o código sempre começa com <code className="text-[#39FF6A] font-mono">wal_</code>).
+                          </p>
+                          <div className="pl-7">
+                            <img 
+                              src={asaasStep2} 
+                              alt="Tutorial Asaas - Copiar Wallet ID" 
+                              className="rounded-xl border border-white/10 max-h-48 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setFullscreenImage({ src: asaasStep2, alt: "Tutorial Asaas - Copiar Wallet ID" })}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        Seu perfil já está verificado. A conta Asaas está conectada e operacional.
                       </p>
-                      <div className="pl-7">
-                        <img 
-                          src={asaasStep2} 
-                          alt="Tutorial Asaas - Copiar Wallet ID" 
-                          className="rounded-xl border border-white/10 max-h-48 object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => setFullscreenImage({ src: asaasStep2, alt: "Tutorial Asaas - Copiar Wallet ID" })}
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-2">

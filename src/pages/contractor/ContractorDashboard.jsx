@@ -84,6 +84,7 @@ export default function ContractorDashboard() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [precisaEquipamento, setPrecisaEquipamento] = useState(false);
   const [quantidadePessoas, setQuantidadePessoas] = useState(50);
+  const [bookingError, setBookingError] = useState('');
 
   // Proposals panel state
   const [contractorProposals, setContractorProposals] = useState([]);
@@ -160,6 +161,7 @@ export default function ContractorDashboard() {
     setPrecisaEquipamento(false);
     setQuantidadePessoas(50);
     setBookingSuccess(false);
+    setBookingError('');
   };
 
   const handleConfirmBooking = async () => {
@@ -179,6 +181,83 @@ export default function ContractorDashboard() {
     };
 
     try {
+      // Verificar disponibilidade da agenda do artista (bloqueios manuais/horas)
+      const { data: agendaBlocks } = await supabase
+        .from('agendas')
+        .select('*')
+        .eq('artist_id', bookingArtist.id)
+        .eq('busy_date', eventDate);
+
+      if (agendaBlocks && agendaBlocks.length > 0) {
+        for (const block of agendaBlocks) {
+          let isFullDay = true;
+          let blockStart = "00:00";
+          let blockEnd = "23:59";
+          let blockDesc = "Compromisso";
+
+          try {
+            if (block.note && (block.note.startsWith('{') || block.note.startsWith('['))) {
+              const parsed = JSON.parse(block.note);
+              if (parsed.isTimeBlock) {
+                isFullDay = false;
+                blockStart = parsed.start_time;
+                blockEnd = parsed.end_time;
+                blockDesc = parsed.description || "Compromisso";
+              } else {
+                blockDesc = parsed.description || "Dia Todo";
+              }
+            } else {
+              blockDesc = block.note || "Compromisso";
+            }
+          } catch (e) {}
+
+          if (isFullDay) {
+            setBookingError(`Artista indisponível nesta data (${blockDesc}).`);
+            return;
+          } else {
+            const toMinutes = (t) => {
+              const [h, m] = t.split(':').map(Number);
+              return h * 60 + m;
+            };
+            const pStart = toMinutes(eventTime || "20:00");
+            const pEnd = pStart + 120; // 2h padrão
+            const bStart = toMinutes(blockStart);
+            const bEnd = toMinutes(blockEnd);
+
+            if (pStart < bEnd && bStart < pEnd) {
+              setBookingError(`Horário indisponível. O artista tem um compromisso das ${blockStart} às ${blockEnd} (${blockDesc}).`);
+              return;
+            }
+          }
+        }
+      }
+
+      // Verificar shows existentes
+      const { data: existingEvents } = await supabase
+        .from('events')
+        .select('*')
+        .eq('artist_id', bookingArtist.id)
+        .eq('date', eventDate)
+        .in('status', ['confirmed', 'pending', 'pending_artist_approval', 'proposed']);
+
+      if (existingEvents && existingEvents.length > 0) {
+        for (const ev of existingEvents) {
+          const toMinutes = (t) => {
+            const [h, m] = t.substring(0, 5).split(':').map(Number);
+            return h * 60 + m;
+          };
+          const pStart = toMinutes(eventTime || "20:00");
+          const pEnd = pStart + 120;
+          const evStart = toMinutes(ev.time);
+          const evEnd = evStart + (ev.duration || 120);
+
+          if (pStart < evEnd && evStart < pEnd) {
+            setBookingError(`Horário indisponível. O artista já possui outro show das ${ev.time.substring(0, 5)} às ${new Date(new Date("2000-01-01T" + ev.time).getTime() + (ev.duration || 120) * 60 * 1000).toTimeString().substring(0, 5)} neste dia.`);
+            return;
+          }
+        }
+      }
+
       const { error: err1 } = await supabase.from('events').insert(newEvent);
       if (err1) throw new Error('Erro ao criar evento: ' + err1.message);
 
@@ -672,6 +751,9 @@ export default function ContractorDashboard() {
                         className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs resize-none" 
                       />
                     </div>
+                    {bookingError && (
+                      <p className="text-red-400 text-xs font-bold text-center bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">{bookingError}</p>
+                    )}
  
                     <button 
                       onClick={handleConfirmBooking}

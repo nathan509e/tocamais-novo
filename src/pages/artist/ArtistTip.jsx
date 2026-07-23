@@ -338,7 +338,17 @@ export default function ArtistTip() {
               <h1 className={`mt-3 font-black text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {artist?.artistic_name || 'Artista'}
               </h1>
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                  artist?.live_now 
+                    ? 'bg-red-500/25 text-red-500 border border-red-500/45 animate-pulse' 
+                    : 'bg-white/5 text-gray-500 border border-white/10'
+                }`}>
+                  {artist?.live_now ? '● Ao Vivo' : 'Offline'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 mt-2">
                 <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Avaliação</span>
                 {[1, 2, 3, 4, 5].map(star => (
                   <Star key={star} className="w-3.5 h-3.5 text-yellow-400" fill={star <= (artist?.rating || 4) ? 'currentColor' : 'none'} />
