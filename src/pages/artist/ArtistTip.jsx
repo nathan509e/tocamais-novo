@@ -78,7 +78,8 @@ export default function ArtistTip() {
 
   const [stage, setStage] = useState(STAGE.FORM);
   const [artist, setArtist] = useState(null);
-  const canReceiveTip = (artist?.is_pro || artist?.user_row?.is_pro) ? !!artist?.pix_key : !!artist?.asaas_wallet_id;
+  const isArtistPro = artist?.is_pro || artist?.user_row?.is_pro || artist?.user_row?.role === 'artist';
+  const canReceiveTip = isArtistPro ? !!artist?.pix_key : !!artist?.asaas_wallet_id;
   const [repertorio, setRepertorio] = useState([]);
   const [searchRepertorio, setSearchRepertorio] = useState('');
   const [selectedMusic, setSelectedMusic] = useState(null);
@@ -234,7 +235,7 @@ export default function ArtistTip() {
     setPixLoading(true);
     setPixError('');
     try {
-      if (artist?.is_pro && artist?.pix_key) {
+      if (isArtistPro && artist?.pix_key) {
         // Create pending tip record directly in supabase database
         const { data: tipData, error: dbError } = await supabase
           .from('pending_tips')
@@ -454,7 +455,7 @@ export default function ArtistTip() {
                 </button>
               ) : (
                 <div className={`p-4 rounded-2xl text-center text-xs border ${isDark ? 'bg-white/5 border-white/10 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
-                  ⚠️ Gorjetas desativadas para este artista ({artist?.is_pro ? 'Chave PIX não configurada' : 'Wallet ID não configurado'}).
+                  ⚠️ Gorjetas desativadas para este artista ({isArtistPro ? 'Chave PIX não configurada' : 'Wallet ID não configurado'}).
                 </div>
               )}
 
@@ -575,7 +576,7 @@ export default function ArtistTip() {
                     Valor: R$ {tipAmount.toFixed(2)}
                   </p>
                 </div>
-                {artist?.is_pro ? (
+                {isArtistPro ? (
                   <button onClick={async () => {
                     setPixLoading(true);
                     try {
@@ -609,7 +610,7 @@ export default function ArtistTip() {
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aguardando pagamento...</span>
                   </div>
                 )}
-                {pollExpired && !artist?.is_pro && (
+                {pollExpired && !isArtistPro && (
                   <div className="text-center pt-2 space-y-2">
                     <p className="text-[10px] text-yellow-500 font-bold">O tempo limite para detecção automática expirou.</p>
                     <div className="flex gap-2">
