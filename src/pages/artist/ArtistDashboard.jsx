@@ -429,12 +429,12 @@ export default function ArtistDashboard() {
       const tipA = Number(a.amount) || 0;
       const tipB = Number(b.amount) || 0;
 
-      // 1. Sort by tip value descending if at least one has a tip
-      if (tipA > 0 || tipB > 0) {
+      // 1. If tips are different, sort by tip value descending
+      if (tipA !== tipB) {
         return tipB - tipA;
       }
 
-      // 2. If both have no tips, sort by requested_at ascending (first in, first out)
+      // 2. If tips are equal (including both 0), sort by requested_at ascending (first in, first out)
       const dateA = new Date(a.requested_at || 0).getTime();
       const dateB = new Date(b.requested_at || 0).getTime();
       return dateA - dateB;
