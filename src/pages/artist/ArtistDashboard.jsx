@@ -479,24 +479,24 @@ export default function ArtistDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-2xl font-black text-white">{userProfile?.artistic_name || user?.name || 'Artista'}</h1>
-                <CheckCircle className="w-5 h-5 text-neon-purple" />
+                <h1 className="text-lg md:text-2xl font-black text-white">{userProfile?.artistic_name || user?.name || 'Artista'}</h1>
+                <CheckCircle className="w-5 h-5 text-neon-purple flex-shrink-0" />
               </div>
               <p className="text-xs text-gray-400">{userProfile?.genre ? `${userProfile.genre} • ` : ''}{userProfile?.city || 'Local não definido'}</p>
             </div>
           </div>
 
           {/* Live Toggle */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 flex-shrink-0">
-            <span className="text-xs text-gray-300 font-bold uppercase tracking-wider">Ao Vivo</span>
+          <div className="flex items-center gap-1.5 md:gap-2.5 p-2 md:p-3 rounded-xl bg-white/5 border border-white/10 flex-shrink-0">
+            <span className="text-[10px] md:text-xs text-gray-300 font-bold uppercase tracking-wider">Ao Vivo</span>
             <button onClick={handleToggleLive}>
               {availabilityAuto ? (
-                <ToggleRight className="w-9 h-9 text-red-500" />
+                <ToggleRight className="w-7 h-7 md:w-9 md:h-9 text-red-500" />
               ) : (
-                <ToggleLeft className="w-9 h-9 text-gray-500" />
+                <ToggleLeft className="w-7 h-7 md:w-9 md:h-9 text-gray-500" />
               )}
             </button>
-            <span className="text-[10px] text-gray-400 font-semibold">{availabilityAuto ? 'Ao Vivo' : 'Não Ao Vivo'}</span>
+            <span className="text-[8px] md:text-[10px] text-gray-400 font-semibold">{availabilityAuto ? 'Ao Vivo' : 'Não Ao Vivo'}</span>
           </div>
         </div>
 

@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabaseClient';
 import { Music, Home, User, Mail, ArrowRight } from 'lucide-react';
 import NeonButton from '../components/ui/NeonButton';
 
+import logoTocaMaisWebp from '../assets/logo-tocamais.webp';
+
 export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [role, setRole] = useState('artist'); // artist, venue, contractor
@@ -137,43 +139,15 @@ export default function Login() {
           <motion.div 
             animate={{ scale: [1, 1.05, 1] }} 
             transition={{ repeat: Infinity, duration: 4 }}
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] p-3 mb-4 shadow-[0_0_20px_rgba(123,46,255,0.4)]"
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] p-0.5 mb-4 shadow-[0_0_20px_rgba(123,46,255,0.4)]"
           >
-            <Music className="w-8 h-8 text-white" />
+            <img src={logoTocaMaisWebp} alt="Logo" className="w-full h-full rounded-2xl object-cover" />
           </motion.div>
           <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white via-white to-gray-400 bg-clip-text text-transparent">TocaMais</h1>
           <p className="text-gray-400 text-sm mt-1">Conectando artistas e contratantes com facilidade</p>
         </div>
 
-        {/* Quick Logins for Demo */}
-        {!isRegistering && (
-          <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Entrar rápido (Demonstração):</p>
-            <div className="grid grid-cols-3 gap-2">
-              <button 
-                type="button" 
-                onClick={() => handleQuickLogin('lucas@gmail.com')}
-                className="py-2 px-1 rounded-xl bg-neon-purple/10 border border-neon-purple/20 text-[10px] font-bold text-purple-300 hover:bg-neon-purple/25 transition-all text-center"
-              >
-                👨‍🎤 Artista
-              </button>
-              <button 
-                type="button" 
-                onClick={() => handleQuickLogin('maximiano.nathan004@gmail.com')}
-                className="py-2 px-1 rounded-xl bg-neon-green/10 border border-neon-green/20 text-[10px] font-bold text-green-300 hover:bg-neon-green/25 transition-all text-center"
-              >
-                🏢 Casa Show
-              </button>
-              <button 
-                type="button" 
-                onClick={() => handleQuickLogin('maria@gmail.com')}
-                className="py-2 px-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-300 hover:bg-blue-500/25 transition-all text-center"
-              >
-                👤 Particular
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Form */}
         <form onSubmit={handleSubmit} noValidate className="space-y-5">
