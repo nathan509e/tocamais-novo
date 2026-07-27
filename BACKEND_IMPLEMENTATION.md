@@ -18,7 +18,7 @@ Este documento descreve como implementar o backend seguro para a integração do
 2. Adicione as seguintes variáveis:
 
 ```
-GOOGLE_CLIENT_ID=236136068504-m9djldbu00o9btp3gteeube7u5qcn0ug.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=899997355232-8k646l7d98pshfb8vgld1ifpaeaovgve.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=seu_client_secret_aqui
 ```
 
@@ -84,7 +84,7 @@ https://seu-dominio.com  (produção)
 Atualize seu `.env` com:
 
 ```
-VITE_GOOGLE_CLIENT_ID=236136068504-m9djldbu00o9btp3gteeube7u5qcn0ug.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=899997355232-8k646l7d98pshfb8vgld1ifpaeaovgve.apps.googleusercontent.com
 VITE_GOOGLE_CLIENT_SECRET=seu_client_secret_aqui
 VITE_SUPABASE_URL=sua_url_supabase
 VITE_SUPABASE_ANON_KEY=sua_anon_key

@@ -308,7 +308,7 @@ logs.forEach(log => {
 echo $VITE_GOOGLE_CLIENT_ID
 
 # Se vazio, adicionar ao .env
-VITE_GOOGLE_CLIENT_ID=236136068504-m9djldbu00o9btp3gteeube7u5qcn0ug.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=899997355232-8k646l7d98pshfb8vgld1ifpaeaovgve.apps.googleusercontent.com
 ```
 
 ### ❌ "Erro 400 ao fazer login"
