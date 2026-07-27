@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/lib/AuthContext';
@@ -67,6 +68,11 @@ export default function AppLayout({ children, role = 'artist' }) {
   const [showShowsMenu, setShowShowsMenu] = useState(true);
   const [showPalcoMenu, setShowPalcoMenu] = useState(true);
 
+  // iOS App Store StoreKit States
+  const [iosProducts, setIosProducts] = useState({ monthly: null, yearly: null });
+  const [iosLoading, setIosLoading] = useState(false);
+  const [iosMessage, setIosMessage] = useState('');
+
   // Reset subscription modal state when closed
   useEffect(() => {
     if (!showProModal) {
@@ -76,8 +82,152 @@ export default function AppLayout({ children, role = 'artist' }) {
       setProQrCode(null);
       setProPixPayload(null);
       setProPaymentCompleted(false);
+      setIosMessage('');
+      setIosLoading(false);
     }
   }, [showProModal]);
+
+  const isIos = Capacitor.getPlatform() === 'ios';
+
+  // StoreKit 2 integration via cordova-plugin-purchase for iOS
+  useEffect(() => {
+    if (!isIos) return;
+
+    const CdvPurchase = window.CdvPurchase;
+    if (!CdvPurchase) {
+      console.warn('StoreKit integration (CdvPurchase) is not available on window. Make sure the cordova-plugin-purchase is installed and active.');
+      return;
+    }
+
+    const { store, ProductType, Platform } = CdvPurchase;
+    if (!store) return;
+
+    store.verbosity = store.DEBUG;
+
+    // Monitor product and state updates
+    store.when()
+      .updated(() => {
+        console.log('Store updated. Reading registered product list.');
+        const monthly = store.get('com.tocamais.app.premium.monthly', Platform.APPLE_APPSTORE);
+        const yearly = store.get('com.tocamais.app.premium.yearly', Platform.APPLE_APPSTORE);
+
+        setIosProducts({
+          monthly: monthly ? {
+            id: monthly.id,
+            title: monthly.title || 'TocaMais Pro Mensal',
+            price: monthly.price || 'R$ 49,90',
+            description: monthly.description || 'Acesso mensal ilimitado a todos os recursos Pro',
+            raw: monthly
+          } : null,
+          yearly: yearly ? {
+            id: yearly.id,
+            title: yearly.title || 'TocaMais Pro Anual',
+            price: yearly.price || 'R$ 499,90',
+            description: yearly.description || 'Acesso anual ilimitado a todos os recursos Pro (economize 20%)',
+            raw: yearly
+          } : null
+        });
+      })
+      .approved(async (transaction) => {
+        console.log('Transaction approved by Apple:', transaction);
+        await verifyIosTransaction(transaction);
+      })
+      .finished((transaction) => {
+        console.log('Transaction finished successfully:', transaction.transactionId);
+      });
+
+    // Initialize Store
+    try {
+      store.initialize([
+        { id: 'com.tocamais.app.premium.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+        { id: 'com.tocamais.app.premium.yearly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE }
+      ]);
+    } catch (err) {
+      console.error('Failed to initialize Apple StoreKit:', err);
+    }
+  }, []);
+
+  const verifyIosTransaction = async (transaction) => {
+    setIosLoading(true);
+    setIosMessage('Validando sua assinatura com a Apple...');
+    setProError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('apple-iap', {
+        body: {
+          action: 'verify-receipt',
+          userId: user?.id,
+          productId: transaction.productId,
+          transactionId: transaction.transactionId || transaction.id,
+          originalTransactionId: transaction.originalTransactionId || transaction.transactionId || transaction.id,
+          purchasedAt: new Date().toISOString(),
+          jwsRepresentation: transaction.rawPayload || transaction.id || null
+        }
+      });
+
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Falha ao validar compra no servidor de verificação.');
+      }
+
+      // Finish transaction to confirm delivery to Apple
+      await transaction.finish();
+
+      setProPaymentCompleted(true);
+      if (refreshProfile) {
+        await refreshProfile();
+      }
+    } catch (err) {
+      console.error('Verification error:', err);
+      setProError(err.message || 'Erro ao validar sua compra junto à Apple.');
+    } finally {
+      setIosLoading(false);
+      setIosMessage('');
+    }
+  };
+
+  const handleIosSubscribe = async (productId) => {
+    const CdvPurchase = window.CdvPurchase;
+    if (!CdvPurchase) {
+      setProError('Serviço de compras indisponível no momento.');
+      return;
+    }
+    const store = CdvPurchase.store;
+    const product = store.get(productId, CdvPurchase.Platform.APPLE_APPSTORE);
+    if (!product) {
+      setProError('Assinatura não disponível na App Store.');
+      return;
+    }
+
+    setIosLoading(true);
+    setProError('');
+    try {
+      await store.order(product);
+    } catch (err) {
+      console.error('Order request error:', err);
+      setProError('Não foi possível iniciar o fluxo de assinatura.');
+      setIosLoading(false);
+    }
+  };
+
+  const handleIosRestore = async () => {
+    const CdvPurchase = window.CdvPurchase;
+    if (!CdvPurchase) {
+      setProError('Serviço de compras indisponível.');
+      return;
+    }
+    setIosLoading(true);
+    setIosMessage('Restaurando assinaturas anteriores...');
+    setProError('');
+    try {
+      await CdvPurchase.store.restore();
+      setIosMessage('Verificação concluída. Se você possui uma assinatura válida, ela será liberada.');
+      setTimeout(() => setIosMessage(''), 5000);
+    } catch (err) {
+      console.error('Restore error:', err);
+      setProError('Não foi possível restaurar suas assinaturas.');
+    } finally {
+      setIosLoading(false);
+    }
+  };
 
   // Monitor payment success in real-time or via polling
   useEffect(() => {
@@ -1019,94 +1169,180 @@ export default function AppLayout({ children, role = 'artist' }) {
                 </div>
               </div>
 
-              {/* Price */}
-              <div className="text-center py-2">
-                <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>R$ 49,90</span>
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
-              </div>
-
-              {/* CPF Input */}
-              {!proSuccess && !proQrCode && (
-                <div>
-                  <label className={`text-xs font-semibold mb-1.5 block ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                    CPF (obrigatório para assinatura)
-                  </label>
-                  <input
-                    type="text"
-                    value={proCpf}
-                    onChange={(e) => setProCpf(formatCpf(e.target.value))}
-                    placeholder="000.000.000-00"
-                    maxLength={14}
-                    className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium border outline-none transition-all ${
-                      isDark
-                        ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#7B2EFF]'
-                        : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-[#7B2EFF]'
-                    }`}
-                  />
-                </div>
-              )}
-
-              {/* Error */}
-              {proError && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-red-400 font-medium">{proError}</p>
-                </div>
-              )}
-
-              {/* Success - Show QR Code */}
-              {proSuccess && proQrCode ? (
+              {isIos ? (
+                /* iOS In-App Purchase Flow */
                 <div className="space-y-4">
-                  <div className={`rounded-xl p-4 text-center space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-                    <p className="text-xs font-bold text-neon-green uppercase tracking-wider">Pague com PIX</p>
-                    <div className="bg-white rounded-xl p-3 inline-block">
-                      <img 
-                        src={`data:image/png;base64,${proQrCode}`} 
-                        alt="QR Code PIX" 
-                        className="w-48 h-48 mx-auto"
-                      />
+                  {iosMessage && (
+                    <div className="bg-[#7B2EFF]/10 border border-[#7B2EFF]/20 rounded-xl p-3 text-center flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#7B2EFF]" />
+                      <p className="text-xs text-[#7B2EFF] font-semibold">{iosMessage}</p>
                     </div>
-                    {proPixPayload && (
-                      <div>
-                        <p className={`text-[10px] mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Ou copie o código PIX:</p>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(proPixPayload)}
-                          className={`text-[10px] px-3 py-1.5 rounded-lg border transition-colors ${
-                            isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'
-                          }`}
-                        >
-                          Copiar código
-                        </button>
+                  )}
+
+                  {proError && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                      <p className="text-xs text-red-400 font-medium">{proError}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {/* Plan Options */}
+                    <div className={`p-4 rounded-xl border-2 border-[#7B2EFF]/50 ${isDark ? 'bg-white/5' : 'bg-gray-50'} relative overflow-hidden`}>
+                      <span className="absolute top-2 right-2 text-[9px] uppercase font-bold text-[#7B2EFF] bg-[#7B2EFF]/20 px-2 py-0.5 rounded-full">Popular</span>
+                      <h4 className="text-sm font-bold">Assinatura Mensal Pro</h4>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+                        {iosProducts.monthly?.description || 'Acesso mensal ilimitado a todos os recursos Pro'}
+                      </p>
+                      <div className="flex items-baseline gap-1 mt-2">
+                        <span className="text-xl font-extrabold">{iosProducts.monthly?.price || 'R$ 49,90'}</span>
+                        <span className="text-xs text-gray-500">/mês</span>
                       </div>
-                    )}
+                      <button
+                        onClick={() => handleIosSubscribe('com.tocamais.app.premium.monthly')}
+                        disabled={iosLoading}
+                        className="w-full mt-3 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        {iosLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
+                        <span>Assinar Mensal</span>
+                      </button>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border border-white/10 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                      <h4 className="text-sm font-bold">Assinatura Anual Pro</h4>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+                        {iosProducts.yearly?.description || 'Acesso anual completo com desconto exclusivo'}
+                      </p>
+                      <div className="flex items-baseline gap-1 mt-2">
+                        <span className="text-xl font-extrabold">{iosProducts.yearly?.price || 'R$ 499,90'}</span>
+                        <span className="text-xs text-gray-500">/ano</span>
+                      </div>
+                      <button
+                        onClick={() => handleIosSubscribe('com.tocamais.app.premium.yearly')}
+                        disabled={iosLoading}
+                        className="w-full mt-3 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        {iosLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
+                        <span>Assinar Anual</span>
+                      </button>
+                    </div>
                   </div>
-                  <p className={`text-[10px] text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Após o pagamento, seu acesso Pro será ativado automaticamente.
-                  </p>
+
+                  {/* Restore Purchases & Legal links */}
+                  <div className="flex flex-col gap-2.5 pt-2">
+                    <button
+                      onClick={handleIosRestore}
+                      disabled={iosLoading}
+                      className={`w-full py-2.5 rounded-xl font-bold text-xs border transition-colors ${
+                        isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      Restaurar compras
+                    </button>
+                    
+                    <p className={`text-[9px] text-center leading-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      A cobrança será feita na sua conta Apple na confirmação da compra. A assinatura é renovada automaticamente, a menos que a renovação automática seja desativada pelo menos 24 horas antes do final do período vigente. Você pode gerenciar ou cancelar as assinaturas nas configurações da sua conta da App Store.
+                    </p>
+
+                    <div className="flex justify-center gap-4 text-[9px] font-semibold text-[#7B2EFF]">
+                      <a href="https://tocamais.app/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">Política de Privacidade</a>
+                      <span>•</span>
+                      <a href="https://tocamais.app/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">Termos de Uso</a>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                /* Subscribe Button */
-                <button
-                  onClick={handleSubscribePro}
-                  disabled={proLoading || !isCpfValid(proCpf)}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-[0_0_25px_rgba(123,46,255,0.3)] hover:shadow-[0_0_35px_rgba(123,46,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {proLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Gerando cobrança...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4" />
-                      <span>Assinar Agora</span>
-                    </>
-                  )}
-                </button>
-              )}
+                /* Web/Android Flow */
+                <>
+                  {/* Price */}
+                  <div className="text-center py-2">
+                    <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>R$ 49,90</span>
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
+                  </div>
 
-              <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                Cobrança recorrente. Cancele quando quiser.
-              </p>
+                  {/* CPF Input */}
+                  {!proSuccess && !proQrCode && (
+                    <div>
+                      <label className={`text-xs font-semibold mb-1.5 block ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        CPF (obrigatório para assinatura)
+                      </label>
+                      <input
+                        type="text"
+                        value={proCpf}
+                        onChange={(e) => setProCpf(formatCpf(e.target.value))}
+                        placeholder="000.000.000-00"
+                        maxLength={14}
+                        className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium border outline-none transition-all ${
+                          isDark
+                            ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#7B2EFF]'
+                            : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-[#7B2EFF]'
+                        }`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {proError && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                      <p className="text-xs text-red-400 font-medium">{proError}</p>
+                    </div>
+                  )}
+
+                  {/* Success - Show QR Code */}
+                  {proSuccess && proQrCode ? (
+                    <div className="space-y-4">
+                      <div className={`rounded-xl p-4 text-center space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                        <p className="text-xs font-bold text-neon-green uppercase tracking-wider">Pague com PIX</p>
+                        <div className="bg-white rounded-xl p-3 inline-block">
+                          <img 
+                            src={`data:image/png;base64,${proQrCode}`} 
+                            alt="QR Code PIX" 
+                            className="w-48 h-48 mx-auto"
+                          />
+                        </div>
+                        {proPixPayload && (
+                          <div>
+                            <p className={`text-[10px] mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Ou copie o código PIX:</p>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(proPixPayload)}
+                              className={`text-[10px] px-3 py-1.5 rounded-lg border transition-colors ${
+                                isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'
+                              }`}
+                            >
+                              Copiar código
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <p className={`text-[10px] text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Após o pagamento, seu acesso Pro será ativado automaticamente.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Subscribe Button */
+                    <button
+                      onClick={handleSubscribePro}
+                      disabled={proLoading || !isCpfValid(proCpf)}
+                      className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] shadow-[0_0_25px_rgba(123,46,255,0.3)] hover:shadow-[0_0_35px_rgba(123,46,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {proLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Gerando cobrança...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4" />
+                          <span>Assinar Agora</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Cobrança recorrente. Cancele quando quiser.
+                  </p>
+                </>
+              )}
             </>
           )}
         </DialogContent>
