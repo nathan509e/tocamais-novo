@@ -78,7 +78,7 @@ export default function ArtistTip() {
 
   const [stage, setStage] = useState(STAGE.FORM);
   const [artist, setArtist] = useState(null);
-  const isArtistPro = artist?.is_pro || artist?.user_row?.is_pro || artist?.user_row?.role === 'artist' || !!artist?.pix_key;
+  const isArtistPro = !!(artist?.is_pro || artist?.user_row?.is_pro);
   const canReceiveTip = isArtistPro ? !!artist?.pix_key : (!!artist?.asaas_wallet_id || !!artist?.pix_key);
   const [repertorio, setRepertorio] = useState([]);
   const [searchRepertorio, setSearchRepertorio] = useState('');
@@ -170,7 +170,7 @@ export default function ArtistTip() {
           .single();
 
         if (data) {
-          setArtist({ ...data, is_pro: !!userRow?.is_pro, user_row: userRow });
+          setArtist({ ...data, is_pro: !!data.is_pro || !!userRow?.is_pro, user_row: userRow });
           const activeSetlist = data.setlists?.find(s => s.active);
           const musicIds = (activeSetlist && activeSetlist.musicas_ids?.length > 0)
             ? activeSetlist.musicas_ids

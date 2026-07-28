@@ -49,5 +49,11 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos a câmera para permitir que você tire uma foto para o seu perfil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos sua biblioteca de fotos para permitir que você escolha uma imagem para o seu perfil.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Usamos sua biblioteca para salvar ou atualizar imagens escolhidas pelo usuário.</string>
 </dict>
 </plist>

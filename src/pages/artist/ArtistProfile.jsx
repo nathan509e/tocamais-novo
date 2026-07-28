@@ -6,7 +6,8 @@ import {
   Crown, CheckCircle, MapPin, Music,
   Edit3, Video, Wallet,
   ExternalLink, QrCode, X, Sun, Moon,
-  ChevronUp, ChevronDown, Check
+  ChevronUp, ChevronDown, Check,
+  Camera as CameraIcon
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -14,6 +15,7 @@ import ImageCropModal from '../../components/shared/ImageCropModal';
 import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 const COVER_ASPECT_RATIO = 2.5;
 const dbName = 'TocaMaisBanners';
@@ -174,6 +176,37 @@ export default function ArtistProfile() {
     } catch (err) {
       console.error('Error claiming verification:', err);
       setSaveStatus('Erro ao verificar: ' + err.message);
+    }
+  };
+
+  const handleCameraPhoto = async (type) => {
+    try {
+      if (!window.Capacitor?.isNativePlatform()) {
+        document.getElementById(`${type}-input`)?.click();
+        return;
+      }
+      
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Prompt,
+        promptLabelHeader: type === 'avatar' ? 'Alterar foto de perfil' : 'Alterar capa',
+        promptLabelPhoto: 'Escolher da Galeria',
+        promptLabelPicture: 'Tirar Foto'
+      });
+      
+      if (image.webPath) {
+        const response = await fetch(image.webPath);
+        const blob = await response.blob();
+        const file = new File([blob], `${type}_photo_${Date.now()}.${image.format || 'jpg'}`, { type: blob.type });
+        openCrop(file, type);
+      }
+    } catch (error) {
+      if (error.message !== 'User cancelled photos app' && error.message !== 'User cancelled') {
+        console.error('Camera error:', error);
+        alert('Erro ao acessar a câmera: ' + error.message);
+      }
     }
   };
 
@@ -475,11 +508,15 @@ export default function ArtistProfile() {
           <div className={`absolute inset-0 bg-gradient-to-t via-transparent to-transparent ${
             isDark ? 'from-[#08041A]' : 'from-[#F4F5FA]'
           }`} />
-          <div className="absolute top-4 right-4 flex gap-2">
-            <button onClick={() => document.getElementById('cover-input')?.click()} className="p-2 rounded-xl bg-black/50 backdrop-blur-sm">
-              <Edit3 className="w-4 h-4 text-white" />
+          <div className="absolute top-4 right-4">
+            <button
+              onClick={() => handleCameraPhoto('cover')}
+              className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white backdrop-blur-md p-2 rounded-xl transition-all shadow-lg flex items-center gap-2 z-20"
+            >
+              <CameraIcon className="w-4 h-4" />
+              <span className="text-xs font-bold hidden sm:inline">Alterar Capa</span>
             </button>
-            <input id="cover-input" type="file" accept="image/*" className="hidden"
+            <input id="cover-input" type="file" accept="image/*" className="absolute opacity-0 w-0 h-0"
               onChange={e => {
                 const file = e.target.files?.[0];
                 if (!file) return;
@@ -511,13 +548,13 @@ export default function ArtistProfile() {
                 <img src={artistProfile?.photo_url || user?.avatar_url || ''} alt="Avatar" className="w-full h-full object-cover" />
               </div>
               <button 
-                onClick={() => document.getElementById('avatar-input')?.click()} 
+                onClick={() => handleCameraPhoto('avatar')} 
                 className="absolute -top-1 -right-1 p-1.5 bg-neon-purple rounded-full border border-white/20 shadow-md hover:scale-110 active:scale-95 transition-all z-20"
                 title="Mudar Foto de Perfil"
               >
                 <Edit3 className="w-3.5 h-3.5 text-white" />
               </button>
-              <input id="avatar-input" type="file" accept="image/*" className="hidden"
+              <input id="avatar-input" type="file" accept="image/*" className="absolute opacity-0 w-0 h-0"
                 onChange={e => {
                   const file = e.target.files?.[0];
                   if (!file) return;

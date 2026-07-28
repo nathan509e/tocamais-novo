@@ -48,6 +48,9 @@ const navItems = {
   ],
 };
 
+const TERMOS_DE_USO_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
+const POLITICA_DE_PRIVACIDADE_URL = "https://tocamais.app/privacidade";
+
 export default function AppLayout({ children, role = 'artist' }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,9 +72,25 @@ export default function AppLayout({ children, role = 'artist' }) {
   const [showPalcoMenu, setShowPalcoMenu] = useState(true);
 
   // iOS App Store StoreKit States
-  const [iosProducts, setIosProducts] = useState({ monthly: null, yearly: null });
+  const [iosProducts, setIosProducts] = useState({ monthly: null });
   const [iosLoading, setIosLoading] = useState(false);
   const [iosMessage, setIosMessage] = useState('');
+
+  const openSafeLink = async (url) => {
+    try {
+      if (window.Capacitor?.isNativePlatform()) {
+        if (window.Capacitor.Plugins.Browser) {
+          await window.Capacitor.Plugins.Browser.open({ url });
+        } else {
+          window.open(url, '_system');
+        }
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch (e) {
+      console.error('Falha ao abrir URL:', e);
+    }
+  };
 
   // Reset subscription modal state when closed
   useEffect(() => {
@@ -108,8 +127,7 @@ export default function AppLayout({ children, role = 'artist' }) {
     store.when()
       .updated(() => {
         console.log('Store updated. Reading registered product list.');
-        const monthly = store.get('com.tocamais.app.premium.monthly', Platform.APPLE_APPSTORE);
-        const yearly = store.get('com.tocamais.app.premium.yearly', Platform.APPLE_APPSTORE);
+        const monthly = store.get('com.tocamais.app.premium.mensal', Platform.APPLE_APPSTORE);
 
         setIosProducts({
           monthly: monthly ? {
@@ -118,13 +136,6 @@ export default function AppLayout({ children, role = 'artist' }) {
             price: monthly.price || 'R$ 49,90',
             description: monthly.description || 'Acesso mensal ilimitado a todos os recursos Pro',
             raw: monthly
-          } : null,
-          yearly: yearly ? {
-            id: yearly.id,
-            title: yearly.title || 'TocaMais Pro Anual',
-            price: yearly.price || 'R$ 499,90',
-            description: yearly.description || 'Acesso anual ilimitado a todos os recursos Pro (economize 20%)',
-            raw: yearly
           } : null
         });
       })
@@ -139,8 +150,7 @@ export default function AppLayout({ children, role = 'artist' }) {
     // Initialize Store
     try {
       store.initialize([
-        { id: 'com.tocamais.app.premium.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-        { id: 'com.tocamais.app.premium.yearly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE }
+        { id: 'com.tocamais.app.premium.mensal', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE }
       ]);
     } catch (err) {
       console.error('Failed to initialize Apple StoreKit:', err);
@@ -1188,7 +1198,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                   <div className="space-y-3">
                     {/* Plan Options */}
                     <div className={`p-4 rounded-xl border-2 border-[#7B2EFF]/50 ${isDark ? 'bg-white/5' : 'bg-gray-50'} relative overflow-hidden`}>
-                      <span className="absolute top-2 right-2 text-[9px] uppercase font-bold text-[#7B2EFF] bg-[#7B2EFF]/20 px-2 py-0.5 rounded-full">Popular</span>
+                      <span className="absolute top-2 right-2 text-[9px] uppercase font-bold text-[#7B2EFF] bg-[#7B2EFF]/20 px-2 py-0.5 rounded-full">Pro</span>
                       <h4 className="text-sm font-bold">Assinatura Mensal Pro</h4>
                       <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
                         {iosProducts.monthly?.description || 'Acesso mensal ilimitado a todos os recursos Pro'}
@@ -1198,31 +1208,12 @@ export default function AppLayout({ children, role = 'artist' }) {
                         <span className="text-xs text-gray-500">/mês</span>
                       </div>
                       <button
-                        onClick={() => handleIosSubscribe('com.tocamais.app.premium.monthly')}
+                        onClick={() => handleIosSubscribe('com.tocamais.app.premium.mensal')}
                         disabled={iosLoading}
                         className="w-full mt-3 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
                       >
                         {iosLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
                         <span>Assinar Mensal</span>
-                      </button>
-                    </div>
-
-                    <div className={`p-4 rounded-xl border border-white/10 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-                      <h4 className="text-sm font-bold">Assinatura Anual Pro</h4>
-                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
-                        {iosProducts.yearly?.description || 'Acesso anual completo com desconto exclusivo'}
-                      </p>
-                      <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-xl font-extrabold">{iosProducts.yearly?.price || 'R$ 499,90'}</span>
-                        <span className="text-xs text-gray-500">/ano</span>
-                      </div>
-                      <button
-                        onClick={() => handleIosSubscribe('com.tocamais.app.premium.yearly')}
-                        disabled={iosLoading}
-                        className="w-full mt-3 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#7B2EFF] to-[#39FF6A] hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
-                      >
-                        {iosLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
-                        <span>Assinar Anual</span>
                       </button>
                     </div>
                   </div>
@@ -1244,9 +1235,9 @@ export default function AppLayout({ children, role = 'artist' }) {
                     </p>
 
                     <div className="flex justify-center gap-4 text-[9px] font-semibold text-[#7B2EFF]">
-                      <a href="https://tocamais.app/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">Política de Privacidade</a>
+                      <button onClick={() => openSafeLink(POLITICA_DE_PRIVACIDADE_URL)} className="hover:underline">Política de Privacidade</button>
                       <span>•</span>
-                      <a href="https://tocamais.app/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">Termos de Uso</a>
+                      <button onClick={() => openSafeLink(TERMOS_DE_USO_URL)} className="hover:underline">Termos de Uso</button>
                     </div>
                   </div>
                 </div>
