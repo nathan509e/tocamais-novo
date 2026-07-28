@@ -190,10 +190,7 @@ export default function ArtistProfile() {
         quality: 90,
         allowEditing: false,
         resultType: CameraResultType.Uri,
-        source: CameraSource.Prompt,
-        promptLabelHeader: type === 'avatar' ? 'Alterar foto de perfil' : 'Alterar capa',
-        promptLabelPhoto: 'Escolher da Galeria',
-        promptLabelPicture: 'Tirar Foto'
+        source: CameraSource.Photos
       });
       
       if (image.webPath) {
@@ -204,8 +201,8 @@ export default function ArtistProfile() {
       }
     } catch (error) {
       if (error.message !== 'User cancelled photos app' && error.message !== 'User cancelled') {
-        console.error('Camera error:', error);
-        alert('Erro ao acessar a câmera: ' + error.message);
+        console.error('Gallery error:', error);
+        alert('Erro ao acessar a galeria: ' + error.message);
       }
     }
   };
