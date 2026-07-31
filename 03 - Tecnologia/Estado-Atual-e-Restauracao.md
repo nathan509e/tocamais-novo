@@ -8,21 +8,21 @@
 
 | O quê | Onde | Identificador |
 |---|---|---|
-| **Produção (arquivos ao vivo)** | `/var/www/tocamais-backup-20260731/` | Cópia completa de `/var/www/tocamais/` feita em 31/07/2026, antes do deploy da correção de expiração do Ser Pro (backup anterior de 30/07 também preservado) |
-| **Código-fonte (repositório)** | Git local | Commit `2ae9c36` ("fix: revoga Ser Pro automaticamente quando a assinatura expira", 31/07/2026) — working tree limpo |
+| **Produção (arquivos ao vivo)** | `/var/www/tocamais-backup-20260731-item2/` | Cópia completa de `/var/www/tocamais/` feita em 31/07/2026, antes do deploy da remoção de dados fake do painel da casa de show (backups anteriores de 30/07 e 31/07 também preservados) |
+| **Código-fonte (repositório)** | Git local | Commit `b63aceb` ("fix: remove dados fake do painel da casa de show", 31/07/2026) — working tree limpo |
 | **Edge Functions no Supabase** | Painel Supabase → Functions | `asaas-webhook` e `apple-iap` publicadas em 31/07/2026 com a correção de `pro_expires_at` (ver seção "Ser Pro" no Documento 02 - Product) |
 | **GitHub remoto** | `https://github.com/nathan509e/tocamais-novo` (branch `main`) | Ainda **não sincronizado** — permissão de push pendente (ver seção 5) |
 
 **Como restaurar a produção**, se algo der errado:
 ```bash
 rm -rf /var/www/tocamais
-cp -a /var/www/tocamais-backup-20260731 /var/www/tocamais
+cp -a /var/www/tocamais-backup-20260731-item2 /var/www/tocamais
 ```
 
 **Como restaurar o código-fonte** a este ponto exato, se necessário:
 ```bash
 cd /home/david/tocamais-novo
-git checkout 2ae9c36
+git checkout b63aceb
 ```
 
 **Supabase CLI**: instalado nesta VPS (`supabase` global via npm, v2.111.0), já vinculado ao projeto (`byghtatgozsthshmxaem`) usando o `SUPABASE_ACCESS_TOKEN` do `.env`. Pronto pra publicar novas Edge Functions no futuro via `supabase functions deploy <nome>`.
