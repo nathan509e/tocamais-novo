@@ -8,15 +8,15 @@
 
 | O quê | Onde | Identificador |
 |---|---|---|
-| **Produção (arquivos ao vivo)** | `/var/www/tocamais-backup-20260731-item2b/` | Cópia completa de `/var/www/tocamais/` feita em 31/07/2026, logo após o deploy da remoção de dados fake nos painéis de contratante e artista (backups anteriores de 30/07, 31/07 e `-item2` também preservados) |
-| **Código-fonte (repositório)** | Git local | Commit `69055ea` ("fix: remove dados fake dos painéis de contratante e artista", 31/07/2026) — working tree limpo |
+| **Produção (arquivos ao vivo)** | `/var/www/tocamais-backup-20260731-item3/` | Cópia completa de `/var/www/tocamais/` feita em 31/07/2026, logo após o deploy da correção de botões/links quebrados (item 3) (backups anteriores de 30/07, 31/07, `-item2` e `-item2b` também preservados) |
+| **Código-fonte (repositório)** | Git local | Commit `55d8c1a` ("fix: conserta botões e links quebrados (item 3)", 31/07/2026) — working tree limpo |
 | **Edge Functions no Supabase** | Painel Supabase → Functions | `asaas-webhook` e `apple-iap` publicadas em 31/07/2026 com a correção de `pro_expires_at` (ver seção "Ser Pro" no Documento 02 - Product) |
 | **GitHub remoto** | `https://github.com/nathan509e/tocamais-novo` (branch `main`) | Ainda **não sincronizado** — permissão de push pendente (ver seção 5) |
 
 **Como restaurar a produção**, se algo der errado:
 ```bash
 rm -rf /var/www/tocamais
-cp -a /var/www/tocamais-backup-20260731-item2b /var/www/tocamais
+cp -a /var/www/tocamais-backup-20260731-item3 /var/www/tocamais
 ```
 
 Qualquer commit do histórico também pode virar produção a qualquer momento via `git checkout <commit>` + `npm run build`, já que a produção é 100% gerada a partir do repositório.
@@ -24,7 +24,7 @@ Qualquer commit do histórico também pode virar produção a qualquer momento v
 **Como restaurar o código-fonte** a este ponto exato, se necessário:
 ```bash
 cd /home/david/tocamais-novo
-git checkout 69055ea
+git checkout 55d8c1a
 ```
 
 **Supabase CLI**: instalado nesta VPS (`supabase` global via npm, v2.111.0), já vinculado ao projeto (`byghtatgozsthshmxaem`) usando o `SUPABASE_ACCESS_TOKEN` do `.env`. Pronto pra publicar novas Edge Functions no futuro via `supabase functions deploy <nome>`.
