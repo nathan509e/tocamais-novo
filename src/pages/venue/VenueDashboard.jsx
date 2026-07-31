@@ -15,15 +15,7 @@ import {
   CartesianGrid, Tooltip, Legend
 } from 'recharts';
 
-// Mock charts data
-const chartData = [
-  { month: 'Jan', faturamento: 18000, gastos: 4200, ocupacao: 65 },
-  { month: 'Fev', faturamento: 22000, gastos: 5500, ocupacao: 72 },
-  { month: 'Mar', faturamento: 19500, gastos: 4800, ocupacao: 68 },
-  { month: 'Abr', faturamento: 28000, gastos: 7200, ocupacao: 85 },
-  { month: 'Mai', faturamento: 34000, gastos: 8800, ocupacao: 90 },
-  { month: 'Jun', faturamento: 31000, gastos: 7900, ocupacao: 88 },
-];
+const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 import { useTheme } from '../../lib/ThemeContext';
 import { useAuth } from '../../lib/AuthContext';
@@ -263,11 +255,29 @@ export default function VenueDashboard() {
   // Unique artists count
   const hiredArtistsCount = new Set(confirmedEvents.map(p => p.artist_id)).size;
   
-  // Total investment / faturamento noites (caches + bar sales / ticket sales simulated at R$ 40 per ticket)
-  const simulatedRevenue = confirmedEvents.reduce((sum, p) => sum + ((p.quantidade_pessoas || 0) * 40), 0);
-  
-  // Total tips received (simulated based on audience size)
-  const simulatedTips = confirmedEvents.reduce((sum, p) => sum + Math.round((p.quantidade_pessoas || 0) * 1.5), 0);
+  // Cachê médio pago por show (real)
+  const avgFee = totalEvents > 0 ? Math.round(totalCaches / totalEvents) : 0;
+
+  // Propostas ainda não fechadas, aguardando ação (real)
+  const pendingProposalsCount = proposals.filter(p => p.status === 'pending' || p.status === 'pending_artist_approval' || p.status === 'proposed').length;
+
+  // Histórico mensal real (últimos 6 meses): gastos com artistas e ocupação,
+  // calculados a partir dos eventos confirmados. Não existe fonte de dados
+  // para faturamento real da casa (bar/ingresso), então essa série não é
+  // exibida — só o que a plataforma efetivamente registra.
+  const now = new Date();
+  const realChartData = Array.from({ length: 6 }).map((_, i) => {
+    const refDate = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const monthEvents = confirmedEvents.filter(p => {
+      const pd = new Date(p.date);
+      return pd.getFullYear() === refDate.getFullYear() && pd.getMonth() === refDate.getMonth();
+    });
+    const gastos = monthEvents.reduce((sum, p) => sum + (p.fee_proposed || p.fee_agreed || 0), 0);
+    const monthAudience = monthEvents.reduce((sum, p) => sum + (p.quantidade_pessoas || 0), 0);
+    const monthAvgAudience = monthEvents.length > 0 ? Math.round(monthAudience / monthEvents.length) : 0;
+    const ocupacao = capacity > 0 ? Math.min(100, Math.round((monthAvgAudience / capacity) * 100)) : 0;
+    return { month: MONTH_LABELS[refDate.getMonth()], gastos, ocupacao };
+  });
 
   const startHiringFlow = (artist) => {
     setHiringArtist(artist);
@@ -601,20 +611,20 @@ export default function VenueDashboard() {
               <p className="text-gray-400 text-xs mt-1">Total investido no estabelecimento ({selectedMonth})</p>
               
               <div className="flex items-baseline gap-3 mt-2">
-                <h2 className="text-4xl md:text-5xl font-black text-white">R$ {(totalCaches + simulatedTips).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h2>
+                <h2 className="text-4xl md:text-5xl font-black text-white">R$ {totalCaches.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h2>
                 <div className="flex items-center gap-0.5 text-neon-green text-xs font-bold">
                   <TrendingUp className="w-4 h-4" />
                   <span>+{totalEvents > 0 ? '100' : '0'}%</span>
                 </div>
               </div>
-              
-              <p className="text-[10px] text-gray-500 mt-1">Cachês + Gorjetas extras</p>
+
+              <p className="text-[10px] text-gray-500 mt-1">Total pago em cachês de artistas</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {[
                 { title: 'Cachês Pagos', value: `R$ ${totalCaches.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'border-neon-purple/20', iconColor: 'text-neon-purple' },
-                { title: 'Gorjetas Extras', value: `R$ ${simulatedTips.toLocaleString('pt-BR')}`, icon: Star, color: 'border-neon-green/20', iconColor: 'text-neon-green' },
+                { title: 'Cachê Médio', value: `R$ ${avgFee.toLocaleString('pt-BR')}`, icon: Star, color: 'border-neon-green/20', iconColor: 'text-neon-green' },
                 { title: 'Total Eventos', value: `${totalEvents} Shows`, icon: Music, color: 'border-white/5', iconColor: 'text-white' },
                 { title: 'Média de Público', value: `${avgAudience} pessoas`, icon: Users, color: 'border-white/5', iconColor: 'text-gray-400' }
               ].map((m, i) => (
@@ -632,7 +642,7 @@ export default function VenueDashboard() {
 
         {/* METRICS ROW */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Faturamento noites" value={`R$ ${simulatedRevenue.toLocaleString('pt-BR')}`} change={totalEvents > 0 ? 10 : 0} changeLabel="vs. período anterior" icon={DollarSign} iconColor="green" />
+          <StatCard title="Propostas pendentes" value={`${pendingProposalsCount}`} changeLabel="aguardando resposta" icon={FileText} iconColor="green" />
           <StatCard title="Artistas contratados" value={`${hiredArtistsCount}`} change={hiredArtistsCount} changeLabel="músicos únicos" icon={Music} iconColor="purple" />
           <StatCard title="Eventos futuros" value={`${futureEvents}`} icon={Calendar} iconColor="green" />
           <StatCard title="Ocupação média" value={`${occupancyRate}%`} change={avgAudience} icon={Users} iconColor="purple" />
@@ -815,20 +825,16 @@ export default function VenueDashboard() {
           <div className="lg:col-span-2 p-5 rounded-2xl bg-white/5 border border-white/5 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Fluxo de Caixa Musical</h3>
-                <p className="text-[10px] text-gray-400">Faturamento noites ao vivo vs. gastos de contratação</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Investimento em Artistas</h3>
+                <p className="text-[10px] text-gray-400">Gastos mensais com contratação de artistas</p>
               </div>
               <BarChart3 className="w-4 h-4 text-neon-green" />
             </div>
-            
+
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={realChartData}>
                   <defs>
-                    <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#39FF6A" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#39FF6A" stopOpacity={0} />
-                    </linearGradient>
                     <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#7B2EFF" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#7B2EFF" stopOpacity={0} />
@@ -839,7 +845,6 @@ export default function VenueDashboard() {
                   <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} />
                   <Tooltip contentStyle={{ backgroundColor: '#0F0926', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Area type="monotone" dataKey="faturamento" name="Faturamento Noite" stroke="#39FF6A" fillOpacity={1} fill="url(#colorFaturamento)" />
                   <Area type="monotone" dataKey="gastos" name="Gastos Artistas" stroke="#7B2EFF" fillOpacity={1} fill="url(#colorGastos)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -852,10 +857,10 @@ export default function VenueDashboard() {
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Média de Ocupação</h3>
               <p className="text-[10px] text-gray-400">Porcentagem de capacidade alcançada</p>
             </div>
-            
+
             <div className="h-48 flex-1 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <BarChart data={realChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
                   <YAxis unit="%" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
