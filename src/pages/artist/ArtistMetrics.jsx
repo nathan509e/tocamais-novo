@@ -6,8 +6,7 @@ import { useAuth } from '../../lib/AuthContext';
 import StatCard from '../../components/ui/StatCard';
 import { supabase } from '../../lib/supabaseClient';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 export default function ArtistMetrics() {
@@ -15,6 +14,7 @@ export default function ArtistMetrics() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState([]);
   const [artistProfile, setArtistProfile] = useState(null);
+  const [musicRequests, setMusicRequests] = useState([]);
 
   useEffect(() => {
     async function loadArtistData() {
@@ -32,9 +32,18 @@ export default function ArtistMetrics() {
             .from('events')
             .select('*')
             .eq('artist_id', profile.id);
-          
+
           if (eventsData) {
             setEvents(eventsData);
+          }
+
+          const { data: requestsData } = await supabase
+            .from('music_requests')
+            .select('musica_titulo, musica_artista, amount, user_name, requested_at')
+            .eq('artist_id', profile.id);
+
+          if (requestsData) {
+            setMusicRequests(requestsData);
           }
         }
       } catch (err) {
@@ -60,19 +69,37 @@ export default function ArtistMetrics() {
     cityData.push({ city: 'São Paulo', shows: 0 });
   }
 
-  const topSongs = [
-    { song: 'Asa Branca', plays: Math.round((artistProfile?.followers || 150) * 2.4), trend: '+12%' },
-    { song: 'O Xote das Meninas', plays: Math.round((artistProfile?.followers || 150) * 1.8), trend: '+5%' },
-    { song: 'Que Nem Jiló', plays: Math.round((artistProfile?.followers || 150) * 1.2), trend: '-2%' }
-  ];
+  // Top pedidos reais, agrupados por música (music_requests)
+  const songCounts = {};
+  musicRequests.forEach(r => {
+    const title = r.musica_titulo || 'Música não identificada';
+    if (!songCounts[title]) songCounts[title] = { song: title, plays: 0, tips: 0 };
+    songCounts[title].plays += 1;
+    songCounts[title].tips += r.amount || 0;
+  });
+  const topSongs = Object.values(songCounts)
+    .sort((a, b) => b.plays - a.plays)
+    .slice(0, 3);
+  const maxPlays = topSongs.length > 0 ? topSongs[0].plays : 0;
 
-  const performanceData = [
-    { subject: 'Presença', A: artistProfile?.rating ? Math.round(artistProfile.rating * 20) : 80, fullMark: 100 },
-    { subject: 'Pontualidade', A: 95, fullMark: 100 },
-    { subject: 'Engajamento', A: artistProfile?.followers ? Math.min(100, Math.round(artistProfile.followers / 20)) : 70, fullMark: 100 },
-    { subject: 'Repertório', A: 85, fullMark: 100 },
-    { subject: 'Comunicação', A: 90, fullMark: 100 }
-  ];
+  // Gorjetas: total acumulado, total do mês atual e maior doador (dados reais de music_requests)
+  const totalTips = musicRequests.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const now = new Date();
+  const monthTips = musicRequests
+    .filter(r => {
+      if (!r.requested_at) return false;
+      const d = new Date(r.requested_at);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    })
+    .reduce((sum, r) => sum + (r.amount || 0), 0);
+
+  const donorTotals = {};
+  musicRequests.forEach(r => {
+    if (!r.amount) return;
+    const name = r.user_name || 'Fã anônimo';
+    donorTotals[name] = (donorTotals[name] || 0) + r.amount;
+  });
+  const topDonor = Object.entries(donorTotals).sort((a, b) => b[1] - a[1])[0];
 
   return (
     <AppLayout role="artist" userName={user?.name || ''}>
@@ -131,6 +158,9 @@ export default function ArtistMetrics() {
                 <Music className="w-4 h-4 text-neon-green" />
                 <h3 className="text-white font-semibold text-sm">Músicas Mais Tocadas</h3>
               </div>
+              {topSongs.length === 0 ? (
+                <p className="text-gray-500 text-xs text-center py-4">Nenhum pedido de música recebido ainda.</p>
+              ) : (
               <div className="space-y-3">
                 {topSongs.map((song, i) => (
                   <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
@@ -140,38 +170,53 @@ export default function ArtistMetrics() {
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-white text-sm font-medium">{song.song}</p>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-neon-green text-xs font-semibold">{song.trend}</span>
+                          <span className="text-neon-green text-xs font-semibold">{song.tips > 0 ? `R$ ${song.tips.toLocaleString('pt-BR')}` : ''}</span>
                         </div>
                       </div>
                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${song.plays > 0 ? (song.plays / ((artistProfile?.followers || 150) * 2.5)) * 100 : 0}%` }}
+                          animate={{ width: `${maxPlays > 0 ? (song.plays / maxPlays) * 100 : 0}%` }}
                           transition={{ delay: 0.3 + i * 0.08, duration: 0.8 }}
                           className="h-full rounded-full"
                           style={{ background: 'linear-gradient(90deg, #7B2EFF, #39FF6A)' }}
                         />
                       </div>
-                      <p className="text-gray-500 text-[10px] mt-0.5">{song.plays.toLocaleString()} reproduções</p>
+                      <p className="text-gray-500 text-[10px] mt-0.5">{song.plays.toLocaleString()} pedido{song.plays === 1 ? '' : 's'}</p>
                     </div>
                   </motion.div>
                 ))}
               </div>
+              )}
             </div>
 
-            {/* Performance Radar */}
+            {/* Gorjetas & Engajamento */}
             <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-4 h-4 text-neon-purple" />
-                <h3 className="text-white font-semibold text-sm">Score de Performance</h3>
+                <Heart className="w-4 h-4 text-neon-purple" />
+                <h3 className="text-white font-semibold text-sm">Gorjetas & Engajamento</h3>
               </div>
-              <ResponsiveContainer width="100%" height={200}>
-                <RadarChart data={performanceData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
-                  <Radar dataKey="A" stroke="#7B2EFF" fill="#7B2EFF" fillOpacity={0.25} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <p className="text-gray-500 text-[10px] uppercase font-bold">Gorjetas acumuladas</p>
+                  <p className="text-white font-bold text-base mt-1">R$ {totalTips.toLocaleString('pt-BR')}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <p className="text-gray-500 text-[10px] uppercase font-bold">Gorjetas este mês</p>
+                  <p className="text-white font-bold text-base mt-1">R$ {monthTips.toLocaleString('pt-BR')}</p>
+                </div>
+              </div>
+              {topDonor ? (
+                <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-500 text-[10px] uppercase font-bold">Maior doador</p>
+                    <p className="text-white text-sm font-medium mt-0.5">{topDonor[0]}</p>
+                  </div>
+                  <p className="text-neon-green text-sm font-bold">R$ {topDonor[1].toLocaleString('pt-BR')}</p>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-xs text-center mt-3">Nenhuma gorjeta recebida ainda.</p>
+              )}
             </div>
           </>
         )}

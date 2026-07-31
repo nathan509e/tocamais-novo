@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Edit3, Star, Calendar, DollarSign, Sun, Moon, X, Camera } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -17,6 +17,24 @@ export default function ContractorProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', city: '', address: '' });
   const [saveStatus, setSaveStatus] = useState('');
+  const [confirmedEvents, setConfirmedEvents] = useState([]);
+
+  useEffect(() => {
+    const fetchConfirmedEvents = async () => {
+      if (!userProfile?.id) return;
+      const { data } = await supabase
+        .from('events')
+        .select('artist_id, fee_proposed, fee_agreed')
+        .eq('contractor_id', userProfile.id)
+        .eq('status', 'confirmed');
+      if (data) setConfirmedEvents(data);
+    };
+    fetchConfirmedEvents();
+  }, [userProfile?.id]);
+
+  const totalHires = confirmedEvents.length;
+  const totalSpent = confirmedEvents.reduce((sum, e) => sum + (e.fee_proposed || e.fee_agreed || 0), 0);
+  const uniqueArtistsHired = new Set(confirmedEvents.map(e => e.artist_id)).size;
 
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
@@ -261,9 +279,9 @@ export default function ContractorProfile() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Contratações', value: '0', icon: Calendar },
-            { label: 'Avaliações dadas', value: '0', icon: Star },
-            { label: 'Total gasto', value: 'R$ 0', icon: DollarSign },
+            { label: 'Contratações', value: `${totalHires}`, icon: Calendar },
+            { label: 'Artistas contratados', value: `${uniqueArtistsHired}`, icon: Star },
+            { label: 'Total gasto', value: `R$ ${totalSpent.toLocaleString('pt-BR')}`, icon: DollarSign },
           ].map(({ label, value, icon: Icon }, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
               className={`p-3 rounded-2xl border text-center ${
