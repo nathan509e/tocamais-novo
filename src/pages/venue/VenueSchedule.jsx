@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, DollarSign, Users, CheckCircle, Plus } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -8,6 +9,7 @@ import { supabase } from '../../lib/supabaseClient';
 
 export default function VenueSchedule() {
   const { user, userProfile } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [artistsMap, setArtistsMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export default function VenueSchedule() {
             <h1 className="text-white font-bold text-xl">Agenda de Shows</h1>
             <p className="text-gray-400 text-sm">{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
           </div>
-          <NeonButton variant="purple" size="sm">
+          <NeonButton variant="purple" size="sm" onClick={() => navigate('/venue/artists')}>
             <Plus className="w-4 h-4 inline mr-1" />
             Novo evento
           </NeonButton>

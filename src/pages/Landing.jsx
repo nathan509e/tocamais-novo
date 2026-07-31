@@ -11,6 +11,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "@/components/ui/use-toast";
 import logoTocaMais from "@/assets/logo-tocamais.png";
 import logoHero from "@/assets/logo-hero.png";
 import tableTent from "@/assets/table-tent.png";
@@ -18,19 +19,9 @@ import cantoraImg from "@/assets/Cantora.png";
 import { motion } from "framer-motion";
 import ParticleBackground from "@/components/shared/ParticleBackground";
 
-// Modals - placeholders since they might be missing in target
-const PremiumOfferModal = ({ open, onOpenChange }) => null;
-const AuthRequiredDialog = ({ open, onOpenChange }) => null;
-const EstablishmentPremiumModal = ({ open, onOpenChange }) => null;
-
 const Landing = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState(null);
-  const [pendingRedirect, setPendingRedirect] = useState("/explore");
-  const [showEstabPremiumModal, setShowEstabPremiumModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("ARTISTA PRO");
 
   useEffect(() => {
@@ -61,15 +52,6 @@ const Landing = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
-  };
-
-  const handleContinueFree = () => { setShowPremiumModal(false); navigate("/explore"); };
-  const handleSelectPlan = (plan) => {
-    setShowPremiumModal(false); setPendingPlan(plan); setPendingRedirect("/explore"); setShowAuthDialog(true);
-  };
-  const handleEstabContinueFree = () => { setShowEstabPremiumModal(false); navigate("/explore"); };
-  const handleEstabSelectPlan = (plan) => {
-    setShowEstabPremiumModal(false); setPendingPlan(plan); setPendingRedirect("/explore"); setShowAuthDialog(true);
   };
 
   if (isLoading) {
@@ -184,14 +166,14 @@ const Landing = () => {
 
               <motion.div custom={3} variants={fadeIn} className="flex flex-col sm:flex-row gap-4 mb-10 mt-24">
                 <button
-                  onClick={() => alert('Em breve na App Store')}
+                  onClick={() => toast({ title: 'Em breve na App Store', description: 'Estamos finalizando a publicação do app iOS. Por enquanto, use a versão web abaixo.' })}
                   className="flex items-center justify-center gap-3 h-16 px-6 rounded-full bg-[#8A05FF] text-[#FFFFFF] font-black text-base shadow-lg shadow-purple-500/20 transition-all hover:scale-105 active:scale-95"
                 >
                   <Apple className="w-5 h-5" />
                   App Store
                 </button>
                 <button
-                  onClick={() => navigate("/explore")}
+                  onClick={() => navigate("/login")}
                   className="flex items-center justify-center gap-3 h-16 px-6 rounded-full bg-[#1A1A2E] text-[#FFFFFF] font-black text-base shadow-lg shadow-black/10 transition-all hover:scale-105 active:scale-95"
                 >
                   <ExternalLink className="w-5 h-5" />
@@ -281,7 +263,7 @@ const Landing = () => {
                   ))}
                 </ul>
                 <button
-                  onClick={() => setSelectedPlan(plan.name)}
+                  onClick={() => { setSelectedPlan(plan.name); navigate("/login"); }}
                   className={`w-full h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${isSelected ? "bg-emerald-500 text-[#FFFFFF]" : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"}`}
                 >
                   Selecionar Plano
@@ -396,12 +378,12 @@ const Landing = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => navigate("/explore")}
-              className="relative z-10 h-16 px-10 rounded-2xl bg-white text-primary font-black text-lg uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-black/20"
+            <a
+              href="mailto:agenciaelostudio@gmail.com"
+              className="relative z-10 h-16 px-10 rounded-2xl bg-white text-primary font-black text-lg uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-black/20 flex items-center justify-center"
             >
               Fale com a gente
-            </button>
+            </a>
           </motion.div>
         </div>
       </section>

@@ -1,18 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 import ArtistCard from '../../components/shared/ArtistCard';
 import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 
+const FAVORITES_KEY = 'tocamais_favorites';
+
 export default function ContractorFavorites() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
 
-  const remove = (id) => setFavorites(prev => prev.filter(f => f.id !== id));
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const savedFavs = localStorage.getItem(FAVORITES_KEY);
+        const favIds = savedFavs ? JSON.parse(savedFavs) : [];
+        if (favIds.length === 0) { setFavorites([]); return; }
+        const { data } = await supabase.from('artists').select('*').in('id', favIds);
+        if (data) setFavorites(data);
+      } catch (err) {
+        console.error('Erro ao carregar favoritos:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadFavorites();
+  }, []);
+
+  const remove = (id) => {
+    setFavorites(prev => prev.filter(f => f.id !== id));
+    const savedFavs = localStorage.getItem(FAVORITES_KEY);
+    const favIds = savedFavs ? JSON.parse(savedFavs) : [];
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favIds.filter(fid => fid !== id)));
+  };
 
   return (
     <AppLayout role="contractor" userName={user?.name || ''}>
@@ -26,7 +54,11 @@ export default function ContractorFavorites() {
         </div>
 
         <AnimatePresence>
-          {favorites.length === 0 ? (
+          {loading ? (
+            <div className="h-32 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : favorites.length === 0 ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
               <Heart className="w-16 h-16 text-gray-700 mx-auto mb-4" />
               <p className="text-gray-400">Nenhum favorito ainda</p>
@@ -47,13 +79,13 @@ export default function ContractorFavorites() {
           )}
         </AnimatePresence>
 
-        <ArtistProfileModal 
-          artist={selectedArtistProfile} 
-          onClose={() => setSelectedArtistProfile(null)} 
+        <ArtistProfileModal
+          artist={selectedArtistProfile}
+          onClose={() => setSelectedArtistProfile(null)}
           onHire={(artist) => {
             setSelectedArtistProfile(null);
-            console.log('Hire flow from favorites', artist);
-          }} 
+            navigate('/contractor', { state: { hireArtist: artist } });
+          }}
         />
       </div>
     </AppLayout>
