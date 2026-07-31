@@ -100,6 +100,28 @@ export const AuthProvider = ({ children }) => {
             console.error('Failed to create default artist entry:', newArtistErr);
           }
         }
+
+        // Revoga o "Ser Pro" automaticamente se a assinatura expirou e não foi
+        // renovada, em vez de depender só do webhook do Asaas (que pode falhar
+        // ou atrasar, deixando o artista com benefícios Pro sem estar pagando).
+        if (artistData?.is_pro && artistData?.pro_expires_at) {
+          const expiresAt = new Date(artistData.pro_expires_at);
+          if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
+            const { data: revoked, error: revokeErr } = await supabase
+              .from('artists')
+              .update({ is_pro: false })
+              .eq('user_id', currentUser.id)
+              .select()
+              .single();
+            if (revoked) {
+              artistData = revoked;
+            } else {
+              console.error('Failed to revoke expired Pro status:', revokeErr);
+              artistData = { ...artistData, is_pro: false };
+            }
+          }
+        }
+
         setUserProfile(artistData);
       } else if (role === 'venue') {
         let venueData = null;

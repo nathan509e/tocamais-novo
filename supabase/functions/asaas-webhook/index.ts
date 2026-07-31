@@ -130,9 +130,12 @@ serve(async (req) => {
         if (subFindErr || !subArtist) {
           console.error('Artist not found for subscription:', subId, subFindErr)
         } else {
+          // Assinatura mensal: expira em 30 dias a partir deste pagamento, salvo
+          // renovação (o próximo pagamento recorrente atualiza esta data de novo).
+          const proExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
           const { error: subUpdateErr } = await supabase
             .from('artists')
-            .update({ is_pro: true })
+            .update({ is_pro: true, pro_expires_at: proExpiresAt })
             .eq('user_id', subArtist.user_id)
 
           if (subUpdateErr) {

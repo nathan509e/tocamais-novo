@@ -134,7 +134,7 @@ serve(async (req) => {
       const artistUpdateResp = await fetch(artistUpdateUrl, {
         method: 'PATCH',
         headers: dbHeaders,
-        body: JSON.stringify({ is_pro: isPro })
+        body: JSON.stringify({ is_pro: isPro, pro_expires_at: expiresAt })
       })
 
       if (!artistUpdateResp.ok) {
@@ -218,7 +218,7 @@ serve(async (req) => {
       const artistUpdateResp = await fetch(artistUpdateUrl, {
         method: 'PATCH',
         headers: dbHeaders,
-        body: JSON.stringify({ is_pro: true })
+        body: JSON.stringify({ is_pro: true, pro_expires_at: expiresAt || null })
       })
 
       if (!artistUpdateResp.ok) {
