@@ -1,7 +1,7 @@
 {
   "name": "TocaMais",
   "short_name": "TocaMais",
-  "start_url": "/",
+  "start_url": "/?pwa=true",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#8A05FF",

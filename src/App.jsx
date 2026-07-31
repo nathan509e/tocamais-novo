@@ -9,6 +9,33 @@ import { GoogleOAuthProvider } from '@/lib/GoogleOAuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import Login from './pages/Login';
 
+// Detecta se o app está rodando "instalado" via navegador (PWA — Adicionar à Tela de
+// Início), diferente do app nativo compilado (Capacitor.isNativePlatform()). Sem isso,
+// quem instala o PWA pelo Chrome/Safari continua vendo a Landing normalmente, igual a
+// uma visita comum de navegador.
+const checkStandalonePwa = () => {
+  if (typeof window === 'undefined') return false;
+  if (localStorage.getItem('tocamais_is_pwa') === 'true') return true;
+
+  const params = new URLSearchParams(window.location.search);
+  const isPwaParam = params.get('pwa') === 'true';
+
+  const matchesStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone ||
+    isPwaParam;
+
+  if (matchesStandalone) {
+    try {
+      localStorage.setItem('tocamais_is_pwa', 'true');
+    } catch {
+      /* ignore */
+    }
+    return true;
+  }
+  return false;
+};
+
 // Page imports
 import Landing from './pages/Landing';
 import VenueDashboard from './pages/venue/VenueDashboard';
@@ -56,7 +83,7 @@ const AuthenticatedApp = () => {
 
   // Redirect to Landing if not authenticated
   if (!isAuthenticated) {
-    const isApp = Capacitor.isNativePlatform();
+    const isApp = Capacitor.isNativePlatform() || checkStandalonePwa();
     return (
       <Routes>
         <Route path="/" element={isApp ? <Navigate to="/login" replace /> : <Landing />} />
