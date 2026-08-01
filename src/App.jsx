@@ -108,6 +108,13 @@ const AuthenticatedApp = () => {
         ? '/venue' 
         : '/contractor';
 
+  // Guarda de rota por papel: RLS no banco já bloqueia acesso a dados de
+  // outro usuário, mas isso evita que alguém logado com um papel (ex.
+  // contratante) sequer carregue a casca de UI de outro painel (ex. admin)
+  // navegando direto pela URL.
+  const RoleRoute = ({ allowed, children }) =>
+    allowed.includes(userRole) ? children : <Navigate to={defaultDashboard} replace />;
+
   return (
     <Routes>
       {/* Root lands user on the landing page as requested */}
@@ -116,37 +123,37 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Navigate to={defaultDashboard} replace />} />
 
 {/* Artist Routes */}
-      <Route path="/artist" element={<ArtistDashboard />} />
-      <Route path="/artist/agenda" element={<ArtistAgenda />} />
-      <Route path="/artist/metrics" element={<ArtistMetrics />} />
-      <Route path="/artist/profile" element={<ArtistProfile />} />
-      <Route path="/artist/proposals" element={<ArtistProposals />} />
-      <Route path="/artist/messages" element={<MessagesPage role="artist" />} />
+      <Route path="/artist" element={<RoleRoute allowed={['artist']}><ArtistDashboard /></RoleRoute>} />
+      <Route path="/artist/agenda" element={<RoleRoute allowed={['artist']}><ArtistAgenda /></RoleRoute>} />
+      <Route path="/artist/metrics" element={<RoleRoute allowed={['artist']}><ArtistMetrics /></RoleRoute>} />
+      <Route path="/artist/profile" element={<RoleRoute allowed={['artist']}><ArtistProfile /></RoleRoute>} />
+      <Route path="/artist/proposals" element={<RoleRoute allowed={['artist']}><ArtistProposals /></RoleRoute>} />
+      <Route path="/artist/messages" element={<RoleRoute allowed={['artist']}><MessagesPage role="artist" /></RoleRoute>} />
       <Route path="/artist/tip/:artistId" element={<ArtistTip />} />
-      <Route path="/artist/requests" element={<ArtistRequests />} />
-      <Route path="/artist/repertorio" element={<ArtistRepertorio />} />
-      <Route path="/artist/onboarding" element={<ArtistOnboarding />} />
+      <Route path="/artist/requests" element={<RoleRoute allowed={['artist']}><ArtistRequests /></RoleRoute>} />
+      <Route path="/artist/repertorio" element={<RoleRoute allowed={['artist']}><ArtistRepertorio /></RoleRoute>} />
+      <Route path="/artist/onboarding" element={<RoleRoute allowed={['artist']}><ArtistOnboarding /></RoleRoute>} />
 
       {/* Venue Routes */}
-      <Route path="/venue" element={<VenueDashboard />} />
-      <Route path="/venue/artists" element={<VenueArtists />} />
-      <Route path="/venue/schedule" element={<VenueSchedule />} />
-      <Route path="/venue/messages" element={<MessagesPage role="venue" />} />
+      <Route path="/venue" element={<RoleRoute allowed={['venue']}><VenueDashboard /></RoleRoute>} />
+      <Route path="/venue/artists" element={<RoleRoute allowed={['venue']}><VenueArtists /></RoleRoute>} />
+      <Route path="/venue/schedule" element={<RoleRoute allowed={['venue']}><VenueSchedule /></RoleRoute>} />
+      <Route path="/venue/messages" element={<RoleRoute allowed={['venue']}><MessagesPage role="venue" /></RoleRoute>} />
 
       {/* Contractor Routes */}
-      <Route path="/contractor" element={<ContractorDashboard />} />
-      <Route path="/contractor/search" element={<ContractorSearch />} />
-      <Route path="/contractor/favorites" element={<ContractorFavorites />} />
-      <Route path="/contractor/profile" element={<ContractorProfile />} />
-      <Route path="/contractor/messages" element={<MessagesPage role="contractor" />} />
+      <Route path="/contractor" element={<RoleRoute allowed={['contractor']}><ContractorDashboard /></RoleRoute>} />
+      <Route path="/contractor/search" element={<RoleRoute allowed={['contractor']}><ContractorSearch /></RoleRoute>} />
+      <Route path="/contractor/favorites" element={<RoleRoute allowed={['contractor']}><ContractorFavorites /></RoleRoute>} />
+      <Route path="/contractor/profile" element={<RoleRoute allowed={['contractor']}><ContractorProfile /></RoleRoute>} />
+      <Route path="/contractor/messages" element={<RoleRoute allowed={['contractor']}><MessagesPage role="contractor" /></RoleRoute>} />
 
       {/* Shared Routes */}
       <Route path="/search" element={<Search />} />
       <Route path="/live" element={<Live />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/messages" element={<Messages />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/orders" element={<AdminOrders />} />
+      <Route path="/admin" element={<RoleRoute allowed={['admin']}><AdminDashboard /></RoleRoute>} />
+      <Route path="/admin/orders" element={<RoleRoute allowed={['admin']}><AdminOrders /></RoleRoute>} />
 
       {/* Mini profile */}
       <Route path="/artist/mini-profile" element={<ArtistMiniProfile />} />

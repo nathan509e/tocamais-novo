@@ -14,8 +14,34 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Só admin pode ver isso (a função usa service role, que ignora RLS,
+    // e retorna pix_key de artistas — precisa validar o chamador aqui).
+    const authHeader = req.headers.get('Authorization') || ''
+    const supabaseAsCaller = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+    const { data: { user: caller } } = await supabaseAsCaller.auth.getUser()
+    if (!caller) {
+      return new Response(
+        JSON.stringify({ error: 'Não autenticado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { data: callerProfile } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', caller.id)
+      .single()
+    if (callerProfile?.role !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Acesso restrito a administradores' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Fetch all music_requests
     const { data: requests, error: reqError } = await supabaseAdmin
