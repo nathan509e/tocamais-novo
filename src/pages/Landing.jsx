@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  Music, Building2, Star, Play, Users, Check,
+  Music, Building2, Play, Users, Check,
   Apple, ExternalLink
 } from "lucide-react";
 import {
@@ -185,16 +185,12 @@ const Landing = () => {
 
               <motion.div custom={5} variants={fadeIn} className="flex items-center gap-8 mt-12">
                 {[
-                  { value: "500+", label: "artistas" },
-                  { value: "10k+", label: "pedidos/mês" },
-                  { value: "4.9", label: "rating", icon: true },
-                ].map((stat, i) => (
+                  { label: "Pedidos em tempo real" },
+                  { label: "Gorjetas via PIX" },
+                  { label: "Contratação simplificada" },
+                ].map((item, i) => (
                   <div key={i} className={i > 0 ? "border-l border-slate-200 pl-8" : ""}>
-                    <p className="text-2xl font-black flex items-center gap-1">
-                      {stat.value}
-                      {stat.icon && <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />}
-                    </p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{stat.label}</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-700">{item.label}</p>
                   </div>
                 ))}
               </motion.div>
