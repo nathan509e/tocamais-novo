@@ -10,6 +10,7 @@ import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
+import { useHireArtist } from '../../lib/useHireArtist';
 import { useLocation } from 'react-router-dom';
 
 const eventTypes = [
@@ -20,39 +21,6 @@ const eventTypes = [
   { id: 'private', icon: PartyPopper, label: 'Festa Privada', desc: 'Residências e salões de festas' },
   { id: 'luxury', icon: Sparkles, label: 'Evento Luxo', desc: 'Premium, debutantes, comemorações exclusivas' },
 ];
-
-const budgetTiers = {
-  wedding: [
-    { label: 'Compacto', range: 'R$ 1.500 - R$ 3.000', style: 'border-neon-purple/20' },
-    { label: 'Ideal', range: 'R$ 3.000 - R$ 6.000', style: 'border-neon-green/20' },
-    { label: 'Exclusivo', range: 'R$ 6.000+', style: 'border-yellow-500/20' }
-  ],
-  birthday: [
-    { label: 'Econômico', range: 'R$ 800 - R$ 1.500', style: 'border-neon-purple/20' },
-    { label: 'Padrão', range: 'R$ 1.500 - R$ 3.000', style: 'border-neon-green/20' },
-    { label: 'Banda Completa', range: 'R$ 3.000+', style: 'border-yellow-500/20' }
-  ],
-  corporate: [
-    { label: 'Acústico', range: 'R$ 1.200 - R$ 2.500', style: 'border-neon-purple/20' },
-    { label: 'Recepção', range: 'R$ 2.500 - R$ 5.000', style: 'border-neon-green/20' },
-    { label: 'Gala / Show', range: 'R$ 5.000+', style: 'border-yellow-500/20' }
-  ],
-  bbq: [
-    { label: 'Solo Voz & Violão', range: 'R$ 500 - R$ 1.000', style: 'border-neon-purple/20' },
-    { label: 'Dupla', range: 'R$ 1.000 - R$ 2.000', style: 'border-neon-green/20' },
-    { label: 'Grupo de Samba', range: 'R$ 2.000+', style: 'border-yellow-500/20' }
-  ],
-  private: [
-    { label: 'Pocket Show', range: 'R$ 800 - R$ 1.800', style: 'border-neon-purple/20' },
-    { label: 'Banda Premium', range: 'R$ 1.800 - R$ 4.000', style: 'border-neon-green/20' },
-    { label: 'Super Atrações', range: 'R$ 4.000+', style: 'border-yellow-500/20' }
-  ],
-  luxury: [
-    { label: 'Estilo Class', range: 'R$ 3.000 - R$ 6.000', style: 'border-neon-purple/20' },
-    { label: 'Big Band', range: 'R$ 6.000 - R$ 12.000', style: 'border-neon-green/20' },
-    { label: 'Orquestra / Celebridades', range: 'R$ 12.000+', style: 'border-yellow-500/20' }
-  ]
-};
 
 export default function ContractorDashboard() {
   const { user, userProfile } = useAuth();
@@ -76,7 +44,7 @@ export default function ContractorDashboard() {
 
   // Booking Form Modal State
   const [bookingArtist, setBookingArtist] = useState(null);
-  const [eventDate, setEventDate] = useState('2026-06-12');
+  const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('20:00');
   const [eventAddress, setEventAddress] = useState('');
   const [proposalFee, setProposalFee] = useState(0);
@@ -84,7 +52,7 @@ export default function ContractorDashboard() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [precisaEquipamento, setPrecisaEquipamento] = useState(false);
   const [quantidadePessoas, setQuantidadePessoas] = useState(50);
-  const [bookingError, setBookingError] = useState('');
+  const { hire, submitting: bookingSubmitting, error: bookingError, setError: setBookingError } = useHireArtist('contractor', user, userProfile);
 
   // Proposals panel state
   const [contractorProposals, setContractorProposals] = useState([]);
@@ -155,7 +123,7 @@ export default function ContractorDashboard() {
 
   const handleOpenBooking = (artist) => {
     setBookingArtist(artist);
-    setEventDate('2026-06-12');
+    setEventDate('');
     setEventTime('20:00');
     setProposalFee(artist.base_fee);
     setPrecisaEquipamento(false);
@@ -165,124 +133,17 @@ export default function ContractorDashboard() {
   };
 
   const handleConfirmBooking = async () => {
-    const newEvent = {
-      title: `Show Particular: ${bookingArtist.artistic_name}`,
-      description: eventDetails || `Evento particular categoria ${selectedEvent}`,
+    if (!bookingArtist) return;
+    const ok = await hire(bookingArtist, {
       date: eventDate,
-      time: eventTime || '20:00',
-      duration: 120,
-      status: 'pending',
-      fee_proposed: proposalFee,
-      address: eventAddress || 'Salão de Festas, São Paulo',
-      precisa_equipamento: precisaEquipamento,
-      quantidade_pessoas: quantidadePessoas,
-      artist_id: bookingArtist.id,
-      contractor_id: userProfile?.id
-    };
-
-    try {
-      // Verificar disponibilidade da agenda do artista (bloqueios manuais/horas)
-      const { data: agendaBlocks } = await supabase
-        .from('agendas')
-        .select('*')
-        .eq('artist_id', bookingArtist.id)
-        .eq('busy_date', eventDate);
-
-      if (agendaBlocks && agendaBlocks.length > 0) {
-        for (const block of agendaBlocks) {
-          let isFullDay = true;
-          let blockStart = "00:00";
-          let blockEnd = "23:59";
-          let blockDesc = "Compromisso";
-
-          try {
-            if (block.note && (block.note.startsWith('{') || block.note.startsWith('['))) {
-              const parsed = JSON.parse(block.note);
-              if (parsed.isTimeBlock) {
-                isFullDay = false;
-                blockStart = parsed.start_time;
-                blockEnd = parsed.end_time;
-                blockDesc = parsed.description || "Compromisso";
-              } else {
-                blockDesc = parsed.description || "Dia Todo";
-              }
-            } else {
-              blockDesc = block.note || "Compromisso";
-            }
-          } catch (e) {}
-
-          if (isFullDay) {
-            setBookingError(`Artista indisponível nesta data (${blockDesc}).`);
-            return;
-          } else {
-            const toMinutes = (t) => {
-              const [h, m] = t.split(':').map(Number);
-              return h * 60 + m;
-            };
-            const pStart = toMinutes(eventTime || "20:00");
-            const pEnd = pStart + 120; // 2h padrão
-            const bStart = toMinutes(blockStart);
-            const bEnd = toMinutes(blockEnd);
-
-            if (pStart < bEnd && bStart < pEnd) {
-              setBookingError(`Horário indisponível. O artista tem um compromisso das ${blockStart} às ${blockEnd} (${blockDesc}).`);
-              return;
-            }
-          }
-        }
-      }
-
-      // Verificar shows existentes
-      const { data: existingEvents } = await supabase
-        .from('events')
-        .select('*')
-        .eq('artist_id', bookingArtist.id)
-        .eq('date', eventDate)
-        .in('status', ['confirmed', 'pending', 'pending_artist_approval', 'proposed']);
-
-      if (existingEvents && existingEvents.length > 0) {
-        for (const ev of existingEvents) {
-          const toMinutes = (t) => {
-            const [h, m] = t.substring(0, 5).split(':').map(Number);
-            return h * 60 + m;
-          };
-          const pStart = toMinutes(eventTime || "20:00");
-          const pEnd = pStart + 120;
-          const evStart = toMinutes(ev.time);
-          const evEnd = evStart + (ev.duration || 120);
-
-          if (pStart < evEnd && evStart < pEnd) {
-            setBookingError(`Horário indisponível. O artista já possui outro show das ${ev.time.substring(0, 5)} às ${new Date(new Date("2000-01-01T" + ev.time).getTime() + (ev.duration || 120) * 60 * 1000).toTimeString().substring(0, 5)} neste dia.`);
-            return;
-          }
-        }
-      }
-
-      const { error: err1 } = await supabase.from('events').insert(newEvent);
-      if (err1) throw new Error('Erro ao criar evento: ' + err1.message);
-
-      const senderName = user?.user_metadata?.name || user?.email || 'Contratante';
-      const msg = eventDetails.trim() || `Olá! Tenho interesse em contratar seu show para o dia ${eventDate}. Cachê proposto: R$ ${proposalFee}.`;
-
-      const { error: err2 } = await supabase.from('notifications').insert({
-        user_id: bookingArtist.user_id,
-        title: 'Nova Proposta de Show',
-        content: `${senderName} enviou uma proposta para ${eventDate}.`,
-        type: 'proposal'
-      });
-      if (err2) throw new Error('Erro ao criar notificação: ' + err2.message);
-
-      const { error: err3 } = await supabase.from('messages').insert({
-        sender_id: user.id,
-        receiver_id: bookingArtist.user_id,
-        text: msg
-      });
-      if (err3) throw new Error('Erro ao criar mensagem: ' + err3.message);
-
-      setBookingSuccess(true);
-    } catch (e) {
-      console.error('Failed to book:', e);
-    }
+      time: eventTime,
+      fee: proposalFee,
+      message: eventDetails || `Evento particular categoria ${selectedEvent}`,
+      address: eventAddress,
+      precisaEquipamento,
+      quantidadePessoas
+    });
+    if (ok) setBookingSuccess(true);
   };
 
   // Fetch contractor proposals
@@ -755,11 +616,12 @@ export default function ContractorDashboard() {
                       <p className="text-red-400 text-xs font-bold text-center bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">{bookingError}</p>
                     )}
  
-                    <button 
+                    <button
                       onClick={handleConfirmBooking}
-                      className="w-full py-3 bg-neon-purple text-white font-bold text-xs rounded-xl hover:shadow-[0_0_15px_rgba(123,46,255,0.4)] transition-all"
+                      disabled={bookingSubmitting}
+                      className="w-full py-3 bg-neon-purple text-white font-bold text-xs rounded-xl hover:shadow-[0_0_15px_rgba(123,46,255,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Enviar Proposta de Show
+                      {bookingSubmitting ? 'Enviando...' : 'Enviar Proposta de Show'}
                     </button>
                   </div>
                 ) : (

@@ -7,6 +7,7 @@ import AppLayout from '../../components/shared/AppLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
+import { useHireArtist } from '../../lib/useHireArtist';
 import ArtistCard from '../../components/shared/ArtistCard';
 import ArtistProfileModal from '../../components/shared/ArtistProfileModal';
 import NeonButton from '../../components/ui/NeonButton';
@@ -30,8 +31,7 @@ export default function VenueArtists() {
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
   const [hireForm, setHireForm] = useState({ date: '', time: '20:00', fee: 0, message: '', address: '', precisa_equipamento: false, quantidade_pessoas: 100 });
   const [hireSuccess, setHireSuccess] = useState(false);
-  const [hiring, setHiring] = useState(false);
-  const [hireError, setHireError] = useState('');
+  const { hire, submitting: hiring, error: hireError, setError: setHireError } = useHireArtist('venue', user, userProfile);
 
   useEffect(() => {
     if (location.state?.hireArtist) {
@@ -69,150 +69,16 @@ export default function VenueArtists() {
 
   const handleHireSubmit = async () => {
     if (!selectedArtist || !user) return;
-    setHiring(true);
-    setHireError('');
-    try {
-      const msg = hireForm.message.trim() || `Olá! Proposta para show no dia ${hireForm.date}. Cachê: R$ ${hireForm.fee}.`;
-
-      // Garantir que temos o venue_id
-      let venueId = userProfile?.id;
-      if (!venueId && user?.id) {
-        const { data: vData } = await supabase.from('venues').select('id').eq('user_id', user.id).maybeSingle();
-        venueId = vData?.id;
-        if (!venueId) {
-          const { data: newVenue } = await supabase.from('venues').insert({
-            user_id: user.id,
-            venue_name: user?.user_metadata?.name || 'Minha Casa de Show',
-            city: 'São Paulo',
-            address: 'Endereço não definido',
-            capacity: 100,
-            average_budget: 0
-          }).select('id').single();
-          venueId = newVenue?.id;
-        }
-      }
-      if (!venueId) { setHireError('Erro: perfil da casa de show não encontrado.'); setHiring(false); return; }
-
-      // Verificar disponibilidade da agenda do artista
-      const { data: agendaBlocks } = await supabase
-        .from('agendas')
-        .select('*')
-        .eq('artist_id', selectedArtist.id)
-        .eq('busy_date', hireForm.date);
-
-      if (agendaBlocks && agendaBlocks.length > 0) {
-        for (const block of agendaBlocks) {
-          let isFullDay = true;
-          let blockStart = "00:00";
-          let blockEnd = "23:59";
-          let blockDesc = "Compromisso";
-
-          try {
-            if (block.note && (block.note.startsWith('{') || block.note.startsWith('['))) {
-              const parsed = JSON.parse(block.note);
-              if (parsed.isTimeBlock) {
-                isFullDay = false;
-                blockStart = parsed.start_time;
-                blockEnd = parsed.end_time;
-                blockDesc = parsed.description || "Compromisso";
-              } else {
-                blockDesc = parsed.description || "Dia Todo";
-              }
-            } else {
-              blockDesc = block.note || "Compromisso";
-            }
-          } catch (e) {}
-
-          if (isFullDay) {
-            setHireError(`Artista indisponível nesta data (${blockDesc}).`);
-            setHiring(false);
-            return;
-          } else {
-            const toMinutes = (t) => {
-              const [h, m] = t.split(':').map(Number);
-              return h * 60 + m;
-            };
-            const pStart = toMinutes(hireForm.time || "20:00");
-            const pEnd = pStart + 120; // 2h padrão
-            const bStart = toMinutes(blockStart);
-            const bEnd = toMinutes(blockEnd);
-
-            if (pStart < bEnd && bStart < pEnd) {
-              setHireError(`Horário indisponível. O artista tem um compromisso das ${blockStart} às ${blockEnd} (${blockDesc}).`);
-              setHiring(false);
-              return;
-            }
-          }
-        }
-      }
-
-      // Verificar shows existentes
-      const { data: existingEvents } = await supabase
-        .from('events')
-        .select('*')
-        .eq('artist_id', selectedArtist.id)
-        .eq('date', hireForm.date)
-        .in('status', ['confirmed', 'pending', 'pending_artist_approval', 'proposed']);
-
-      if (existingEvents && existingEvents.length > 0) {
-        for (const ev of existingEvents) {
-          const toMinutes = (t) => {
-            const [h, m] = t.substring(0, 5).split(':').map(Number);
-            return h * 60 + m;
-          };
-          const pStart = toMinutes(hireForm.time || "20:00");
-          const pEnd = pStart + 120;
-          const evStart = toMinutes(ev.time);
-          const evEnd = evStart + (ev.duration || 120);
-
-          if (pStart < evEnd && evStart < pEnd) {
-            setHireError(`Horário indisponível. O artista já possui outro show das ${ev.time.substring(0, 5)} às ${new Date(new Date("2000-01-01T" + ev.time).getTime() + (ev.duration || 120) * 60 * 1000).toTimeString().substring(0, 5)} neste dia.`);
-            setHiring(false);
-            return;
-          }
-        }
-      }
-
-      const { error: err1 } = await supabase.from('events').insert({
-        title: `Show: ${selectedArtist.artistic_name}`,
-        description: hireForm.message || `Evento no dia ${hireForm.date}`,
-        date: hireForm.date,
-        time: hireForm.time || '20:00',
-        duration: 120,
-        status: 'pending',
-        fee_proposed: hireForm.fee,
-        address: hireForm.address || 'A definir',
-        precisa_equipamento: hireForm.precisa_equipamento,
-        quantidade_pessoas: hireForm.quantidade_pessoas,
-        artist_id: selectedArtist.id,
-        venue_id: venueId
-      });
-      if (err1) throw new Error('Erro ao criar evento: ' + err1.message);
-
-      const senderName = user?.user_metadata?.name || user?.email || 'Casa de Show';
-
-      const { error: err2 } = await supabase.from('notifications').insert({
-        user_id: selectedArtist.user_id,
-        title: 'Nova Proposta de Show',
-        content: `${senderName} enviou uma proposta para ${hireForm.date}.`,
-        type: 'proposal'
-      });
-      if (err2) throw new Error('Erro ao criar notificação: ' + err2.message);
-
-      const { error: err3 } = await supabase.from('messages').insert({
-        sender_id: user.id,
-        receiver_id: selectedArtist.user_id,
-        text: msg
-      });
-      if (err3) throw new Error('Erro ao criar mensagem: ' + err3.message);
-
-      setHireSuccess(true);
-    } catch (e) {
-      console.error('Erro ao contratar:', e);
-      setHireError(e.message);
-    } finally {
-      setHiring(false);
-    }
+    const ok = await hire(selectedArtist, {
+      date: hireForm.date,
+      time: hireForm.time,
+      fee: hireForm.fee,
+      message: hireForm.message,
+      address: hireForm.address,
+      precisaEquipamento: hireForm.precisa_equipamento,
+      quantidadePessoas: hireForm.quantidade_pessoas
+    });
+    if (ok) setHireSuccess(true);
   };
 
   const openHireModal = (artist) => {
