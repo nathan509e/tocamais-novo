@@ -34,6 +34,7 @@ const navItems = {
     { icon: Search, label: 'Artistas', path: '/venue/artists' },
     { icon: Calendar, label: 'Agenda', path: '/venue/schedule' },
     { icon: Mail, label: 'Mensagens', path: '/venue/messages' },
+    { icon: UserIcon, label: 'Perfil', path: '/venue/profile' },
   ],
   contractor: [
     { icon: Home, label: 'Painel', path: '/contractor' },
@@ -58,7 +59,7 @@ export default function AppLayout({ children, role = 'artist' }) {
   const { theme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
+
   const [notifications, setNotifications] = useState([]);
   const [showProModal, setShowProModal] = useState(false);
   const [proLoading, setProLoading] = useState(false);

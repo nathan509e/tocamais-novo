@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
@@ -17,8 +18,22 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState('');
   
   const { loginWithRole, signUpWithRole } = useAuth();
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) { setForgotStatus('Digite seu e-mail.'); return; }
+    setForgotStatus('Enviando...');
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (error) setForgotStatus('Erro: ' + error.message);
+    else setForgotStatus('E-mail enviado! Verifique sua caixa de entrada.');
+  };
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -246,8 +261,19 @@ export default function Login() {
 
           {/* Password */}
           <div>
-            <label className="text-xs text-gray-400 font-bold block mb-1.5 uppercase tracking-wider">Senha</label>
-            <input 
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Senha</label>
+              {!isRegistering && (
+                <button
+                  type="button"
+                  onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setForgotStatus(''); }}
+                  className="text-xs text-neon-purple hover:underline"
+                >
+                  Esqueceu a senha?
+                </button>
+              )}
+            </div>
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -255,6 +281,38 @@ export default function Login() {
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-neon-purple/50 transition-all placeholder:text-gray-600"
             />
           </div>
+
+          {/* Forgot password inline form */}
+          <AnimatePresence>
+            {showForgotPassword && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <form onSubmit={handleForgotPassword} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                  <p className="text-xs text-gray-400">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-neon-purple/50 transition-all placeholder:text-gray-600"
+                  />
+                  {forgotStatus && (
+                    <p className={`text-xs font-bold ${forgotStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{forgotStatus}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button type="submit" className="flex-1 py-2.5 rounded-xl bg-neon-purple text-white text-xs font-bold hover:opacity-90 transition-all">
+                      Enviar link
+                    </button>
+                    <button type="button" onClick={() => setShowForgotPassword(false)} className="px-4 py-2.5 rounded-xl bg-white/5 text-gray-400 text-xs font-bold hover:bg-white/10 transition-all">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Login / Register Button */}
           <NeonButton 

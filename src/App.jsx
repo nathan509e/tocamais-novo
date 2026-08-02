@@ -55,6 +55,7 @@ import Live from './pages/Live';
 import Profile from './pages/Profile';
 import Messages from './pages/Messages';
 import ContractorProfile from './pages/contractor/ContractorProfile';
+import VenueProfile from './pages/venue/VenueProfile';
 import MessagesPage from './pages/shared/MessagesPage';
 import ArtistTip from './pages/artist/ArtistTip';
 import ArtistRequests from './pages/artist/ArtistRequests';
@@ -139,6 +140,7 @@ const AuthenticatedApp = () => {
       <Route path="/venue/artists" element={<RoleRoute allowed={['venue']}><VenueArtists /></RoleRoute>} />
       <Route path="/venue/schedule" element={<RoleRoute allowed={['venue']}><VenueSchedule /></RoleRoute>} />
       <Route path="/venue/messages" element={<RoleRoute allowed={['venue']}><MessagesPage role="venue" /></RoleRoute>} />
+      <Route path="/venue/profile" element={<RoleRoute allowed={['venue']}><VenueProfile /></RoleRoute>} />
 
       {/* Contractor Routes */}
       <Route path="/contractor" element={<RoleRoute allowed={['contractor']}><ContractorDashboard /></RoleRoute>} />

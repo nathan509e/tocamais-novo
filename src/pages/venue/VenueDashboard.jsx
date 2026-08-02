@@ -52,7 +52,11 @@ export default function VenueDashboard() {
       setSaveStatus('');
     }
   };
-  const [selectedMonth, setSelectedMonth] = useState('Maio 2026');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    const labels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return `${labels[now.getMonth()]} ${now.getFullYear()}`;
+  });
   
   // Profile editing state
   const [isEditingVenue, setIsEditingVenue] = useState(false);
