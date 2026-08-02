@@ -7,7 +7,7 @@ import {
   Edit3, Video, Wallet,
   ExternalLink, QrCode, X, Sun, Moon,
   ChevronUp, ChevronDown, Check,
-  Camera as CameraIcon
+  Camera as CameraIcon, Star, MessageSquare
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -132,6 +132,7 @@ export default function ArtistProfile() {
     }
   };
   
+  const [reviews, setReviews] = useState([]);
   const [artistProfile, setArtistProfile] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState(null);
@@ -397,6 +398,14 @@ export default function ArtistProfile() {
           setEditForm({ photo_url: artistData.photo_url || '', cover_url: artistData.cover_url || '', artistic_name: artistData.artistic_name || '', bio: artistData.bio || '', genre: artistData.genre || '', city: artistData.city || '', base_fee: artistData.base_fee || 0, pix_key: artistData.pix_key || '' });
           setPixKey(artistData.pix_key || '');
           setCpfCnpj(artistData.cpf_cnpj || '');
+
+          // Load reviews for this artist
+          const { data: reviewsData } = await supabase
+            .from('reviews')
+            .select('id, reviewer_name, rating, comment, created_at')
+            .eq('artist_id', artistData.id)
+            .order('created_at', { ascending: false });
+          if (reviewsData) setReviews(reviewsData);
         }
       }
     }
@@ -964,21 +973,83 @@ export default function ArtistProfile() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { value: artistProfile?.followers ? `${(artistProfile.followers / 1000).toFixed(0)}K` : '0', label: 'Seguidores' },
-              { value: artistProfile?.rating ? `${artistProfile.rating}⭐` : '0⭐', label: 'Avaliação' },
-              { value: '0', label: 'Shows' },
-              { value: artistProfile?.base_fee ? `R$ ${artistProfile.base_fee.toLocaleString()}` : 'R$ 0', label: 'Cachê' },
-            ].map((s, i) => (
-              <div key={i} className={`text-center p-2.5 rounded-xl border ${
-                isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-2xs'
-              }`}>
-                <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{s.value}</p>
-                <p className="text-gray-500 text-[10px] mt-0.5">{s.label}</p>
+          {(() => {
+            const avgRating = reviews.length > 0
+              ? (reviews.reduce((sum, r) => sum + Number(r.rating), 0) / reviews.length).toFixed(1)
+              : null;
+            return (
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { value: artistProfile?.followers ? `${(artistProfile.followers / 1000).toFixed(0)}K` : '0', label: 'Seguidores' },
+                  { value: avgRating ? `${avgRating}★` : '—', label: `${reviews.length} avaliações` },
+                  { value: '0', label: 'Shows' },
+                  { value: artistProfile?.base_fee ? `R$ ${artistProfile.base_fee.toLocaleString()}` : 'R$ 0', label: 'Cachê' },
+                ].map((s, i) => (
+                  <div key={i} className={`text-center p-2.5 rounded-xl border ${
+                    isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-2xs'
+                  }`}>
+                    <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{s.value}</p>
+                    <p className="text-gray-500 text-[10px] mt-0.5">{s.label}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
+
+          {/* Reviews Section */}
+          {(() => {
+            const avgRating = reviews.length > 0
+              ? (reviews.reduce((sum, r) => sum + Number(r.rating), 0) / reviews.length)
+              : 0;
+            return (
+              <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-yellow-400" />
+                    <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                      Avaliações
+                    </h3>
+                  </div>
+                  {reviews.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{avgRating.toFixed(1)}</span>
+                      <span className="text-gray-500 text-xs">({reviews.length})</span>
+                    </div>
+                  )}
+                </div>
+
+                {reviews.length === 0 ? (
+                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Nenhuma avaliação ainda. As avaliações aparecem aqui quando fãs avaliam você após o show.
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {reviews.map(r => (
+                      <div key={r.id} className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {r.reviewer_name || 'Anônimo'}
+                          </span>
+                          <div className="flex gap-0.5">
+                            {[1,2,3,4,5].map(n => (
+                              <Star key={n} className={`w-3 h-3 ${n <= r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`} />
+                            ))}
+                          </div>
+                        </div>
+                        {r.comment && (
+                          <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{r.comment}</p>
+                        )}
+                        <p className="text-gray-600 text-[10px] mt-1">
+                          {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Account Settings / Security (Delete Account) */}
           <div className={`p-5 rounded-2xl border transition-all ${

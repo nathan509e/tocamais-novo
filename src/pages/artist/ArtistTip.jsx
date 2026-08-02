@@ -98,6 +98,12 @@ export default function ArtistTip() {
   const [pendingTipId, setPendingTipId] = useState(null);
   const [pixCreated, setPixCreated] = useState(false);
   const [rating, setRating] = useState(0);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewName, setReviewName] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
+  const [reviewSkipped, setReviewSkipped] = useState(false);
   const autoConfirmedRef = useRef(false);
   const pollingRef = useRef(null);
   const pollCountRef = useRef(0);
@@ -372,6 +378,71 @@ export default function ArtistTip() {
 
   const quickTipValues = [5, 10, 20, 50, 100];
 
+  const submitReview = async () => {
+    if (!reviewRating || !artist?.id) return;
+    setReviewSubmitting(true);
+    try {
+      await supabase.from('reviews').insert({
+        artist_id: artist.id,
+        reviewee_id: artist.id,
+        reviewer_name: reviewName.trim() || null,
+        rating: reviewRating,
+        comment: reviewComment.trim() || null,
+      });
+      setReviewDone(true);
+    } catch (err) {
+      console.error('Erro ao enviar avaliação:', err);
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const ReviewSection = () => {
+    if (reviewSkipped) return null;
+    if (reviewDone) return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className={`mt-8 p-4 rounded-2xl border text-center ${isDark ? 'bg-neon-green/10 border-neon-green/20' : 'bg-green-50 border-green-200'}`}>
+        <p className={`text-sm font-bold ${isDark ? 'text-neon-green' : 'text-green-700'}`}>Avaliação publicada! Obrigado 🎵</p>
+      </motion.div>
+    );
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+        className={`mt-8 p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="text-center">
+          <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>Gostou do show?</p>
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Deixe uma avaliação para o artista</p>
+        </div>
+        {/* Stars */}
+        <div className="flex justify-center gap-2">
+          {[1,2,3,4,5].map(n => (
+            <button key={n} onClick={() => setReviewRating(n)} className="transition-transform hover:scale-110 active:scale-95">
+              <Star className={`w-8 h-8 ${n <= reviewRating ? 'fill-yellow-400 text-yellow-400' : isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+            </button>
+          ))}
+        </div>
+        {reviewRating > 0 && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 overflow-hidden">
+            <input type="text" value={reviewName} onChange={e => setReviewName(e.target.value)} placeholder="Seu nome (opcional)"
+              className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all focus:border-neon-purple/50 ${isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'}`} />
+            <textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)} placeholder="Comentário (opcional)" rows={2}
+              className={`w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none transition-all focus:border-neon-purple/50 ${isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'}`} />
+          </motion.div>
+        )}
+        <div className="flex gap-2">
+          <button onClick={submitReview} disabled={reviewRating === 0 || reviewSubmitting}
+            className="flex-1 py-3 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #7B2EFF, #39FF6A)' }}>
+            {reviewSubmitting ? 'Publicando...' : 'Publicar avaliação'}
+          </button>
+          <button onClick={() => setReviewSkipped(true)}
+            className={`px-4 py-3 rounded-xl text-sm font-bold transition-all ${isDark ? 'bg-white/5 text-gray-400 hover:bg-white/10' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+            Agora não
+          </button>
+        </div>
+      </motion.div>
+    );
+  };
+
   const renderStage = () => {
     switch (stage) {
       case STAGE.FORM:
@@ -474,17 +545,20 @@ export default function ArtistTip() {
 
       case STAGE.ORDER_ONLY_THANKS:
         return (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-            <div className="w-20 h-20 rounded-full bg-neon-green/20 flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-neon-green" />
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm">
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-neon-green/20 flex items-center justify-center mx-auto mb-6">
+                <Check className="w-10 h-10 text-neon-green" />
+              </div>
+              <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>Obrigado por participar do show!</h2>
+              <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Seu pedido foi enviado ao artista.</p>
+              {canReceiveTip && (
+                <button onClick={() => { setTipAmount(0); setStage(STAGE.TIP_VALUE); }} className="mt-6 text-sm text-neon-purple hover:underline">
+                  Adicionar uma gorjeta agora →
+                </button>
+              )}
             </div>
-            <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>Obrigado por participar do show!</h2>
-            <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Seu pedido foi enviado ao artista.</p>
-            {canReceiveTip && (
-              <button onClick={() => { setTipAmount(0); setStage(STAGE.TIP_VALUE); }} className="mt-8 text-sm text-neon-purple hover:underline">
-                Adicionar uma gorjeta agora →
-              </button>
-            )}
+            <ReviewSection />
           </motion.div>
         );
 
@@ -634,13 +708,16 @@ export default function ArtistTip() {
 
       case STAGE.FINAL_THANKS:
         return (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-            <div className="w-20 h-20 rounded-full bg-neon-green/20 flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-neon-green" />
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm">
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-neon-green/20 flex items-center justify-center mx-auto mb-6">
+                <Check className="w-10 h-10 text-neon-green" />
+              </div>
+              <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>Obrigado!</h2>
+              <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Seu pedido e gorjeta foram enviados com sucesso.</p>
+              <p className={`mt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>O artista foi notificado e seu pedido entrará na fila prioritária!</p>
             </div>
-            <h2 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>Obrigado!</h2>
-            <p className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Seu pedido e gorjeta foram enviados com sucesso.</p>
-            <p className={`mt-4 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>O artista foi notificado e seu pedido entrará na fila prioritária!</p>
+            <ReviewSection />
           </motion.div>
         );
     }
