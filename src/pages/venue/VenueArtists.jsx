@@ -41,14 +41,17 @@ export default function VenueArtists() {
     }
   }, [location.state]);
 
+  const [sortBy, setSortBy] = useState('score');
+
   useEffect(() => {
     async function loadArtists() {
       try {
-        const { data } = await supabase.from('artists').select('*, users(role)');
+        const { data } = await supabase
+          .from('artist_rankings')
+          .select('*, users(role)')
+          .order('score', { ascending: false });
         if (data) {
-          const filtered = data.filter(a => a.users?.role !== 'admin');
-          const sorted = [...filtered].sort((a, b) => (b.is_pro ? 1 : 0) - (a.is_pro ? 1 : 0));
-          setAllArtists(sorted);
+          setAllArtists(data.filter(a => a.users?.role !== 'admin'));
         }
       } catch (err) {
         console.error(err);
@@ -59,13 +62,24 @@ export default function VenueArtists() {
     loadArtists();
   }, []);
 
-  const filtered = allArtists.filter(a => {
-    const matchSearch = a.artistic_name.toLowerCase().includes(search.toLowerCase()) || a.genre.toLowerCase().includes(search.toLowerCase());
-    const matchGenre = selectedGenre === 'Todos' || a.genre === selectedGenre;
-    const matchRating = a.rating >= minRating;
-    const matchFee = a.base_fee <= maxFee;
-    return matchSearch && matchGenre && matchRating && matchFee;
-  });
+  const filtered = allArtists
+    .filter(a => {
+      const q = search.toLowerCase();
+      const matchSearch = !search
+        || a.artistic_name?.toLowerCase().includes(q)
+        || a.genre?.toLowerCase().includes(q);
+      const matchGenre = selectedGenre === 'Todos' || a.genre === selectedGenre;
+      const matchRating = (a.avg_rating_real ?? a.rating ?? 0) >= minRating;
+      const matchFee = (a.base_fee ?? 0) <= maxFee;
+      return matchSearch && matchGenre && matchRating && matchFee;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'score')    return (b.score ?? 0) - (a.score ?? 0);
+      if (sortBy === 'rating')   return (b.avg_rating_real ?? 0) - (a.avg_rating_real ?? 0);
+      if (sortBy === 'fee_asc')  return (a.base_fee ?? 0) - (b.base_fee ?? 0);
+      if (sortBy === 'fee_desc') return (b.base_fee ?? 0) - (a.base_fee ?? 0);
+      return 0;
+    });
 
   const handleHireSubmit = async () => {
     if (!selectedArtist || !user) return;
@@ -139,12 +153,28 @@ export default function VenueArtists() {
               className="bg-white/5 border border-white/8 rounded-2xl p-4 space-y-4 overflow-hidden"
             >
               <div>
-                <label className="text-gray-400 text-xs mb-2 block">Avaliação mínima: {minRating}⭐</label>
+                <p className="text-gray-400 text-xs mb-2">Ordenar por</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'score', label: 'Relevância' },
+                    { value: 'rating', label: 'Avaliação' },
+                    { value: 'fee_asc', label: 'Menor cachê' },
+                    { value: 'fee_desc', label: 'Maior cachê' },
+                  ].map(opt => (
+                    <button key={opt.value} onClick={() => setSortBy(opt.value)}
+                      className={`py-2 rounded-xl text-xs font-semibold transition-all ${sortBy === opt.value ? 'bg-neon-purple text-white' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs mb-2 block">{"Avaliação mínima: " + minRating + "★"}</label>
                 <input type="range" min={0} max={5} step={0.5} value={minRating} onChange={e => setMinRating(+e.target.value)}
                   className="w-full accent-neon-purple" />
               </div>
               <div>
-                <label className="text-gray-400 text-xs mb-2 block">Cachê máximo: R$ {maxFee.toLocaleString()}</label>
+                <label className="text-gray-400 text-xs mb-2 block">{"Cachê máximo: R$ " + maxFee.toLocaleString()}</label>
                 <input type="range" min={0} max={10000} step={500} value={maxFee} onChange={e => setMaxFee(+e.target.value)}
                   className="w-full accent-neon-purple" />
               </div>
@@ -170,7 +200,7 @@ export default function VenueArtists() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
             >
-              <ArtistCard artist={artist} onHire={() => openHireModal(artist)} onView={() => setSelectedArtistProfile(artist)} />
+              <ArtistCard artist={artist} rank={sortBy === 'score' ? i : undefined} onHire={() => openHireModal(artist)} onView={() => setSelectedArtistProfile(artist)} />
             </motion.div>
           ))}
         </div>

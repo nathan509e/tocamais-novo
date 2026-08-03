@@ -1,12 +1,51 @@
 import { motion } from 'framer-motion';
-import { Star, CheckCircle, MapPin, Music, Zap, Crown } from 'lucide-react';
+import { Star, CheckCircle, MapPin, Music, Zap, Crown, TrendingUp, Flame } from 'lucide-react';
 import NeonButton from '../ui/NeonButton';
 import { useTheme } from '../../lib/ThemeContext';
 
-export default function ArtistCard({ artist, onHire, onView, compact = false }) {
+function RankBadge({ rank, score }) {
+  if (rank === 0) return (
+    <div className="flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+      <Crown className="w-3 h-3" />
+      #1
+    </div>
+  );
+  if (rank === 1) return (
+    <div className="flex items-center gap-1 bg-gray-400 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+      #2
+    </div>
+  );
+  if (rank === 2) return (
+    <div className="flex items-center gap-1 bg-amber-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+      #3
+    </div>
+  );
+  if (score >= 80) return (
+    <div className="flex items-center gap-1 bg-orange-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+      <Flame className="w-3 h-3" />
+      Em Alta
+    </div>
+  );
+  if (score >= 40) return (
+    <div className="flex items-center gap-1 bg-neon-purple/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+      <TrendingUp className="w-3 h-3" />
+      Destaque
+    </div>
+  );
+  return null;
+}
+
+export default function ArtistCard({ artist, onHire, onView, compact = false, rank }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { artistic_name, genre, city, photo_url, cover_url, rating, followers, base_fee, verified, live_now, featured, is_pro } = artist;
+  const {
+    artistic_name, genre, city, photo_url, cover_url,
+    followers, base_fee, verified, live_now, featured, is_pro,
+    avg_rating_real, review_count, score,
+  } = artist;
+
+  const displayRating = avg_rating_real > 0 ? Number(avg_rating_real).toFixed(1) : null;
+  const displayReviews = review_count ?? 0;
 
   if (compact) {
     return (
@@ -30,10 +69,12 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
             {is_pro && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
           </div>
           <p className="text-gray-500 text-xs">{genre} • {city}</p>
-          <div className="flex items-center gap-1 mt-0.5">
-            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-            <span className="text-gray-500 text-xs">{rating?.toFixed(1)}</span>
-          </div>
+          {displayRating && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+              <span className="text-gray-500 text-xs">{displayRating} ({displayReviews})</span>
+            </div>
+          )}
         </div>
         <div className="text-right">
           <p className="text-[#2ecc71] font-bold text-sm">R${base_fee?.toLocaleString()}</p>
@@ -51,28 +92,25 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
       }`}
       onClick={() => onView?.(artist)}
     >
-      {/* Cover banner — standard height (h-64) */}
+      {/* Cover */}
       <div className="relative h-64 overflow-hidden bg-gray-900">
         {cover_url ? (
-          <img 
-            src={cover_url} 
-            alt="" 
-            className="w-full h-full object-cover" 
-          />
+          <img src={cover_url} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-neon-purple/30 via-neon-purple/15 to-neon-green/15" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
         {/* Badges */}
-        <div className="absolute top-3 left-3 z-10 flex gap-2">
+        <div className="absolute top-3 left-3 z-10 flex gap-2 flex-wrap">
           {live_now && (
             <div className="flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
               AO VIVO
             </div>
           )}
-          {featured && (
+          {rank !== undefined && <RankBadge rank={rank} score={score} />}
+          {rank === undefined && featured && (
             <div className="flex items-center gap-1 bg-neon-purple text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
               <Zap className="w-3 h-3" />
               Destaque
@@ -81,7 +119,7 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
         </div>
       </div>
 
-      {/* Profile photo — centered, overlapping cover (same -mt-14 as ArtistProfile) */}
+      {/* Profile photo */}
       <div className="flex justify-center -mt-10 sm:-mt-14 relative z-10">
         <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 shadow-lg transition-colors duration-350 ${
           isDark ? 'border-[#120D2C] bg-[#120D2C]' : 'border-white bg-white'
@@ -111,9 +149,11 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
 
         <div className="flex items-center justify-between mt-3 mb-3">
           <div className="flex items-center gap-1.5">
-            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{rating?.toFixed(1)}</span>
-            <span className="text-gray-500 text-xs">({artist.total_reviews || 0})</span>
+            <Star className={`w-4 h-4 ${displayRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} />
+            <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {displayRating ?? '—'}
+            </span>
+            <span className="text-gray-500 text-xs">({displayReviews})</span>
           </div>
           <div className="text-right">
             <p className="text-[#2ecc71] font-bold text-sm">R$ {base_fee?.toLocaleString()}</p>
@@ -122,9 +162,15 @@ export default function ArtistCard({ artist, onHire, onView, compact = false }) 
         </div>
 
         <div className="flex items-center justify-center gap-1.5 mb-3">
-          <span className="text-gray-500 text-xs">{followers?.toLocaleString()} seguidores</span>
+          <span className="text-gray-500 text-xs">{followers?.toLocaleString() ?? 0} seguidores</span>
           <span className="text-gray-300">•</span>
-          <span className="text-gray-500 text-xs">{artist.total_shows || 0} shows</span>
+          <span className="text-gray-500 text-xs">{artist.confirmed_shows ?? 0} shows</span>
+          {score > 0 && (
+            <>
+              <span className="text-gray-300">•</span>
+              <span className="text-gray-500 text-xs">{Math.round(score)} pts</span>
+            </>
+          )}
         </div>
 
         <div className="flex gap-2">
