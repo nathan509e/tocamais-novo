@@ -100,8 +100,17 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Determine user dashboard landing page
+  // Wait for profile to load before rendering role-gated routes
   const { userProfile } = useAuth();
+  if (!userProfile) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-[#08041A]">
+        <div className="w-8 h-8 border-4 border-[#7B2EFF]/30 border-t-[#7B2EFF] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Determine user dashboard landing page
   const userRole = userProfile?.role || user?.user_metadata?.role || user?.role || 'artist';
   const defaultDashboard = userRole === 'admin'
     ? '/admin'
