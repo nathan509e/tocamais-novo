@@ -371,7 +371,7 @@ export default function AppLayout({ children, role = 'artist' }) {
     try {
       const { data, error } = await supabase.functions.invoke('asaas-create-pix', {
         body: {
-          amount: 49.90,
+          amount: role === 'venue' ? 149.90 : 49.90,
           customerName: username,
           customerEmail: user?.email,
           customerTaxId: proCpf.replace(/\D/g, ''),
@@ -1148,7 +1148,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                   Toca Mais Pro
                 </DialogTitle>
                 <DialogDescription className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Desbloqueie recursos exclusivos para sua carreira musical
+                  {role === 'venue' ? 'Desbloqueie recursos exclusivos para seu estabelecimento' : 'Desbloqueie recursos exclusivos para sua carreira musical'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1205,7 +1205,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                         {iosProducts.monthly?.description || 'Acesso mensal ilimitado a todos os recursos Pro'}
                       </p>
                       <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-xl font-extrabold">{iosProducts.monthly?.price || 'R$ 49,90'}</span>
+                        <span className="text-xl font-extrabold">{iosProducts.monthly?.price || (role === 'venue' ? 'R$ 149,90' : 'R$ 49,90')}</span>
                         <span className="text-xs text-gray-500">/mês</span>
                       </div>
                       <button
@@ -1247,7 +1247,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                 <>
                   {/* Price */}
                   <div className="text-center py-2">
-                    <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>R$ 49,90</span>
+                    <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{role === 'venue' ? 'R$ 149,90' : 'R$ 49,90'}</span>
                     <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
                   </div>
 
