@@ -62,7 +62,7 @@ export default function ContractorDashboard() {
 
   // Redirect to onboarding if not completed
   useEffect(() => {
-    if (userProfile && userProfile.onboarding_completed === false) {
+    if (userProfile && !userProfile.onboarding_completed) {
       navigate('/contractor/onboarding');
     }
   }, [userProfile]);

@@ -89,7 +89,7 @@ export default function VenueDashboard() {
 
   // Redirect to onboarding if not completed
   useEffect(() => {
-    if (userProfile && userProfile.onboarding_completed === false) {
+    if (userProfile && !userProfile.onboarding_completed) {
       navigate('/venue/onboarding');
     }
   }, [userProfile]);
