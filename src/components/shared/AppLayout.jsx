@@ -1154,30 +1154,61 @@ export default function AppLayout({ children, role = 'artist' }) {
 
               {/* Features list */}
               <div className={`rounded-xl p-4 space-y-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
-                  </div>
-                  <span className="text-sm font-medium">Destaque nos resultados de busca</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-4 h-4 text-[#39FF6A]" />
-                  </div>
-                  <span className="text-sm font-medium">Selo de verificação Pro</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
-                  </div>
-                  <span className="text-sm font-medium">100% das gorjetas</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-4 h-4 text-[#39FF6A]" />
-                  </div>
-                  <span className="text-sm font-medium">Suporte prioritário</span>
-                </div>
+                {role === 'venue' ? (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+                      </div>
+                      <span className="text-sm font-medium">Indicadores do Evento (bilheteria, couvert, público)</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-[#39FF6A]" />
+                      </div>
+                      <span className="text-sm font-medium">Relatórios e analytics de shows</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+                      </div>
+                      <span className="text-sm font-medium">Curadoria musical avançada</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-[#39FF6A]" />
+                      </div>
+                      <span className="text-sm font-medium">Suporte prioritário</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+                      </div>
+                      <span className="text-sm font-medium">Destaque nos resultados de busca</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-[#39FF6A]" />
+                      </div>
+                      <span className="text-sm font-medium">Selo de verificação Pro</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#7B2EFF]/20 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-4 h-4 text-[#7B2EFF]" />
+                      </div>
+                      <span className="text-sm font-medium">100% das gorjetas</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#39FF6A]/20 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-[#39FF6A]" />
+                      </div>
+                      <span className="text-sm font-medium">Suporte prioritário</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {isIos ? (
