@@ -686,7 +686,7 @@ export default function AppLayout({ children, role = 'artist' }) {
             {/* Page Header text */}
             <div className="hidden sm:block">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Plataforma Digital</span>
-              <h2 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Toca Mais • Conexão Musical</h2>
+              <h2 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Toca Mais • Conectando artistas com o mundo!</h2>
             </div>
             
             {/* Mobile Logo */}

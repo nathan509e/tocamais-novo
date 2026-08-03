@@ -159,7 +159,7 @@ export default function Login() {
             <img src={logoTocaMaisWebp} alt="Logo" className="w-full h-full rounded-2xl object-cover" />
           </motion.div>
           <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white via-white to-gray-400 bg-clip-text text-transparent">Toca Mais</h1>
-          <p className="text-gray-400 text-sm mt-1">Conectando artistas e contratantes com facilidade</p>
+          <p className="text-gray-400 text-sm mt-1">Conectando artistas com o mundo!</p>
         </div>
 
 
