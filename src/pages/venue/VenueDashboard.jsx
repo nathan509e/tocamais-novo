@@ -234,22 +234,9 @@ export default function VenueDashboard() {
       <div className="space-y-8 pb-10">
 
         {/* HERO HEADER */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Painel Executivo</h1>
-            <p className="text-gray-400 text-xs mt-1">Gestão inteligente e contratação rápida de música ao vivo</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeTab === 'painel' && (
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-neon-purple"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                <span>Filtros Avançados</span>
-              </button>
-            )}
-          </div>
+        <div>
+          <h1 className="text-3xl font-black bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Painel Executivo</h1>
+          <p className="text-gray-400 text-xs mt-1">Gestão inteligente e contratação rápida de música ao vivo</p>
         </div>
 
         {/* ADVANCED FILTERS PANEL — aparece logo abaixo do botão */}
@@ -324,30 +311,41 @@ export default function VenueDashboard() {
           )}
         </AnimatePresence>
 
-        {/* TAB NAVIGATION */}
-        <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/5 w-fit">
-          <button
-            onClick={() => setActiveTab('painel')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'painel'
-                ? 'bg-neon-purple text-white shadow-lg'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>Painel</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('shows')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'shows'
-                ? 'bg-neon-purple text-white shadow-lg'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <CalendarCheck className="w-4 h-4" />
-            <span>Shows Agendados</span>
-          </button>
+        {/* TAB NAVIGATION + FILTROS na mesma linha */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/5">
+            <button
+              onClick={() => setActiveTab('painel')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'painel'
+                  ? 'bg-neon-purple text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Painel</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('shows')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'shows'
+                  ? 'bg-neon-purple text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>Shows Agendados</span>
+            </button>
+          </div>
+          {activeTab === 'painel' && (
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-neon-purple shrink-0"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filtros</span>
+            </button>
+          )}
         </div>
 
         {activeTab === 'painel' ? (
