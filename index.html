@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background:#08041A">
 
 <head>
   <meta charset="UTF-8" />
@@ -9,12 +9,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#08041A" />
   <title>Toca Mais</title>
+  <style>
+    html, body, #root {
+      background: #08041A;
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+    }
+  </style>
 </head>
 
 <body style="background:#08041A;margin:0">
-  <div id="root"></div>
+  <div id="root" style="background:#08041A;min-height:100vh"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
