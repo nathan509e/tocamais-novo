@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, DollarSign, Users, Calendar, Music,
   Star, Flame, BarChart3,
-  SlidersHorizontal, CheckCircle, Shield, FileText, X, Filter, Edit3,
+  SlidersHorizontal, CheckCircle, Shield, FileText, X, Filter,
   CalendarCheck, Trash2, MapPin
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -28,40 +28,11 @@ export default function VenueDashboard() {
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      "Tem certeza absoluta que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita e todos os seus dados serão apagados."
-    );
-    if (!confirmed) return;
-
-    try {
-      setSaveStatus('Excluindo conta...');
-      const { error: profileError } = await supabase
-        .from('venues')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (profileError) throw profileError;
-
-      await logout();
-      alert("Sua conta foi excluída com sucesso.");
-      navigate('/');
-    } catch (error) {
-      console.error("Erro ao excluir conta:", error);
-      alert("Ocorreu um erro ao excluir sua conta: " + error.message);
-      setSaveStatus('');
-    }
-  };
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     const labels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     return `${labels[now.getMonth()]} ${now.getFullYear()}`;
   });
-  
-  // Profile editing state
-  const [isEditingVenue, setIsEditingVenue] = useState(false);
-  const [editVenueForm, setEditVenueForm] = useState({ venue_name: '', city: '', address: '', bio: '', capacity: '', logo_url: '' });
-  const [saveStatus, setSaveStatus] = useState('');
   
   // Advanced filters state
   const [showFilters, setShowFilters] = useState(false);
@@ -257,19 +228,6 @@ export default function VenueDashboard() {
     return { month: MONTH_LABELS[refDate.getMonth()], gastos, ocupacao };
   });
 
-  const saveVenueField = async (field, value) => {
-    if (!user) return;
-    setSaveStatus('Salvando...');
-    try {
-      const { error } = await supabase.from('venues').update({ [field]: value }).eq('user_id', user.id);
-      if (error) throw error;
-      if (refreshProfile) refreshProfile();
-      setSaveStatus('');
-    } catch (err) {
-      console.error(`Erro ao salvar ${field}:`, err);
-      setSaveStatus(`Erro: ${err.message || 'desconhecido'}`);
-    }
-  };
 
   return (
     <AppLayout role="venue">
@@ -394,144 +352,6 @@ export default function VenueDashboard() {
 
         {activeTab === 'painel' ? (
           <>
-        {/* EDIT VENUE PROFILE */}
-        {!isEditingVenue ? (
-          <button
-            onClick={() => {
-              setEditVenueForm({
-                venue_name: userProfile?.venue_name || '',
-                city: userProfile?.city || '',
-                address: userProfile?.address || '',
-                bio: userProfile?.bio || '',
-                capacity: userProfile?.capacity || '',
-                logo_url: userProfile?.logo_url || ''
-              });
-              setIsEditingVenue(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-gray-300"
-          >
-            <Edit3 className="w-4 h-4" />
-            <span>Editar Perfil</span>
-          </button>
-        ) : (
-          <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
-            theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-xs'
-          }`}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Editar Perfil</h3>
-              <button
-                onClick={() => setIsEditingVenue(false)}
-                className="p-1 rounded bg-white/5 hover:bg-white/10"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Logo / Foto</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async e => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setSaveStatus('Enviando imagem...');
-                  try {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = `venue_${user.id}_${Date.now()}.${fileExt}`;
-                    const { data, error: uploadErr } = await supabase.storage.from('media').upload(`logos/${fileName}`, file);
-                    if (uploadErr) throw uploadErr;
-                    const publicUrl = supabase.storage.from('media').getPublicUrl(`logos/${fileName}`).data.publicUrl;
-                    setEditVenueForm(f => ({ ...f, logo_url: publicUrl }));
-                    setSaveStatus('Salvando...');
-                    const updResp = await supabase.from('venues').update({ logo_url: publicUrl }).eq('user_id', user.id);
-                    if (updResp.error) throw updResp.error;
-                    if (refreshProfile) refreshProfile();
-                    setSaveStatus('');
-                  } catch (err) {
-                    console.error(err);
-                    setSaveStatus('Erro ao enviar logo');
-                  }
-                }}
-                className="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-neon-purple file:text-white hover:file:opacity-90 cursor-pointer"
-              />
-              {editVenueForm.logo_url && (
-                <img src={editVenueForm.logo_url} alt="Logo" className="w-16 h-16 rounded-xl object-cover mt-2 border border-white/10"
-                  onError={e => e.target.style.display = 'none'}
-                />
-              )}
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Nome do Estabelecimento</label>
-              <input type="text" value={editVenueForm.venue_name}
-                onChange={e => setEditVenueForm(f => ({ ...f, venue_name: e.target.value }))}
-                onBlur={e => saveVenueField('venue_name', e.target.value)}
-                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                }`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Cidade</label>
-              <input type="text" value={editVenueForm.city}
-                onChange={e => setEditVenueForm(f => ({ ...f, city: e.target.value }))}
-                onBlur={e => saveVenueField('city', e.target.value)}
-                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                }`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Endereço</label>
-              <input type="text" value={editVenueForm.address}
-                onChange={e => setEditVenueForm(f => ({ ...f, address: e.target.value }))}
-                onBlur={e => saveVenueField('address', e.target.value)}
-                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                }`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Sobre (Bio)</label>
-              <textarea value={editVenueForm.bio}
-                onChange={e => setEditVenueForm(f => ({ ...f, bio: e.target.value }))}
-                onBlur={e => saveVenueField('bio', e.target.value)}
-                rows={2}
-                className={`w-full p-2.5 rounded-xl border text-xs outline-none resize-none ${
-                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                }`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Capacidade (pessoas)</label>
-              <input type="number" value={editVenueForm.capacity}
-                onChange={e => setEditVenueForm(f => ({ ...f, capacity: e.target.value }))}
-                onBlur={e => saveVenueField('capacity', Number(e.target.value))}
-                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                }`}
-              />
-            </div>
-            {saveStatus && (
-              <p className={`text-[10px] font-bold text-center ${saveStatus.startsWith('Erro') ? 'text-red-400' : 'text-neon-green'}`}>{saveStatus}</p>
-            )}
-
-            {/* Account Settings / Security (Delete Account) */}
-            <div className="pt-4 border-t border-white/5 space-y-2">
-              <span className="text-[10px] text-red-500 font-bold block">Segurança da Conta</span>
-              <p className="text-[10px] text-gray-400">
-                Deseja encerrar sua conta? Todos os dados do estabelecimento e histórico de shows serão apagados permanentemente. Esta ação não pode ser desfeita.
-              </p>
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                className="px-4 py-2 bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/30 text-red-500 text-[10px] font-bold rounded-xl transition-all duration-300 w-full text-center"
-              >
-                Excluir Minha Conta Permanentemente
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* HERO INVESTMENT CARD */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
