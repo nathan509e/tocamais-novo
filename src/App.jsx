@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
+import SplashScreen from './components/ui/SplashScreen';
 import { Capacitor } from '@capacitor/core';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -72,16 +73,7 @@ const AuthenticatedApp = () => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
 
   if (isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#08041A]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center animate-pulse">
-            <span className="text-white font-black text-lg">T</span>
-          </div>
-          <div className="w-8 h-8 border-4 border-[#7B2EFF]/30 border-t-[#7B2EFF] rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   // Redirect to Landing if not authenticated
@@ -103,11 +95,7 @@ const AuthenticatedApp = () => {
   // Wait for profile to load before rendering role-gated routes
   const { userProfile } = useAuth();
   if (!userProfile) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#08041A]">
-        <div className="w-8 h-8 border-4 border-[#7B2EFF]/30 border-t-[#7B2EFF] rounded-full animate-spin" />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   // Determine user dashboard landing page

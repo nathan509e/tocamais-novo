@@ -302,6 +302,20 @@
   color: #111827 !important;
 }
 
+/* Splash screen equalizer bars */
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.15); }
+  50%       { transform: scaleY(1); }
+}
+@keyframes logo-glow {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(123,46,255,0.6)) drop-shadow(0 0 24px rgba(123,46,255,0.3)); }
+  50%       { filter: drop-shadow(0 0 20px rgba(57,255,106,0.7)) drop-shadow(0 0 40px rgba(123,46,255,0.4)); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Cover page gradient in profile */
 .light .bg-gradient-to-t.from-app-dark {
   background-image: linear-gradient(to top, #F4F5FA, rgba(244, 245, 250, 0.4), transparent) !important;
