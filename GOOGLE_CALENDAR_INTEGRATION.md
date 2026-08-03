@@ -107,10 +107,9 @@ ArtistAgenda.jsx
 
 ```
 - openid: Identificação
-- profile: Nome e foto do usuário
-- email: Email do usuário
-- https://www.googleapis.com/auth/calendar.events: Ler/criar eventos
-- https://www.googleapis.com/auth/calendar.readonly: Ler calendários
+- https://www.googleapis.com/auth/userinfo.email: Email do usuário
+- https://www.googleapis.com/auth/userinfo.profile: Perfil do usuário
+- https://www.googleapis.com/auth/calendar.events: Ler, criar, editar e excluir eventos
 ```
 
 ## Storage Local
