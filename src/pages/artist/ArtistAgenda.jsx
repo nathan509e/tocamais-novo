@@ -435,7 +435,7 @@ export default function ArtistAgenda() {
               
               const event = {
                 summary: `Show - ${venue?.name || 'Sem local'}`,
-                description: `Show confirmado via TocaMais\nValor: R$ ${show.fee_agreed || 0}`,
+                description: `Show confirmado via Toca Mais\nValor: R$ ${show.fee_agreed || 0}`,
                 start: {
                   date: show.date
                 },
@@ -1053,7 +1053,7 @@ export default function ArtistAgenda() {
                         className="w-full bg-[#0F0926] border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
                       >
                         <option value="primary">Pessoal ({googleUser?.email || 'Google Calendar'})</option>
-                        <option value="shows">TocaMais - Shows (Criada automaticamente)</option>
+                        <option value="shows">Toca Mais - Shows (Criada automaticamente)</option>
                         <option value="work">Trabalho</option>
                       </select>
                     </div>
@@ -1131,7 +1131,7 @@ export default function ArtistAgenda() {
                 Como funciona a sincronização?
               </h4>
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Ao ativar, criamos uma agenda específica na sua conta Google. Quaisquer shows aprovados aqui serão exportados. Eventos da sua agenda pessoal marcarão esses dias como "Ocupado" no TocaMais, evitando que contratantes enviem propostas em datas indisponíveis.
+                Ao ativar, criamos uma agenda específica na sua conta Google. Quaisquer shows aprovados aqui serão exportados. Eventos da sua agenda pessoal marcarão esses dias como "Ocupado" no Toca Mais, evitando que contratantes enviem propostas em datas indisponíveis.
               </p>
             </div>
 

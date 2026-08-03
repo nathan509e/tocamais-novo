@@ -1,6 +1,6 @@
 {
-  "name": "TocaMais",
-  "short_name": "TocaMais",
+  "name": "Toca Mais",
+  "short_name": "Toca Mais",
   "description": "A plataforma de música ao vivo",
   "start_url": "/?pwa=true",
   "display": "standalone",

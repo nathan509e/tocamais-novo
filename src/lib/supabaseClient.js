@@ -63,7 +63,7 @@ const initialDb = {
       venue_id: 'ven-1', 
       artist_id: 'art-1', 
       contractor_id: null,
-      message: 'Olá Lucas Volta! Vimos o seu perfil no TocaMais e ficamos impressionados com o seu engajamento e repertório. Gostaríamos muito de contratá-lo para comandar a nossa "Sextaneja" no dia 12 de Junho no Bar do João. Oferecemos um cachê de R$ 3.500 com toda a estrutura de som inclusa!'
+      message: 'Olá Lucas Volta! Vimos o seu perfil no Toca Mais e ficamos impressionados com o seu engajamento e repertório. Gostaríamos muito de contratá-lo para comandar a nossa "Sextaneja" no dia 12 de Junho no Bar do João. Oferecemos um cachê de R$ 3.500 com toda a estrutura de som inclusa!'
     }
   ],
   contracts: [],

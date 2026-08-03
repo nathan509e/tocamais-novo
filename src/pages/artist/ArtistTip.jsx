@@ -14,7 +14,7 @@ const STAGE = {
   FINAL_THANKS: 4,
 };
 
-function generatePixPayload(key, amount, name = 'TocaMais Artista', city = 'SAO PAULO') {
+function generatePixPayload(key, amount, name = 'Toca Mais Artista', city = 'SAO PAULO') {
   const cleanString = (str) => {
     if (!str) return '';
     return str.normalize("NFD")
@@ -23,7 +23,7 @@ function generatePixPayload(key, amount, name = 'TocaMais Artista', city = 'SAO 
       .substring(0, 25);
   };
 
-  const cleanName = cleanString(name) || 'TocaMais Artista';
+  const cleanName = cleanString(name) || 'Toca Mais Artista';
   const cleanCity = cleanString(city) || 'SAO PAULO';
   const formattedAmount = amount ? Number(amount).toFixed(2) : '';
 
@@ -265,7 +265,7 @@ export default function ArtistTip() {
         const staticPayload = generatePixPayload(
           artist.pix_key,
           tipAmount,
-          artist.artistic_name || 'TocaMais Artista',
+          artist.artistic_name || 'Toca Mais Artista',
           artist.city || 'SAO PAULO'
         );
 
@@ -292,7 +292,7 @@ export default function ArtistTip() {
           {
             body: {
               amount: tipAmount,
-              description: `TocaMais - Gorjeta para ${artist?.artistic_name || 'Artista'}`,
+              description: `Toca Mais - Gorjeta para ${artist?.artistic_name || 'Artista'}`,
               artistUserId: artistId,
               userName: userName || 'Cliente',
               userMessage: message || null,

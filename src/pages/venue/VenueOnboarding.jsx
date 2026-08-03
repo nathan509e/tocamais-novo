@@ -188,7 +188,7 @@ export default function VenueOnboarding() {
       <div className="relative z-10 flex flex-col items-center px-4 py-10 flex-1">
         {/* Logo / brand */}
         <div className="mb-8 text-center">
-          <p className="text-xs text-neon-green font-bold uppercase tracking-widest mb-1">TocaMais</p>
+          <p className="text-xs text-neon-green font-bold uppercase tracking-widest mb-1">Toca Mais</p>
           <p className="text-gray-500 text-xs">Configuração inicial do estabelecimento</p>
         </div>
 

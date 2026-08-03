@@ -820,7 +820,7 @@ export default function ArtistProfile() {
                     </span>
                   </div>
                   <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Gorjetas: 30% TocaMais | 70% sua conta Asaas
+                    Gorjetas: 30% Toca Mais | 70% sua conta Asaas
                   </p>
                   <p className={`text-[10px] font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                     Wallet: {artistProfile.asaas_wallet_id}
@@ -846,7 +846,7 @@ export default function ArtistProfile() {
                     Ative as gorjetas para receber pagamentos via PIX diretamente no seu perfil.
                   </p>
                   <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Comissão: 30% TocaMais | 70% para você
+                    Comissão: 30% Toca Mais | 70% para você
                   </p>
                   
                   <button

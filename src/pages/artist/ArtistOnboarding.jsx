@@ -482,7 +482,7 @@ export default function ArtistOnboarding() {
             <h1 className="text-sm font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
               Passo a Passo de Verificação
             </h1>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">TocaMais Artista</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Toca Mais Artista</p>
           </div>
         </div>
         <button 

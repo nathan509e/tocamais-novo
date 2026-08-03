@@ -133,7 +133,7 @@ export default function AppLayout({ children, role = 'artist' }) {
         setIosProducts({
           monthly: monthly ? {
             id: monthly.id,
-            title: monthly.title || 'TocaMais Pro Mensal',
+            title: monthly.title || 'Toca Mais Pro Mensal',
             price: monthly.price || 'R$ 49,90',
             description: monthly.description || 'Acesso mensal ilimitado a todos os recursos Pro',
             raw: monthly
@@ -377,7 +377,7 @@ export default function AppLayout({ children, role = 'artist' }) {
           customerTaxId: proCpf.replace(/\D/g, ''),
           artistUserId: user?.id,
           billingType: 'PIX',
-          description: 'TocaMais Pro - Assinatura Mensal',
+          description: 'Toca Mais Pro - Assinatura Mensal',
           mode: 'subscription',
         }
       });
@@ -444,8 +444,8 @@ export default function AppLayout({ children, role = 'artist' }) {
       }`}>
           {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <img src={logoTocaMais} alt="TocaMais" className="w-9 h-9 rounded-xl object-cover" />
-          <span className={`text-lg font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>TocaMais</span>
+          <img src={logoTocaMais} alt="Toca Mais" className="w-9 h-9 rounded-xl object-cover" />
+          <span className={`text-lg font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>Toca Mais</span>
         </div>
 
         {/* Navigation Items */}
@@ -686,13 +686,13 @@ export default function AppLayout({ children, role = 'artist' }) {
             {/* Page Header text */}
             <div className="hidden sm:block">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Plataforma Digital</span>
-              <h2 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>TocaMais • Conexão Musical</h2>
+              <h2 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Toca Mais • Conexão Musical</h2>
             </div>
             
             {/* Mobile Logo */}
             <div className="flex md:hidden items-center gap-2">
-              <img src={logoTocaMais} alt="TocaMais" className="w-7 h-7 rounded-lg object-cover" />
-              <span className={`text-sm font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>TocaMais</span>
+              <img src={logoTocaMais} alt="Toca Mais" className="w-7 h-7 rounded-lg object-cover" />
+              <span className={`text-sm font-black tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>Toca Mais</span>
             </div>
           </div>
 
@@ -855,7 +855,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B2EFF] to-[#39FF6A] flex items-center justify-center">
                     <span className="text-white font-black text-xs">T</span>
                   </div>
-                  <span className="text-sm font-black tracking-wider">TocaMais</span>
+                  <span className="text-sm font-black tracking-wider">Toca Mais</span>
                 </div>
                 <button 
                   onClick={() => setShowMobileSidebar(false)}
@@ -1114,7 +1114,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                   Parabéns! Você é Pro!
                 </h3>
                 <p className={`text-sm max-w-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Sua assinatura <span className="font-bold text-[#7B2EFF]">TocaMais Pro</span> foi ativada com sucesso. Aproveite todos os benefícios exclusivos!
+                  Sua assinatura <span className="font-bold text-[#7B2EFF]">Toca Mais Pro</span> foi ativada com sucesso. Aproveite todos os benefícios exclusivos!
                 </p>
               </div>
 
@@ -1145,7 +1145,7 @@ export default function AppLayout({ children, role = 'artist' }) {
                   </div>
                 </div>
                 <DialogTitle className={`text-center text-xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  TocaMais Pro
+                  Toca Mais Pro
                 </DialogTitle>
                 <DialogDescription className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                   Desbloqueie recursos exclusivos para sua carreira musical
