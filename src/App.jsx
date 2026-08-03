@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster"
 import SplashScreen from './components/ui/SplashScreen';
+import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -69,10 +70,18 @@ import ArtistOnboarding from './pages/artist/ArtistOnboarding';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 
+const SPLASH_MIN_MS = 2800;
+
 const AuthenticatedApp = () => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
+  const [splashDone, setSplashDone] = useState(false);
 
-  if (isLoadingAuth) {
+  useEffect(() => {
+    const t = setTimeout(() => setSplashDone(true), SPLASH_MIN_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (isLoadingAuth || !splashDone) {
     return <SplashScreen />;
   }
 

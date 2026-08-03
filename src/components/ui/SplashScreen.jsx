@@ -18,29 +18,29 @@ export default function SplashScreen() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-56 h-56 rounded-full bg-neon-green/8 blur-3xl pointer-events-none" />
 
       {/* Logo */}
-      <div style={{ animation: 'logo-glow 2s ease-in-out infinite, fade-up 0.6s ease both' }}>
+      <div style={{ animation: 'logo-glow 2.4s ease-in-out infinite, fade-up 0.8s ease both' }}>
         <img
           src="/icons/icon-512.png"
           alt="Toca Mais"
-          className="w-24 h-24 rounded-2xl"
+          className="w-28 h-28 rounded-2xl"
         />
       </div>
 
       {/* Equalizer bars */}
       <div
-        className="flex items-end gap-[5px]"
-        style={{ height: '60px', animation: 'fade-up 0.6s ease 0.2s both' }}
+        className="flex items-end gap-[6px]"
+        style={{ height: '64px', animation: 'fade-up 0.8s ease 0.3s both' }}
       >
         {BARS.map((bar, i) => (
           <div
             key={i}
             style={{
-              width: '5px',
+              width: '6px',
               height: bar.maxH,
-              borderRadius: '3px',
+              borderRadius: '4px',
               background: 'linear-gradient(to top, #7B2EFF, #39FF6A)',
               transformOrigin: 'bottom',
-              animation: `eq-bar ${0.7 + (i % 3) * 0.15}s ease-in-out ${bar.delay} infinite`,
+              animation: `eq-bar ${0.8 + (i % 3) * 0.18}s ease-in-out ${bar.delay} infinite`,
             }}
           />
         ))}
@@ -49,7 +49,7 @@ export default function SplashScreen() {
       {/* Name + slogan */}
       <div
         className="text-center"
-        style={{ animation: 'fade-up 0.6s ease 0.4s both' }}
+        style={{ animation: 'fade-up 0.8s ease 0.55s both' }}
       >
         <p className="text-white font-black text-xl tracking-widest uppercase">Toca Mais</p>
         <p className="text-gray-500 text-xs mt-1 tracking-wider">Conectando artistas com o mundo!</p>
