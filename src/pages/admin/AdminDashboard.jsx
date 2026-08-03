@@ -17,6 +17,7 @@ export default function AdminDashboard() {
 
   const [usersList, setUsersList] = useState([]);
   const [artistsList, setArtistsList] = useState([]);
+  const [venuesList, setVenuesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -40,8 +41,13 @@ export default function AdminDashboard() {
         .from('artists')
         .select('*');
 
+      const { data: venuesData } = await supabase
+        .from('venues')
+        .select('*');
+
       setUsersList(usersData || []);
       setArtistsList(artistsData || []);
+      setVenuesList(venuesData || []);
     } catch (err) {
       console.error('Error loading admin data:', err);
     } finally {
@@ -84,6 +90,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleVenuePro = async (userId, currentPro) => {
+    try {
+      const { error } = await supabase
+        .from('venues')
+        .update({ is_pro: !currentPro })
+        .eq('user_id', userId);
+      if (error) throw error;
+      setVenuesList(prev => prev.map(v => v.user_id === userId ? { ...v, is_pro: !currentPro } : v));
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser(prev => ({
+          ...prev,
+          venueProfile: { ...prev.venueProfile, is_pro: !currentPro }
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao atualizar status PRO: ' + err.message);
+    }
+  };
+
   const handleToggleVerified = async (userId, currentVerified) => {
     try {
       const { error } = await supabase
@@ -115,6 +141,7 @@ export default function AdminDashboard() {
   });
 
   const getArtistProfile = (userId) => artistsList.find(a => a.user_id === userId);
+  const getVenueProfile = (userId) => venuesList.find(v => v.user_id === userId);
 
   const stats = {
     total: usersList.length,
@@ -203,10 +230,11 @@ export default function AdminDashboard() {
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
                   {filteredUsers.map(u => {
                     const artistProfile = getArtistProfile(u.id);
+                    const venueProfile = getVenueProfile(u.id);
                     return (
-                      <div 
+                      <div
                         key={u.id}
-                        onClick={() => setSelectedUser({ ...u, artistProfile })}
+                        onClick={() => setSelectedUser({ ...u, artistProfile, venueProfile })}
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                           selectedUser?.id === u.id
                             ? 'bg-neon-purple/10 border-neon-purple/50'
@@ -225,7 +253,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-1.5">
                               <p className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{u.name}</p>
                               {artistProfile?.verified && <CheckCircle className="w-3.5 h-3.5 text-neon-purple" />}
-                              {artistProfile?.is_pro && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
+                              {(artistProfile?.is_pro || venueProfile?.is_pro) && <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
                             </div>
                             <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
                           </div>
@@ -286,6 +314,35 @@ export default function AdminDashboard() {
                     <span className="text-gray-500 font-bold">Papel:</span>
                     <span className={`font-medium capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedUser.role}</span>
                   </div>
+
+                  {selectedUser.role === 'venue' && selectedUser.venueProfile && (
+                    <div className="border-t border-white/5 pt-4 space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Perfil do Estabelecimento</p>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-bold text-xs">Nome:</span>
+                        <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-800'}`}>{selectedUser.venueProfile.venue_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 font-bold text-xs">Cidade:</span>
+                        <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-800'}`}>{selectedUser.venueProfile.city || '—'}</span>
+                      </div>
+                      <div className="space-y-2 pt-2">
+                        <button
+                          onClick={() => handleToggleVenuePro(selectedUser.id, selectedUser.venueProfile.is_pro)}
+                          className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
+                            selectedUser.venueProfile.is_pro
+                              ? 'bg-amber-400/20 border-amber-400/40 text-amber-400'
+                              : isDark
+                                ? 'bg-white/5 border-white/10 text-gray-300 hover:border-white/20'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Crown className="w-4 h-4" />
+                          {selectedUser.venueProfile.is_pro ? 'Remover Status PRO' : 'Tornar Venue PRO'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {selectedUser.role === 'artist' && selectedUser.artistProfile && (
                     <div className="border-t border-white/5 pt-4 space-y-3">

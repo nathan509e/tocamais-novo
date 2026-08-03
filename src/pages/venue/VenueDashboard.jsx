@@ -9,6 +9,7 @@ import {
 import AppLayout from '../../components/shared/AppLayout';
 import StatCard from '../../components/ui/StatCard';
 import NeonButton from '../../components/ui/NeonButton';
+import VenueEventIndicators from './VenueEventIndicators';
 import { supabase } from '../../lib/supabaseClient';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -303,6 +304,13 @@ export default function VenueDashboard() {
           <StatCard title="Eventos futuros" value={`${futureEvents}`} icon={Calendar} iconColor="green" />
           <StatCard title="Ocupação média" value={`${occupancyRate}%`} change={avgAudience} icon={Users} iconColor="purple" />
         </div>
+
+        {/* INDICADORES DO EVENTO — somente PRO */}
+        {userProfile?.is_pro && (
+          <div className="p-5 rounded-3xl border border-amber-400/20 bg-gradient-to-br from-amber-400/5 to-transparent">
+            <VenueEventIndicators />
+          </div>
+        )}
 
         {/* PROPOSTAS ENVIADAS */}
         <div>
