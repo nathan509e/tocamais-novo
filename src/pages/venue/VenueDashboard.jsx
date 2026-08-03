@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, DollarSign, Users, Calendar, Music,
   Star, Flame, BarChart3,
-  SlidersHorizontal, CheckCircle, Shield, FileText, X, Filter,
+  CheckCircle, FileText, X,
   CalendarCheck, Trash2, MapPin
 } from 'lucide-react';
 import AppLayout from '../../components/shared/AppLayout';
@@ -35,12 +35,6 @@ export default function VenueDashboard() {
   });
   
   // Advanced filters state
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedGenre, setSelectedGenre] = useState('Todos');
-  const [selectedCity, setSelectedCity] = useState('Todas');
-  const [maxBudget, setMaxBudget] = useState(10000);
-  const [minRating, setMinRating] = useState(4.0);
-  const [filterVerified, setFilterVerified] = useState(false);
 
   // Profile overlay state
   const [selectedArtistProfile, setSelectedArtistProfile] = useState(null);
@@ -162,15 +156,6 @@ export default function VenueDashboard() {
     return () => clearInterval(interval);
   }, [userProfile]);
 
-  // Filtered artists logic
-  const filteredArtists = artists.filter(artist => {
-    const matchGenre = selectedGenre === 'Todos' || artist.genre === selectedGenre;
-    const matchCity = selectedCity === 'Todas' || artist.city === selectedCity;
-    const matchBudget = artist.base_fee <= maxBudget;
-    const matchRating = artist.rating >= minRating;
-    const matchVerified = !filterVerified || artist.verified;
-    return matchGenre && matchCity && matchBudget && matchRating && matchVerified;
-  });
 
   // Top Hired Artists List
   const topHired = [...artists]
@@ -239,113 +224,30 @@ export default function VenueDashboard() {
           <p className="text-gray-400 text-xs mt-1">Gestão inteligente e contratação rápida de música ao vivo</p>
         </div>
 
-        {/* ADVANCED FILTERS PANEL — aparece logo abaixo do botão */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="p-5 rounded-2xl bg-[#0F0926] border border-white/5 space-y-5 overflow-hidden shadow-xl"
-            >
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-neon-green" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider">Configuração de Busca</h3>
-                </div>
-                <button onClick={() => setShowFilters(false)} className="p-1 rounded bg-white/5 hover:bg-white/10">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Estilo Musical</label>
-                  <select value={selectedGenre} onChange={e => setSelectedGenre(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white">
-                    <option value="Todos" className="bg-[#0F0926]">Todos os estilos</option>
-                    <option value="Sertanejo" className="bg-[#0F0926]">Sertanejo</option>
-                    <option value="Pop" className="bg-[#0F0926]">Pop</option>
-                    <option value="Rock" className="bg-[#0F0926]">Rock</option>
-                    <option value="Samba" className="bg-[#0F0926]">Samba</option>
-                    <option value="Eletrônico" className="bg-[#0F0926]">Eletrônico</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Cidade</label>
-                  <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white">
-                    <option value="Todas" className="bg-[#0F0926]">Todas as cidades</option>
-                    <option value="São Paulo" className="bg-[#0F0926]">São Paulo</option>
-                    <option value="Rio de Janeiro" className="bg-[#0F0926]">Rio de Janeiro</option>
-                    <option value="Belo Horizonte" className="bg-[#0F0926]">Belo Horizonte</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">
-                    Avaliação Mínima: {minRating} ⭐
-                  </label>
-                  <input type="range" min="3.5" max="5.0" step="0.1" value={minRating}
-                    onChange={e => setMinRating(parseFloat(e.target.value))}
-                    className="w-full accent-neon-purple" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">
-                    Cachê Máximo: R$ {maxBudget.toLocaleString()}
-                  </label>
-                  <input type="range" min="1000" max="10000" step="500" value={maxBudget}
-                    onChange={e => setMaxBudget(parseInt(e.target.value))}
-                    className="w-full accent-neon-green" />
-                </div>
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" id="chk-verified" checked={filterVerified}
-                    onChange={e => setFilterVerified(e.target.checked)}
-                    className="w-4 h-4 rounded bg-white/5 border-white/10 text-neon-purple focus:ring-0 cursor-pointer" />
-                  <label htmlFor="chk-verified" className="text-xs text-gray-300 font-semibold cursor-pointer flex items-center gap-1">
-                    <Shield className="w-3.5 h-3.5 text-neon-purple" />
-                    Mostrar apenas músicos verificados
-                  </label>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* TAB NAVIGATION + FILTROS na mesma linha */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/5">
-            <button
-              onClick={() => setActiveTab('painel')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'painel'
-                  ? 'bg-neon-purple text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Painel</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('shows')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'shows'
-                  ? 'bg-neon-purple text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <CalendarCheck className="w-4 h-4" />
-              <span>Shows Agendados</span>
-            </button>
-          </div>
-          {activeTab === 'painel' && (
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-neon-purple shrink-0"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span>Filtros</span>
-            </button>
-          )}
+        {/* TAB NAVIGATION */}
+        <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/5 w-fit">
+          <button
+            onClick={() => setActiveTab('painel')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'painel'
+                ? 'bg-neon-purple text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Painel</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('shows')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'shows'
+                ? 'bg-neon-purple text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <CalendarCheck className="w-4 h-4" />
+            <span>Shows Agendados</span>
+          </button>
         </div>
 
         {activeTab === 'painel' ? (
@@ -590,12 +492,12 @@ export default function VenueDashboard() {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Artistas Recomendados</h3>
-              <span className="text-[10px] text-gray-400 font-semibold">{filteredArtists.length} músicos disponíveis</span>
+              <span className="text-[10px] text-gray-400 font-semibold">{artists.length} músicos disponíveis</span>
             </div>
 
             <div className="grid gap-3">
-              {filteredArtists.length > 0 ? (
-                filteredArtists.map(a => (
+              {artists.length > 0 ? (
+                artists.map(a => (
                   <div 
                     key={a.id} 
                     className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-neon-purple/20 transition-all shadow-sm"
