@@ -294,6 +294,78 @@ export default function VenueDashboard() {
           </div>
         </div>
 
+        {/* ADVANCED FILTERS PANEL — aparece logo abaixo do botão */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-5 rounded-2xl bg-[#0F0926] border border-white/5 space-y-5 overflow-hidden shadow-xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-neon-green" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider">Configuração de Busca</h3>
+                </div>
+                <button onClick={() => setShowFilters(false)} className="p-1 rounded bg-white/5 hover:bg-white/10">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Estilo Musical</label>
+                  <select value={selectedGenre} onChange={e => setSelectedGenre(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white">
+                    <option value="Todos" className="bg-[#0F0926]">Todos os estilos</option>
+                    <option value="Sertanejo" className="bg-[#0F0926]">Sertanejo</option>
+                    <option value="Pop" className="bg-[#0F0926]">Pop</option>
+                    <option value="Rock" className="bg-[#0F0926]">Rock</option>
+                    <option value="Samba" className="bg-[#0F0926]">Samba</option>
+                    <option value="Eletrônico" className="bg-[#0F0926]">Eletrônico</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Cidade</label>
+                  <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white">
+                    <option value="Todas" className="bg-[#0F0926]">Todas as cidades</option>
+                    <option value="São Paulo" className="bg-[#0F0926]">São Paulo</option>
+                    <option value="Rio de Janeiro" className="bg-[#0F0926]">Rio de Janeiro</option>
+                    <option value="Belo Horizonte" className="bg-[#0F0926]">Belo Horizonte</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">
+                    Avaliação Mínima: {minRating} ⭐
+                  </label>
+                  <input type="range" min="3.5" max="5.0" step="0.1" value={minRating}
+                    onChange={e => setMinRating(parseFloat(e.target.value))}
+                    className="w-full accent-neon-purple" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">
+                    Cachê Máximo: R$ {maxBudget.toLocaleString()}
+                  </label>
+                  <input type="range" min="1000" max="10000" step="500" value={maxBudget}
+                    onChange={e => setMaxBudget(parseInt(e.target.value))}
+                    className="w-full accent-neon-green" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="chk-verified" checked={filterVerified}
+                    onChange={e => setFilterVerified(e.target.checked)}
+                    className="w-4 h-4 rounded bg-white/5 border-white/10 text-neon-purple focus:ring-0 cursor-pointer" />
+                  <label htmlFor="chk-verified" className="text-xs text-gray-300 font-semibold cursor-pointer flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5 text-neon-purple" />
+                    Mostrar apenas músicos verificados
+                  </label>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* TAB NAVIGATION */}
         <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/5 w-fit">
           <button
@@ -581,107 +653,6 @@ export default function VenueDashboard() {
             </div>
           )}
         </div>
-
-        {/* ADVANCED FILTERS PANEL */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="p-6 rounded-2xl bg-[#0F0926] border border-white/5 space-y-6 overflow-hidden shadow-xl"
-            >
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-neon-green" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider">Configuração de Busca</h3>
-                </div>
-                <button onClick={() => setShowFilters(false)} className="p-1 rounded bg-white/5 hover:bg-white/10">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-6">
-                {/* Genre */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Estilo Musical</label>
-                  <select 
-                    value={selectedGenre} 
-                    onChange={e => setSelectedGenre(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs"
-                  >
-                    <option value="Todos" className="bg-[#0F0926]">Todos os estilos</option>
-                    <option value="Sertanejo" className="bg-[#0F0926]">Sertanejo</option>
-                    <option value="Pop" className="bg-[#0F0926]">Pop</option>
-                    <option value="Rock" className="bg-[#0F0926]">Rock</option>
-                    <option value="Samba" className="bg-[#0F0926]">Samba</option>
-                    <option value="Eletrônico" className="bg-[#0F0926]">Eletrônico</option>
-                  </select>
-                </div>
-
-                {/* City */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Cidade</label>
-                  <select 
-                    value={selectedCity} 
-                    onChange={e => setSelectedCity(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs"
-                  >
-                    <option value="Todas" className="bg-[#0F0926]">Todas as cidades</option>
-                    <option value="São Paulo" className="bg-[#0F0926]">São Paulo</option>
-                    <option value="Rio de Janeiro" className="bg-[#0F0926]">Rio de Janeiro</option>
-                    <option value="Belo Horizonte" className="bg-[#0F0926]">Belo Horizonte</option>
-                  </select>
-                </div>
-
-                {/* Min Rating */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Avaliação Mínima: {minRating} ⭐</label>
-                  <input 
-                    type="range" 
-                    min="3.5" 
-                    max="5.0" 
-                    step="0.1" 
-                    value={minRating} 
-                    onChange={e => setMinRating(parseFloat(e.target.value))}
-                    className="w-full accent-neon-purple"
-                  />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6 pt-2">
-                {/* Max Fee */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2 font-bold uppercase tracking-wider">Cachê Máximo: R$ {maxBudget.toLocaleString()}</label>
-                  <input 
-                    type="range" 
-                    min="1000" 
-                    max="10000" 
-                    step="500" 
-                    value={maxBudget} 
-                    onChange={e => setMaxBudget(parseInt(e.target.value))}
-                    className="w-full accent-neon-green"
-                  />
-                </div>
-
-                {/* Verified Toggle */}
-                <div className="flex items-center gap-3 self-center mt-4">
-                  <input 
-                    type="checkbox" 
-                    id="chk-verified" 
-                    checked={filterVerified} 
-                    onChange={e => setFilterVerified(e.target.checked)}
-                    className="w-4 h-4 rounded bg-white/5 border-white/10 text-neon-purple focus:ring-0 cursor-pointer"
-                  />
-                  <label htmlFor="chk-verified" className="text-xs text-gray-300 font-semibold cursor-pointer flex items-center gap-1">
-                    <Shield className="w-3.5 h-3.5 text-neon-purple" />
-                    <span>Mostrar apenas músicos verificados</span>
-                  </label>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* GRAPHS AND CHARTS SECTIONS */}
         <div className="grid lg:grid-cols-3 gap-6">
