@@ -496,38 +496,39 @@ export default function ArtistDashboard() {
         <div className="flex flex-row justify-between items-center gap-4 w-full">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <img 
-                src={userProfile?.photo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop'} 
-                alt="Avatar" 
+              <img
+                src={userProfile?.photo_url || user?.avatar_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&h=200&fit=crop'}
+                alt="Avatar"
                 className="w-16 h-16 rounded-2xl object-cover border-2 border-neon-purple/50"
               />
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#08041A] flex items-center justify-center ${
-                availabilityAuto ? 'bg-red-500' : 'bg-gray-500'
-              }`}>
-                <span className="text-[8px] font-black text-black">LIVE</span>
-              </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-lg md:text-2xl font-black text-white">{userProfile?.artistic_name || user?.name || 'Artista'}</h1>
-                <CheckCircle className="w-5 h-5 text-neon-purple flex-shrink-0" />
+                <h1 className="text-lg font-black text-white truncate">{userProfile?.artistic_name || user?.name || 'Artista'}</h1>
+                <CheckCircle className="w-4 h-4 text-neon-purple flex-shrink-0" />
               </div>
-              <p className="text-xs text-gray-400">{userProfile?.genre ? `${userProfile.genre} • ` : ''}{userProfile?.city || 'Local não definido'}</p>
+              <p className="text-xs text-gray-400 truncate">{userProfile?.genre ? `${userProfile.genre} • ` : ''}{userProfile?.city || 'Local não definido'}</p>
             </div>
           </div>
 
-          {/* Live Toggle */}
-          <div className="flex items-center gap-1.5 md:gap-2.5 p-2 md:p-3 rounded-xl bg-white/5 border border-white/10 flex-shrink-0">
-            <span className="text-[10px] md:text-xs text-gray-300 font-bold uppercase tracking-wider">Ao Vivo</span>
-            <button onClick={handleToggleLive}>
-              {availabilityAuto ? (
-                <ToggleRight className="w-7 h-7 md:w-9 md:h-9 text-red-500" />
-              ) : (
-                <ToggleLeft className="w-7 h-7 md:w-9 md:h-9 text-gray-500" />
-              )}
-            </button>
-            <span className="text-[8px] md:text-[10px] text-gray-400 font-semibold">{availabilityAuto ? 'Ao Vivo' : 'Não Ao Vivo'}</span>
-          </div>
+          {/* Live Toggle — compact pill */}
+          <button
+            onClick={handleToggleLive}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-shrink-0 transition-all ${
+              availabilityAuto
+                ? 'bg-red-500/15 border-red-500/40 text-red-400'
+                : 'bg-white/5 border-white/10 text-gray-500'
+            }`}
+          >
+            {availabilityAuto ? (
+              <ToggleRight className="w-6 h-6 text-red-500" />
+            ) : (
+              <ToggleLeft className="w-6 h-6 text-gray-500" />
+            )}
+            <span className="text-xs font-bold whitespace-nowrap">
+              {availabilityAuto ? 'Ao Vivo' : 'Ao Vivo'}
+            </span>
+          </button>
         </div>
 
         {/* HERO EARNINGS */}
