@@ -11,7 +11,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
 import { useHireArtist } from '../../lib/useHireArtist';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const eventTypes = [
   { id: 'wedding', icon: Heart, label: 'Casamento', desc: 'Eventos luxuosos e românticos' },
@@ -27,6 +27,7 @@ export default function ContractorDashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const location = useLocation();
+  const navigate = useNavigate();
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -58,6 +59,13 @@ export default function ContractorDashboard() {
   const [contractorProposals, setContractorProposals] = useState([]);
   const [contractorProposalsLoading, setContractorProposalsLoading] = useState(true);
   const [proposalArtistMap, setProposalArtistMap] = useState({});
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (userProfile && userProfile.onboarding_completed === false) {
+      navigate('/contractor/onboarding');
+    }
+  }, [userProfile]);
 
   useEffect(() => {
     async function loadArtists() {

@@ -87,6 +87,13 @@ export default function VenueDashboard() {
   const [confirmedShowsLoading, setConfirmedShowsLoading] = useState(true);
   const [confirmedArtistsMap, setConfirmedArtistsMap] = useState({});
 
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (userProfile && userProfile.onboarding_completed === false) {
+      navigate('/venue/onboarding');
+    }
+  }, [userProfile]);
+
   // Fetch Artists
   useEffect(() => {
     async function loadArtists() {

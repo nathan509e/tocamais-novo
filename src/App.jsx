@@ -56,6 +56,8 @@ import Profile from './pages/Profile';
 import Messages from './pages/Messages';
 import ContractorProfile from './pages/contractor/ContractorProfile';
 import VenueProfile from './pages/venue/VenueProfile';
+import VenueOnboarding from './pages/venue/VenueOnboarding';
+import ContractorOnboarding from './pages/contractor/ContractorOnboarding';
 import MessagesPage from './pages/shared/MessagesPage';
 import ArtistTip from './pages/artist/ArtistTip';
 import ArtistRequests from './pages/artist/ArtistRequests';
@@ -141,10 +143,12 @@ const AuthenticatedApp = () => {
       <Route path="/venue/schedule" element={<RoleRoute allowed={['venue']}><VenueSchedule /></RoleRoute>} />
       <Route path="/venue/messages" element={<RoleRoute allowed={['venue']}><MessagesPage role="venue" /></RoleRoute>} />
       <Route path="/venue/profile" element={<RoleRoute allowed={['venue']}><VenueProfile /></RoleRoute>} />
+      <Route path="/venue/onboarding" element={<RoleRoute allowed={['venue']}><VenueOnboarding /></RoleRoute>} />
 
       {/* Contractor Routes */}
       <Route path="/contractor" element={<RoleRoute allowed={['contractor']}><ContractorDashboard /></RoleRoute>} />
       <Route path="/contractor/search" element={<RoleRoute allowed={['contractor']}><ContractorSearch /></RoleRoute>} />
+      <Route path="/contractor/onboarding" element={<RoleRoute allowed={['contractor']}><ContractorOnboarding /></RoleRoute>} />
       <Route path="/contractor/favorites" element={<RoleRoute allowed={['contractor']}><ContractorFavorites /></RoleRoute>} />
       <Route path="/contractor/profile" element={<RoleRoute allowed={['contractor']}><ContractorProfile /></RoleRoute>} />
       <Route path="/contractor/messages" element={<RoleRoute allowed={['contractor']}><MessagesPage role="contractor" /></RoleRoute>} />
