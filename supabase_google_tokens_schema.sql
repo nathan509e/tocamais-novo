@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.google_calendar_tokens (
     -- Metadata
     connected_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    scopes TEXT[] DEFAULT ARRAY['openid', 'profile', 'email', 'https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.readonly'],
+    scopes TEXT[] DEFAULT ARRAY['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar.events'],
     
     -- Security & Audit
     ip_address_connected TEXT,

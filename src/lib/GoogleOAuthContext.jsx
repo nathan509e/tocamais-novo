@@ -4,7 +4,7 @@ import { GoogleTokenService } from './googleTokenService';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const REDIRECT_URI = `${window.location.origin}/oauth-callback.html`;
-const SCOPES = 'openid profile email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
+const SCOPES = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar.events';
 
 const GoogleOAuthContext = createContext();
 

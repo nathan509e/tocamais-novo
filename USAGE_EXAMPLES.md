@@ -225,7 +225,7 @@ async function handleGoogleOAuth(userId, ipAddress, userAgent) {
       userAgent: userAgent,
       details: {
         provider: 'google',
-        scopes: ['calendar.events', 'calendar.readonly']
+        scopes: ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar.events']
       }
     });
   } catch (error) {
@@ -344,8 +344,10 @@ async function getSyncStatus(artistId) {
 ```javascript
 function hasRequiredScopes(tokenRecord) {
   const requiredScopes = [
-    'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/calendar.readonly'
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/calendar.events'
   ];
 
   return requiredScopes.every(scope => 
