@@ -138,7 +138,13 @@ const AuthenticatedApp = () => {
       <Route path="/artist/onboarding" element={<RoleRoute allowed={['artist']}><ArtistOnboarding /></RoleRoute>} />
 
       {/* Venue Routes */}
-      <Route path="/venue" element={<RoleRoute allowed={['venue']}><VenueDashboard /></RoleRoute>} />
+      <Route path="/venue" element={
+        <RoleRoute allowed={['venue']}>
+          {userProfile && !userProfile.onboarding_completed
+            ? <Navigate to="/venue/onboarding" replace />
+            : <VenueDashboard />}
+        </RoleRoute>
+      } />
       <Route path="/venue/artists" element={<RoleRoute allowed={['venue']}><VenueArtists /></RoleRoute>} />
       <Route path="/venue/schedule" element={<RoleRoute allowed={['venue']}><VenueSchedule /></RoleRoute>} />
       <Route path="/venue/messages" element={<RoleRoute allowed={['venue']}><MessagesPage role="venue" /></RoleRoute>} />
@@ -146,7 +152,13 @@ const AuthenticatedApp = () => {
       <Route path="/venue/onboarding" element={<RoleRoute allowed={['venue']}><VenueOnboarding /></RoleRoute>} />
 
       {/* Contractor Routes */}
-      <Route path="/contractor" element={<RoleRoute allowed={['contractor']}><ContractorDashboard /></RoleRoute>} />
+      <Route path="/contractor" element={
+        <RoleRoute allowed={['contractor']}>
+          {userProfile && !userProfile.onboarding_completed
+            ? <Navigate to="/contractor/onboarding" replace />
+            : <ContractorDashboard />}
+        </RoleRoute>
+      } />
       <Route path="/contractor/search" element={<RoleRoute allowed={['contractor']}><ContractorSearch /></RoleRoute>} />
       <Route path="/contractor/onboarding" element={<RoleRoute allowed={['contractor']}><ContractorOnboarding /></RoleRoute>} />
       <Route path="/contractor/favorites" element={<RoleRoute allowed={['contractor']}><ContractorFavorites /></RoleRoute>} />

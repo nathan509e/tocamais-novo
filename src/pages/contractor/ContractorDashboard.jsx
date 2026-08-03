@@ -60,13 +60,6 @@ export default function ContractorDashboard() {
   const [contractorProposalsLoading, setContractorProposalsLoading] = useState(true);
   const [proposalArtistMap, setProposalArtistMap] = useState({});
 
-  // Redirect to onboarding if not completed
-  useEffect(() => {
-    if (userProfile && !userProfile.onboarding_completed) {
-      navigate('/contractor/onboarding');
-    }
-  }, [userProfile]);
-
   useEffect(() => {
     async function loadArtists() {
       try {
